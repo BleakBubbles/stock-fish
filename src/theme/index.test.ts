@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { colours, defaultColours, fnv1a, rampOrder, ramps, ui } from './index';
+import {
+  colours,
+  defaultColours,
+  fishColours,
+  fnv1a,
+  isPaletteColour,
+  rampOrder,
+  ramps,
+  ui,
+} from './index';
 
 describe('palette', () => {
   it('has 32 colours', () => {
@@ -41,5 +50,22 @@ describe('defaultColours', () => {
   it('returns a ramp from the palette', () => {
     const { primary, secondary } = defaultColours('VTI');
     expect(Object.values(ramps)).toContainEqual({ body: primary, fin: secondary });
+  });
+});
+
+describe('fishColours', () => {
+  it('uses each chosen slot and falls back per slot', () => {
+    const d = defaultColours('AAPL');
+    expect(fishColours({ symbol: 'AAPL' })).toEqual(d);
+    expect(fishColours({ symbol: 'AAPL', primary: '262b44' })).toEqual({
+      primary: '262b44',
+      secondary: d.secondary,
+    });
+  });
+});
+
+describe('ui colours', () => {
+  it('are all palette colours', () => {
+    for (const hex of Object.values(ui)) expect(isPaletteColour(hex)).toBe(true);
   });
 });

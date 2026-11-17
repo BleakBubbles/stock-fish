@@ -31,6 +31,16 @@
   },
   "ui": {
     "water": "262b44",
-    "selectionOutline": "ffffff"
+    "selectionOutline": "ffffff",
+    "_note": "App chrome outside the tank. Text pairs are chosen for at least 4.5:1 contrast.",
+    "panel": "3a4466",
+    "border": "181425",
+    "text": "ffffff",
+    "textMuted": "c0cbdc",
+    "button": "ead4aa",
+    "buttonText": "181425",
+    "focus": "feae34",
+    "warning": "feae34",
+    "success": "63c74d"
   }
 }

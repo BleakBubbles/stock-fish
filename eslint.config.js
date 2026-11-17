@@ -38,6 +38,11 @@ export default tseslint.config(
     },
   },
   {
+    // Tests index into fixtures they just built; assertions are clearer than guards there.
+    files: ['**/*.test.ts'],
+    rules: { '@typescript-eslint/no-non-null-assertion': 'off' },
+  },
+  {
     files: ['src/data/providers/**'],
     rules: { 'no-restricted-globals': 'off', 'no-restricted-properties': 'off' },
   },

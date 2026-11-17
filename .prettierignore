@@ -6,3 +6,4 @@ art
 src/theme/generated
 LICENSE
 *.md
+src/data/sectors.json

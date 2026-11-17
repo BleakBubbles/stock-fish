@@ -166,8 +166,12 @@ account and the app is just a client.
   calls a day, within Twelve Data's free cap of 800/day (8/min). Cache history daily.
 - **Provider interface** (`getQuote`, `getDailyHistory`), Twelve Data as default, a mock adapter
   for development; at least one TSX-capable provider should be supported eventually.
-- **CORS:** unconfirmed whether free tiers allow browser requests. Test one fetch early; if
-  blocked, add a stateless relay that forwards the user's request with their key and stores nothing.
+- **CORS:** Twelve Data allows browser requests (checked 2026-11-17), so no relay is needed for
+  it. Other providers still need checking; if one is blocked, add a stateless relay that forwards
+  the user's request with their key and stores nothing.
+- **Sectors:** Twelve Data's company profile (sector) is paid-only. The app ships a public-domain
+  table of S&P 500 sectors plus common funds; for anything else the user picks the fish's family
+  when adding it, and can change it later.
 - **yfinance / Yahoo:** personal use only under Yahoo's terms. Fine for Max's own testing, never
   shipped.
 - **Storage:** holdings, pens and layouts live in IndexedDB. Clearing browser data wipes the tank,

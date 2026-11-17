@@ -56,6 +56,11 @@ Mapping rules:
 - **Sector → body:** IT and Communication Services → 1; Financials and Real Estate → 2; Consumer
   Discretionary and Staples → 3; Energy and Utilities → 4; Industrials and Materials → 5;
   Health Care → 6. Unknown sector, ETFs, funds and crypto → body 3 for now.
+- **Sector source,** best first: the user's family choice, the provider's company profile, then
+  the built-in table `src/data/sectors.json` (S&P 500 GICS sectors plus common funds; regenerate
+  with `scripts/update-sectors.ts`). Twelve Data's free plan has no profiles, so the table does
+  most of the work. A symbol none of these know gets a "which family?" picker in the "meet your
+  fish" step; the family can be changed later and is saved in backups.
 - **Fish colours:** each holding stores optional `primary` (body, `B`) and `secondary` (fins, `F`)
   colours, each one of the 32 palette colours. If unset, use the default: the ticker's entry in
   `palette.json` `brandPresets` if there is one, else a stable hash (e.g. FNV-1a) of the
