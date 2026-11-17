@@ -91,6 +91,9 @@ export function createTwelveDataProvider(options: TwelveDataOptions): MarketData
         // last_quote_at is the latest trade; timestamp is the bar's open.
         timestamp: toNumber(body.last_quote_at ?? body.timestamp, 'timestamp') * 1000,
         ...(typeof body.name === 'string' && body.name ? { name: body.name } : {}),
+        ...(typeof body.datetime === 'string' && /^\d{4}-\d{2}-\d{2}/.test(body.datetime)
+          ? { tradingDay: body.datetime.slice(0, 10) }
+          : {}),
       };
     },
 

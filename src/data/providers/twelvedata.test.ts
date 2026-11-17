@@ -40,6 +40,7 @@ describe('twelvedata provider', () => {
       previousClose: 352.78,
       timestamp: 1794934620000,
       name: 'Apple Inc.',
+      tradingDay: '2026-11-17',
     });
     const url = new URL(seen[0]!);
     expect(url.pathname).toBe('/quote');

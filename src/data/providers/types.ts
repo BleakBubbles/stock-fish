@@ -11,6 +11,12 @@ export interface Quote {
   timestamp: number;
   /** Company or fund name, when the quote includes it. */
   name?: string;
+  /**
+   * Trading day the price belongs to, in the exchange's time zone
+   * (YYYY-MM-DD). The mood engine ignores history bars from this day on, so
+   * today's unfinished bar never counts towards typical volatility.
+   */
+  tradingDay?: string;
 }
 
 export interface DailyBar {

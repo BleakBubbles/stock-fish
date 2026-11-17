@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MOCK_UNKNOWN, createMockProvider } from './mock';
+import { assessMood } from '../../mood';
+import { MOCK_PROFILES, MOCK_UNKNOWN, createMockProvider } from './mock';
 
 const NOW = Date.UTC(2026, 10, 17, 18); // a Tuesday
 
@@ -30,5 +31,21 @@ describe('mock provider', () => {
     expect((await p.getProfile!('JNJ')).sector).toBe('Healthcare');
     expect(await p.getProfile!('ZZZZ')).toEqual({});
     await expect(p.getQuote(MOCK_UNKNOWN)).rejects.toMatchObject({ kind: 'not-found' });
+  });
+});
+
+describe('mock provider with the mood engine', () => {
+  // The tank needs to show a spread of faces when developing offline.
+  it('gives a range of moods across the fixture symbols', async () => {
+    const p = createMockProvider({ now: () => NOW });
+    const moods = new Set<string>();
+    for (const symbol of Object.keys(MOCK_PROFILES)) {
+      const quote = await p.getQuote(symbol);
+      const history = await p.getDailyHistory(symbol, 61);
+      const result = assessMood({ ...quote, history, asOf: quote.tradingDay });
+      expect(result.reason).toBe('ok');
+      moods.add(result.mood);
+    }
+    expect(moods.size).toBeGreaterThanOrEqual(3);
   });
 });
