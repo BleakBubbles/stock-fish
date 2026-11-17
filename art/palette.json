@@ -1,0 +1,36 @@
+{
+  "name": "ENDESGA 32",
+  "note": "Hex values as used in the design work; verify against https://lospec.com/palette-list/endesga-32 once.",
+  "colors": [
+    "be4a2f", "d77643", "ead4aa", "e4a672", "b86f50", "733e39", "3e2731", "a22633",
+    "e43b44", "f77622", "feae34", "fee761", "63c74d", "3e8948", "265c42", "193c3e",
+    "124e89", "0099db", "2ce8f5", "ffffff", "c0cbdc", "8b9bb4", "5a6988", "3a4466",
+    "262b44", "181425", "ff0044", "68386c", "b55088", "f6757a", "e8b796", "c28569"
+  ],
+  "roles": {
+    "o": { "meaning": "outline", "color": "181425" },
+    "p": { "meaning": "pupil, lid, mouth", "color": "181425" },
+    "w": { "meaning": "eye white", "color": "ffffff" },
+    "r": { "meaning": "tongue (ecstatic only)", "color": "e43b44" },
+    "B": { "meaning": "body", "color": "from ramp.body" },
+    "F": { "meaning": "fins and tail", "color": "from ramp.fin" },
+    ".": { "meaning": "transparent", "color": null }
+  },
+  "ramps": {
+    "orange": { "body": "f77622", "fin": "feae34" },
+    "red":    { "body": "a22633", "fin": "e43b44" },
+    "pink":   { "body": "b55088", "fin": "f6757a" },
+    "tan":    { "body": "b86f50", "fin": "e4a672" },
+    "green":  { "body": "3e8948", "fin": "63c74d" },
+    "blue":   { "body": "124e89", "fin": "0099db" },
+    "silver": { "body": "8b9bb4", "fin": "c0cbdc" }
+  },
+  "rampOrder": ["orange", "red", "pink", "tan", "green", "blue", "silver"],
+  "brandPresets": {
+    "_note": "Curated per ticker: { \"TICKER\": { \"body\": \"<palette hex>\", \"fin\": \"<palette hex>\" } }. Colours only, never logos. Empty until curated."
+  },
+  "ui": {
+    "water": "262b44",
+    "selectionOutline": "ffffff"
+  }
+}

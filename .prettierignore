@@ -1,0 +1,8 @@
+dist
+dev-dist
+coverage
+package-lock.json
+art
+src/theme/generated
+LICENSE
+*.md

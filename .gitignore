@@ -1,0 +1,9 @@
+node_modules
+dist
+dev-dist
+coverage
+*.tsbuildinfo
+src/theme/generated
+__pycache__
+.DS_Store
+.claude/settings.local.json
