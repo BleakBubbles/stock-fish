@@ -35,6 +35,8 @@ export const ui = {
   focus: palette.ui.focus,
   warning: palette.ui.warning,
   success: palette.ui.success,
+  /** Tank overlay when the market is closed (the light is off). */
+  night: palette.ui.night,
 } as const;
 
 /** '#rrggbb' form for CSS and PixiJS. */

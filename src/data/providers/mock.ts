@@ -103,6 +103,7 @@ export function createMockProvider(options: MockOptions = {}): MarketDataProvide
         timestamp: now(),
         name: MOCK_PROFILES[symbol.toUpperCase()]?.name,
         tradingDay: last.date,
+        currency: 'USD',
       };
     },
 

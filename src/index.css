@@ -118,7 +118,6 @@ canvas {
 }
 
 .main.is-tank {
-  position: relative;
   padding: 0;
   overflow: hidden;
 }
@@ -127,20 +126,82 @@ canvas {
   max-width: none;
 }
 
+.tank-screen {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The space around the tank is darker than the water, so the tank reads as a tank. */
 .tank-host {
+  flex: 1;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
+  background: var(--sf-night);
+}
+
+.tank-canvas {
+  display: block;
+  touch-action: manipulation;
+}
+
+.tank-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--sf-px) * 2) var(--gap);
+  align-items: baseline;
+  border-width: var(--line) 0 0;
+  box-shadow: none;
 }
 
 .tank-empty {
   position: absolute;
-  inset: 50% auto auto 50%;
+  inset: 40% auto auto 50%;
   transform: translate(-50%, -50%);
   text-align: center;
   align-items: center;
+}
+
+.fish-details {
+  position: absolute;
+  left: var(--gap);
+  right: var(--gap);
+  bottom: calc(var(--gap) * 4);
+  max-width: 28rem;
+  margin-inline: auto;
+}
+
+.numbers {
+  display: grid;
+  gap: var(--sf-px);
+  margin: 0;
+}
+
+.numbers > div {
+  display: flex;
+  gap: var(--gap);
+}
+
+.numbers dt {
+  min-width: 5rem;
+  color: var(--sf-textMuted);
+}
+
+.numbers dd {
+  margin: 0;
+}
+
+.link {
+  font: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .stack {

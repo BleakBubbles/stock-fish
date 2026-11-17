@@ -17,6 +17,10 @@ export interface Quote {
    * today's unfinished bar never counts towards typical volatility.
    */
   tradingDay?: string;
+  /** The provider's own "market is open" flag, when it sends one (catches holidays). */
+  marketOpen?: boolean;
+  /** ISO 4217 currency of the prices, e.g. USD. */
+  currency?: string;
 }
 
 export interface DailyBar {

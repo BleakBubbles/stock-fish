@@ -1,9 +1,10 @@
 /**
- * Sprite grids from art/sprites, loaded as text at build time. This is the
- * parsing half of the sprite pipeline; scripts/build-sprites.ts (milestone 4)
- * will bake the same grids into an atlas for the tank.
+ * Sprite grids from art/sprites, loaded as text at build time. The React UI
+ * uses them for small canvas previews; scripts/build-sprites.ts bakes the
+ * same grids into the tank's atlas (see ./atlas.ts).
  */
 import { MOODS, type Mood } from '../mood/types';
+import { parseGrid } from './grid';
 import { type Hex, roleColour } from './index';
 
 export const BODIES = [1, 2, 3, 4, 5, 6] as const;
@@ -21,14 +22,6 @@ const files = import.meta.glob('../../art/sprites/*/*.grid', {
   import: 'default',
   eager: true,
 }) as Record<string, string>;
-
-/** Rows of a grid file: comment lines (#) and blank lines dropped. */
-export function parseGrid(text: string): string[] {
-  return text
-    .split(/\r?\n/)
-    .map((r) => r.trimEnd())
-    .filter((r) => r !== '' && !r.startsWith('#'));
-}
 
 const sprites = new Map<string, string[]>();
 for (const [path, text] of Object.entries(files)) {

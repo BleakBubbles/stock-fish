@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createTwelveDataProvider } from './twelvedata';
 import { ProviderError } from './types';
+import type { Throttle } from './throttle';
+
+const NO_THROTTLE: Throttle = { run: (task) => task() };
 
 function fakeFetch(status: number, body: unknown, seen: string[] = []): typeof fetch {
   return (async (url: string) => {
@@ -19,6 +22,7 @@ const QUOTE = {
   close: '351.62',
   previous_close: '352.78000',
   is_market_open: true,
+  currency: 'USD',
 };
 
 const SERIES = {
@@ -33,7 +37,11 @@ const SERIES = {
 describe('twelvedata provider', () => {
   it('parses a quote and sends the key', async () => {
     const seen: string[] = [];
-    const p = createTwelveDataProvider({ apiKey: 'KEY', fetch: fakeFetch(200, QUOTE, seen) });
+    const p = createTwelveDataProvider({
+      throttle: NO_THROTTLE,
+      apiKey: 'KEY',
+      fetch: fakeFetch(200, QUOTE, seen),
+    });
     expect(await p.getQuote('AAPL')).toEqual({
       symbol: 'AAPL',
       price: 351.62,
@@ -41,6 +49,8 @@ describe('twelvedata provider', () => {
       timestamp: 1794934620000,
       name: 'Apple Inc.',
       tradingDay: '2026-11-17',
+      marketOpen: true,
+      currency: 'USD',
     });
     const url = new URL(seen[0]!);
     expect(url.pathname).toBe('/quote');
@@ -49,7 +59,11 @@ describe('twelvedata provider', () => {
   });
 
   it('returns history oldest first', async () => {
-    const p = createTwelveDataProvider({ apiKey: 'K', fetch: fakeFetch(200, SERIES) });
+    const p = createTwelveDataProvider({
+      throttle: NO_THROTTLE,
+      apiKey: 'K',
+      fetch: fakeFetch(200, SERIES),
+    });
     expect(await p.getDailyHistory('AAPL', 2)).toEqual([
       { date: '2026-11-16', close: 352.78 },
       { date: '2026-11-17', close: 351.62 },
@@ -58,6 +72,7 @@ describe('twelvedata provider', () => {
 
   it('parses a profile', async () => {
     const p = createTwelveDataProvider({
+      throttle: NO_THROTTLE,
       apiKey: 'K',
       fetch: fakeFetch(200, { symbol: 'AAPL', name: 'Apple Inc.', sector: 'Technology' }),
     });
@@ -73,6 +88,7 @@ describe('twelvedata provider', () => {
     [500, 'unknown'],
   ])('maps error code %i to %s', async (code, kind) => {
     const p = createTwelveDataProvider({
+      throttle: NO_THROTTLE,
       apiKey: 'K',
       fetch: fakeFetch(code, { code, message: 'nope', status: 'error' }),
     });
@@ -81,6 +97,7 @@ describe('twelvedata provider', () => {
 
   it('maps an error body sent with HTTP 200', async () => {
     const p = createTwelveDataProvider({
+      throttle: NO_THROTTLE,
       apiKey: 'K',
       fetch: fakeFetch(200, { code: 401, message: 'bad key', status: 'error' }),
     });
@@ -89,6 +106,7 @@ describe('twelvedata provider', () => {
 
   it('maps a failed request to a network error', async () => {
     const p = createTwelveDataProvider({
+      throttle: NO_THROTTLE,
       apiKey: 'K',
       fetch: (async () => {
         throw new TypeError('Failed to fetch');
@@ -101,6 +119,7 @@ describe('twelvedata provider', () => {
 
   it('rejects a quote with a missing price', async () => {
     const p = createTwelveDataProvider({
+      throttle: NO_THROTTLE,
       apiKey: 'K',
       fetch: fakeFetch(200, { ...QUOTE, close: undefined }),
     });

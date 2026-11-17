@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Holding, Pen, SymbolProfile } from './model';
+import type { Holding, MarketEntry, Pen, SymbolProfile } from './model';
 
 export interface SettingRow {
   key: string;
@@ -11,6 +11,7 @@ export class StockFishDb extends Dexie {
   holdings!: EntityTable<Holding, 'id'>;
   profiles!: EntityTable<SymbolProfile, 'symbol'>;
   settings!: EntityTable<SettingRow, 'key'>;
+  market!: EntityTable<MarketEntry, 'symbol'>;
 
   constructor(name = 'stock-fish') {
     super(name);
@@ -20,5 +21,7 @@ export class StockFishDb extends Dexie {
       profiles: 'symbol',
       settings: 'key',
     });
+    // v2: cached quotes and daily history per symbol.
+    this.version(2).stores({ market: 'symbol' });
   }
 }

@@ -1,13 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FAMILIES, bodyForSector, familyLabel } from './bodies';
-import {
-  ROLES,
-  SPRITE_HEIGHT,
-  SPRITE_WIDTH,
-  allSprites,
-  parseGrid,
-  spriteColours,
-} from './sprites';
+import { ROLES, SPRITE_HEIGHT, SPRITE_WIDTH, allSprites, spriteColours } from './sprites';
+import { parseGrid } from './grid';
 
 describe('sprites', () => {
   it('loads all 30 body × mood grids at 32 × 25 using only legal roles', () => {

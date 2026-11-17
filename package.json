@@ -9,16 +9,21 @@
     "node": ">=22"
   },
   "scripts": {
+    "sprites": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/build-sprites.ts",
+    "predev": "npm run sprites",
     "dev": "vite",
+    "prebuild": "npm run sprites",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "pretypecheck": "npm run sprites",
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "pretest": "npm run sprites",
     "test": "vitest run",
     "test:watch": "vitest",
-    "update-sectors": "node --experimental-strip-types scripts/update-sectors.ts"
+    "update-sectors": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/update-sectors.ts"
   },
   "dependencies": {
     "dexie": "^4.4.7",

@@ -1,3 +1,4 @@
+import { type Throttle, createThrottle } from './throttle';
 import {
   type DailyBar,
   type MarketDataProvider,
@@ -13,7 +14,12 @@ export interface TwelveDataOptions {
   apiKey: string;
   /** Injectable for tests. */
   fetch?: typeof globalThis.fetch;
+  /** Request pacing; defaults to one shared 8-a-minute throttle (the free plan's limit). */
+  throttle?: Throttle;
 }
+
+/** Shared by every Twelve Data provider instance, since the limit is per key and per minute. */
+const sharedThrottle = createThrottle({ perMinute: 8 });
 
 interface ErrorBody {
   status: 'error';
@@ -47,6 +53,7 @@ function toNumber(value: unknown, field: string): number {
  */
 export function createTwelveDataProvider(options: TwelveDataOptions): MarketDataProvider {
   const doFetch = options.fetch ?? globalThis.fetch.bind(globalThis);
+  const throttle = options.throttle ?? sharedThrottle;
 
   async function get(path: string, params: Record<string, string>): Promise<unknown> {
     const url = new URL(path, BASE_URL);
@@ -55,7 +62,7 @@ export function createTwelveDataProvider(options: TwelveDataOptions): MarketData
 
     let response: Response;
     try {
-      response = await doFetch(url.toString());
+      response = await throttle.run(() => doFetch(url.toString()));
     } catch (e) {
       throw new ProviderError('network', `Could not reach Twelve Data: ${(e as Error).message}`);
     }
@@ -94,6 +101,8 @@ export function createTwelveDataProvider(options: TwelveDataOptions): MarketData
         ...(typeof body.datetime === 'string' && /^\d{4}-\d{2}-\d{2}/.test(body.datetime)
           ? { tradingDay: body.datetime.slice(0, 10) }
           : {}),
+        ...(typeof body.is_market_open === 'boolean' ? { marketOpen: body.is_market_open } : {}),
+        ...(typeof body.currency === 'string' && body.currency ? { currency: body.currency } : {}),
       };
     },
 

@@ -1,3 +1,5 @@
+import type { DailyBar, ProviderErrorKind, Quote } from './providers/types';
+
 /** Hex colour without '#', one of the 32 palette colours. */
 export type Hex = string;
 
@@ -39,6 +41,22 @@ export interface SymbolProfile {
   name?: string;
   /** When the provider was last asked; unset if it never was. */
   fetchedAt?: number;
+}
+
+/** Cached market data for one symbol. Rebuilt from the provider; never backed up. */
+export interface MarketEntry {
+  symbol: string;
+  /** Provider the data came from; entries from another provider are ignored and refetched. */
+  provider: string;
+  quote?: Quote;
+  /** When `quote` was fetched (ms). */
+  quoteAt?: number;
+  /** Daily closes, oldest first. */
+  bars?: DailyBar[];
+  /** When `bars` were fetched (ms). */
+  barsAt?: number;
+  /** Last failure for this symbol, cleared by the next success. */
+  error?: { kind: ProviderErrorKind; message: string; at: number };
 }
 
 export type ProviderId = 'twelvedata' | 'mock';

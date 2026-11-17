@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import { repo, useHoldings } from './data/store';
-import { Tank } from './tank/Tank';
+import { useMarketRefresh } from './data/useMarket';
 import { AddHolding } from './ui/AddHolding';
 import { EditHolding } from './ui/EditHolding';
 import { HoldingsScreen } from './ui/HoldingsScreen';
 import { SettingsScreen } from './ui/SettingsScreen';
+import { TankScreen } from './ui/TankScreen';
 
 type TabView = { name: 'tank' | 'holdings' | 'settings' };
 
-type View = TabView | { name: 'add' } | { name: 'edit'; id: string; focus: 'details' | 'colours' };
+type View =
+  | TabView
+  | { name: 'add' }
+  | { name: 'edit'; id: string; focus: 'details' | 'colours'; returnTo: TabView['name'] };
 
 const TABS = [
   { name: 'tank', label: 'Tank' },
@@ -19,13 +23,17 @@ const TABS = [
 export function App() {
   const [view, setView] = useState<View>({ name: 'tank' });
   const holdings = useHoldings();
+  // Keeps prices fresh whichever screen is showing.
+  const market = useMarketRefresh();
 
   useEffect(() => {
     void repo.ensureDefaultPen();
   }, []);
 
-  const activeTab = view.name === 'add' || view.name === 'edit' ? 'holdings' : view.name;
+  const activeTab =
+    view.name === 'add' ? 'holdings' : view.name === 'edit' ? view.returnTo : view.name;
   const toHoldings = () => setView({ name: 'holdings' });
+  const backFromEdit = () => setView({ name: view.name === 'edit' ? view.returnTo : 'holdings' });
   const editing = view.name === 'edit' ? holdings?.find((h) => h.id === view.id) : undefined;
 
   return (
@@ -48,32 +56,32 @@ export function App() {
       </header>
       <main className={view.name === 'tank' ? 'main is-tank' : 'main'}>
         {view.name === 'tank' && (
-          <>
-            <Tank />
-            {holdings?.length === 0 && (
-              <div className="tank-empty panel stack">
-                <p>Your tank is empty.</p>
-                <button
-                  type="button"
-                  className="button is-primary"
-                  onClick={() => setView({ name: 'add' })}
-                >
-                  Add your first fish
-                </button>
-              </div>
-            )}
-          </>
+          <TankScreen
+            market={market}
+            onAdd={() => setView({ name: 'add' })}
+            onChangeColours={(id) =>
+              setView({ name: 'edit', id, focus: 'colours', returnTo: 'tank' })
+            }
+            onSettings={() => setView({ name: 'settings' })}
+          />
         )}
         {view.name === 'holdings' && (
           <HoldingsScreen
             onAdd={() => setView({ name: 'add' })}
-            onEdit={(id) => setView({ name: 'edit', id, focus: 'details' })}
-            onColours={(id) => setView({ name: 'edit', id, focus: 'colours' })}
+            onEdit={(id) => setView({ name: 'edit', id, focus: 'details', returnTo: 'holdings' })}
+            onColours={(id) =>
+              setView({ name: 'edit', id, focus: 'colours', returnTo: 'holdings' })
+            }
           />
         )}
         {view.name === 'add' && <AddHolding onDone={toHoldings} />}
         {view.name === 'edit' && editing && (
-          <EditHolding key={editing.id} holding={editing} focus={view.focus} onDone={toHoldings} />
+          <EditHolding
+            key={editing.id}
+            holding={editing}
+            focus={view.focus}
+            onDone={backFromEdit}
+          />
         )}
         {view.name === 'settings' && <SettingsScreen />}
       </main>
