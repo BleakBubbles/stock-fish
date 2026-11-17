@@ -61,6 +61,13 @@ Eye templates (4 × 4; `B` = body showing through, `W` = white, `P` = dark):
 | `5-industrial-sawfish` | Industrials, Materials | Long body, toothed snout | Shark first dorsal, small second dorsal, broad pectorals, shark tail |
 | `6-health-capsule` | Health Care | Capsule | Long swept-back dorsal, shorter anal (goby-like) |
 
+## UI font
+
+`fonts/silkscreen.font` is Silkscreen (SIL OFL 1.1, see `fonts/OFL-Silkscreen.txt`) as a bitmap
+font: one block per character, `#` for ink and `.` for clear, 9 rows tall with 8 rows above the
+baseline and capitals 5 rows tall. Edit glyphs like sprites. Characters the font lacks are
+substituted (e.g. minus sign → hyphen) or drawn as `?`.
+
 ## Tools
 
 - `tools/grid2png.py SPRITE.grid --ramp orange --scale 8` renders a preview.

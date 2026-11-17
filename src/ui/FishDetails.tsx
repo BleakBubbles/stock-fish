@@ -1,6 +1,10 @@
 import type { Mood } from '../mood/types';
 import type { FishView } from '../tank/model';
+import { measureText, uiFont } from '../theme/pixelFont';
 import { formatChangeRatio, formatMoney } from './format';
+import { PixelButton } from './pixel/PixelButton';
+import { PixelText } from './pixel/PixelText';
+import { usePixelScale } from './pixel/context';
 
 const MOOD_LABEL: Record<Mood, string> = {
   ecstatic: 'Ecstatic',
@@ -10,6 +14,13 @@ const MOOD_LABEL: Record<Mood, string> = {
   sad: 'Sad',
 };
 
+/** UI pixels of padding, border and gaps around the panel's text (see .fish-details). */
+const PANEL_CHROME = 2 * (4 + 1 + 3);
+const LABEL_GAP = 4;
+const LABELS = ['Today', 'Price', 'Holding', 'Mood'];
+/** Never wider than this many UI pixels, even on big screens. */
+const MAX_WIDTH = 200;
+
 interface Props {
   fish: FishView;
   onChangeColours: () => void;
@@ -18,69 +29,70 @@ interface Props {
 
 /** The numbers behind one fish: what a price board would show. */
 export function FishDetails({ fish, onChangeColours, onClose }: Props) {
+  const scale = usePixelScale();
   const quote = fish.quote;
   const result = fish.moodResult;
   const currency = quote?.currency;
 
+  // Text widths in UI pixels, so long values wrap instead of overflowing.
+  const viewportUi = Math.floor((window.innerWidth * scale.dpr) / scale.ui);
+  const textWidth = Math.min(MAX_WIDTH, viewportUi - PANEL_CHROME);
+  const labelWidth = Math.max(...LABELS.map((l) => measureText(uiFont, l)));
+  const valueWidth = textWidth - labelWidth - LABEL_GAP;
+
+  const row = (label: string, value: string, muted?: string) => (
+    <div className="px-dl-row">
+      <span className="px-dt" style={{ width: `calc(var(--sf-px) * ${labelWidth})` }}>
+        <PixelText text={label} tone="textMuted" />
+      </span>
+      <span className="px-dd">
+        <PixelText text={muted ? `${value} ${muted}` : value} wrap={valueWidth} />
+      </span>
+    </div>
+  );
+
+  const moodNote =
+    result?.sigma !== undefined && result.reason === 'ok'
+      ? `(typical day ±${(result.sigma * 100).toFixed(2)}%)`
+      : result?.reason === 'short-history'
+        ? '(not enough history yet)'
+        : undefined;
+
   return (
-    <section
-      className="fish-details panel stack"
-      aria-labelledby="fish-details-title"
-      aria-live="polite"
-    >
-      <h2 id="fish-details-title">
-        {fish.symbol}
-        {fish.name && <span className="muted"> · {fish.name}</span>}
-      </h2>
+    <section className="fish-details px-panel px-stack" aria-label={`${fish.symbol} details`}>
+      <PixelText
+        text={fish.name ? `${fish.symbol} · ${fish.name}` : fish.symbol}
+        wrap={textWidth}
+      />
       {quote && result ? (
-        <dl className="numbers">
-          <div>
-            <dt>Today</dt>
-            <dd>
-              {formatChangeRatio(result.todayReturn)}{' '}
-              <span className="muted">({formatMoney(fish.change ?? NaN, currency, true)})</span>
-            </dd>
-          </div>
-          <div>
-            <dt>Price</dt>
-            <dd>{formatMoney(quote.price, currency)}</dd>
-          </div>
-          <div>
-            <dt>Holding</dt>
-            <dd>
-              {fish.quantity.toLocaleString()} × {formatMoney(quote.price, currency)} ={' '}
-              {formatMoney(fish.quantity * quote.price, currency)}
-            </dd>
-          </div>
-          <div>
-            <dt>Mood</dt>
-            <dd>
-              {MOOD_LABEL[fish.mood]}
-              <span className="muted">
-                {result.sigma !== undefined && result.reason === 'ok'
-                  ? ` · a typical day moves about ±${(result.sigma * 100).toFixed(2)}%`
-                  : result.reason === 'short-history'
-                    ? ' · not enough history yet to know a typical day'
-                    : ''}
-              </span>
-            </dd>
-          </div>
-        </dl>
+        <div className="px-dl" aria-live="polite">
+          {row(
+            'Today',
+            formatChangeRatio(result.todayReturn),
+            `(${formatMoney(fish.change ?? NaN, currency, true)})`,
+          )}
+          {row('Price', formatMoney(quote.price, currency))}
+          {row(
+            'Holding',
+            `${fish.quantity.toLocaleString()} × ${formatMoney(quote.price, currency)} = ${formatMoney(fish.quantity * quote.price, currency)}`,
+          )}
+          {row('Mood', MOOD_LABEL[fish.mood], moodNote)}
+        </div>
       ) : (
-        <p className={fish.state === 'error' ? 'message is-warning' : 'muted'}>
-          {fish.state === 'error' ? `Couldn't get prices: ${fish.error}` : 'Waiting for prices…'}
-        </p>
+        <PixelText
+          text={
+            fish.state === 'error' ? `Couldn't get prices: ${fish.error}` : 'Waiting for prices…'
+          }
+          tone={fish.state === 'error' ? 'warning' : 'textMuted'}
+          wrap={textWidth}
+        />
       )}
       {quote && fish.error && (
-        <p className="message is-warning">Last update failed: {fish.error}</p>
+        <PixelText text={`Last update failed: ${fish.error}`} tone="warning" wrap={textWidth} />
       )}
-      <div className="actions">
-        <button type="button" className="button" onClick={onChangeColours}>
-          Change colours
-        </button>
-        <button type="button" className="button" onClick={onClose}>
-          Close
-        </button>
+      <div className="px-row">
+        <PixelButton label="Change colours" onClick={onChangeColours} />
+        <PixelButton label="Close" onClick={onClose} />
       </div>
     </section>
   );

@@ -35,8 +35,16 @@ market data provider blocks browser requests (CORS).
    comes from `art/` (palette, ramps, sprite atlas) through one theme module.
 4. **Pixel integrity.** Render the tank at native resolution (320 × 180) into a low-res render
    texture, then upscale by a whole number with nearest-neighbour filtering. Round sprite positions
-   to whole art pixels. Never rotate or fractionally scale sprites (mirroring is fine). The UI uses
-   the same integer scale and a pixel font at native size × a whole number.
+   to whole art pixels. Never rotate or fractionally scale sprites (mirroring is fine). Scales are
+   whole numbers of *device* pixels (`src/ui/pixel/scale.ts`). The UI pixel is the tank pixel ×
+   the smallest whole number that keeps capitals at least 9 CSS px tall (1 on laptops, 2 on
+   phones). UI text is drawn with `PixelText` from the bitmap font in `art/fonts/`, never with
+   browser text rendering: browsers blur TrueType pixel fonts at every size. Pixel UI lives inside
+   `PixelRoot` (`src/ui/pixel/PixelRoot.tsx`), where 1 CSS px is 1 UI pixel and one transform
+   scales everything onto whole device pixels at any screen or zoom. Inside it, every size is a
+   whole number of UI pixels (`--sf-px`: no rem, %, or centring without `useSnap`), and lines are
+   box-shadows, never `border` or `outline` (Chrome rounds those before the transform). Check
+   with `?pixels` in the URL.
 5. **Mood is shown only by the face.** Never change a fish's colour for mood.
 6. **The mood engine is pure and tested.** Volatility and tier logic are plain functions with unit
    tests, independent of React and PixiJS.

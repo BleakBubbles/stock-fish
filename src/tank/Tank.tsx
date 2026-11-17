@@ -1,6 +1,8 @@
 import { Application, Assets, RenderTexture, Sprite, type Texture } from 'pixi.js';
 import { useEffect, useRef } from 'react';
 import { atlasUrl } from '../theme/atlas';
+import { Rescale } from '../ui/pixel/PixelRoot';
+import { usePixelScale } from '../ui/pixel/context';
 import { TANK_HEIGHT, TANK_WIDTH, integerScale } from './constants';
 import { type SceneFish, TankScene } from './scene';
 
@@ -19,16 +21,18 @@ const MAX_DT = 0.1;
 /**
  * The pixel pipeline: the scene is drawn at native 320 × 180 into a render
  * texture with nearest-neighbour filtering, then shown upscaled by the largest
- * whole number that fits, measured in device pixels so every art pixel is the
- * same size on high-DPI screens too.
+ * whole number that fits. The canvas lives in a device-pixel layer (Rescale),
+ * so every art pixel is exactly `scale` screen pixels at any devicePixelRatio.
  */
 export function Tank({ fish, night, selectedId, onSelect, label }: Props) {
+  const pixelScale = usePixelScale();
+  const fitRef = useRef<() => void>(undefined);
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<TankScene>(undefined);
   // The newest props, for the async setup and event handlers below.
-  const latest = useRef({ fish, night, selectedId, onSelect });
+  const latest = useRef({ fish, night, selectedId, onSelect, pixelScale });
   useEffect(() => {
-    latest.current = { fish, night, selectedId, onSelect };
+    latest.current = { fish, night, selectedId, onSelect, pixelScale };
   });
 
   useEffect(() => {
@@ -67,15 +71,27 @@ export function Tank({ fish, night, selectedId, onSelect, label }: Props) {
       canvas.classList.add('tank-canvas');
       host.appendChild(canvas);
 
-      let scale = 1;
       const fit = () => {
-        const dpr = window.devicePixelRatio || 1;
-        scale = integerScale(host.clientWidth * dpr, host.clientHeight * dpr);
+        const { dpr, tank } = latest.current.pixelScale;
+        // The host is in device pixels (Rescale). Only count the part on screen:
+        // the pixel root can overhang the window by less than one UI pixel.
+        const rect = host.getBoundingClientRect();
+        const hostW = Math.min(host.clientWidth, Math.round((window.innerWidth - rect.left) * dpr));
+        const hostH = Math.min(
+          host.clientHeight,
+          Math.round((window.innerHeight - rect.top) * dpr),
+        );
+        // The app-wide tank scale, unless this host is smaller than expected.
+        const scale = Math.max(1, Math.min(tank, integerScale(hostW, hostH)));
         app.renderer.resize(TANK_WIDTH * scale, TANK_HEIGHT * scale);
-        canvas.style.width = `${(TANK_WIDTH * scale) / dpr}px`;
-        canvas.style.height = `${(TANK_HEIGHT * scale) / dpr}px`;
+        canvas.style.width = `${TANK_WIDTH * scale}px`;
+        canvas.style.height = `${TANK_HEIGHT * scale}px`;
+        // Centre on whole device pixels.
+        canvas.style.marginLeft = `${Math.max(0, Math.floor((hostW - TANK_WIDTH * scale) / 2))}px`;
+        canvas.style.marginTop = `${Math.max(0, Math.floor((hostH - TANK_HEIGHT * scale) / 2))}px`;
         display.scale.set(scale);
       };
+      fitRef.current = fit;
       fit();
       const observer = new ResizeObserver(fit);
       observer.observe(host);
@@ -111,6 +127,7 @@ export function Tank({ fish, night, selectedId, onSelect, label }: Props) {
 
       cleanup = () => {
         observer.disconnect();
+        fitRef.current = undefined;
         canvas.removeEventListener('pointermove', onMove);
         canvas.removeEventListener('pointerleave', onLeave);
         canvas.removeEventListener('pointerdown', onDown);
@@ -127,9 +144,16 @@ export function Tank({ fish, night, selectedId, onSelect, label }: Props) {
     };
   }, []);
 
+  useEffect(() => fitRef.current?.(), [pixelScale]);
   useEffect(() => sceneRef.current?.setFish(fish), [fish]);
   useEffect(() => sceneRef.current?.setNight(night), [night]);
   useEffect(() => sceneRef.current?.setSelected(selectedId), [selectedId]);
 
-  return <div ref={hostRef} className="tank-host" aria-label={label} role="region" />;
+  return (
+    <div className="tank-slot" aria-label={label} role="region">
+      <Rescale unit="device">
+        <div ref={hostRef} className="tank-host" />
+      </Rescale>
+    </div>
+  );
 }

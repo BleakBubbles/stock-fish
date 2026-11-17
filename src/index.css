@@ -1,13 +1,32 @@
 /*
- * Colours and the art-pixel size come from src/theme as CSS custom properties
- * (--sf-*); no colour literals here. Borders and spacing are whole multiples
- * of --sf-px so the UI shares the tank's pixel grid.
- * TODO(milestone 6): pixel font at native size × a whole number.
+ * Colours come from src/theme as CSS custom properties (--sf-*); no colour
+ * literals here. Borders and spacing are whole multiples of --sf-px, the UI
+ * pixel: 1px inside the pixel root (PixelRoot), which one transform scales
+ * onto whole device pixels.
  */
-:root {
-  --sf-px: 2px;
-  --line: calc(var(--sf-px) * 1);
+
+/* Declared where --sf-px is set, so they pick up that layer's value. */
+.px-root,
+.px-rescale {
+  --line: var(--sf-px);
   --gap: calc(var(--sf-px) * 4);
+}
+
+.px-root {
+  --sf-px: 1px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  transform-origin: 0 0;
+}
+
+/* A layer in device or CSS pixels inside the root (Rescale). */
+.px-rescale {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
 }
 
 *,
@@ -21,6 +40,7 @@ body,
 #root {
   margin: 0;
   height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -86,7 +106,6 @@ canvas {
 .app {
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
 
 .topbar {
@@ -94,36 +113,33 @@ canvas {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--gap);
-  padding: var(--gap);
+  gap: calc(var(--sf-px) * 3);
+  /* 3 + the 1-pixel bottom line */
+  padding: calc(var(--sf-px) * 3) calc(var(--sf-px) * 3) calc(var(--sf-px) * 4);
   background: var(--sf-panel);
-  border-bottom: var(--line) solid var(--sf-border);
+  box-shadow: inset 0 calc(var(--sf-px) * -1) 0 var(--sf-border);
 }
 
-.topbar nav {
-  display: flex;
-  gap: calc(var(--sf-px) * 2);
+.topbar h1 {
+  line-height: 0;
 }
 
 .main {
+  position: relative;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+}
+
+.main-scroll {
+  height: 100%;
   overflow: auto;
   padding: var(--gap);
 }
 
-.main > * {
+.main-scroll > * {
   max-width: 40rem;
   margin-inline: auto;
-}
-
-.main.is-tank {
-  padding: 0;
-  overflow: hidden;
-}
-
-.main.is-tank > * {
-  max-width: none;
 }
 
 .tank-screen {
@@ -134,13 +150,19 @@ canvas {
 }
 
 /* The space around the tank is darker than the water, so the tank reads as a tank. */
-.tank-host {
+.tank-slot {
+  position: relative;
   flex: 1;
   min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  overflow: hidden;
   background: var(--sf-night);
+}
+
+/* In device pixels; Tank.tsx centres the canvas with whole-pixel margins. */
+.tank-host {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .tank-canvas {
@@ -148,60 +170,24 @@ canvas {
   touch-action: manipulation;
 }
 
-.tank-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--sf-px) * 2) var(--gap);
-  align-items: baseline;
-  border-width: var(--line) 0 0;
-  box-shadow: none;
+.tank-bar.px-bar {
+  flex: none;
+  padding: calc(var(--sf-px) * 3) calc(var(--sf-px) * 3) calc(var(--sf-px) * 4);
+  box-shadow: inset 0 calc(var(--sf-px) * -1) 0 var(--sf-border);
 }
 
 .tank-empty {
   position: absolute;
   inset: 40% auto auto 50%;
   transform: translate(-50%, -50%);
-  text-align: center;
   align-items: center;
 }
 
 .fish-details {
   position: absolute;
-  left: var(--gap);
-  right: var(--gap);
-  bottom: calc(var(--gap) * 4);
-  max-width: 28rem;
-  margin-inline: auto;
-}
-
-.numbers {
-  display: grid;
-  gap: var(--sf-px);
-  margin: 0;
-}
-
-.numbers > div {
-  display: flex;
-  gap: var(--gap);
-}
-
-.numbers dt {
-  min-width: 5rem;
-  color: var(--sf-textMuted);
-}
-
-.numbers dd {
-  margin: 0;
-}
-
-.link {
-  font: inherit;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  text-decoration: underline;
-  cursor: pointer;
+  /* Anchored to the top-left in whole UI pixels so it stays on the grid. */
+  top: calc(var(--sf-px) * 22);
+  left: calc(var(--sf-px) * 4);
 }
 
 .stack {
@@ -414,4 +400,160 @@ fieldset {
 .family.is-selected {
   outline: var(--line) solid var(--sf-selectionOutline);
   outline-offset: var(--line);
+}
+
+/*
+ * Pixel UI: every size is a whole number of UI pixels (--sf-px) inside the
+ * pixel root, and text is drawn by PixelText from the bitmap font, so edges
+ * land on whole screen pixels at any devicePixelRatio. No rem, %, vw or
+ * centring that can produce half pixels (use useSnap for centred boxes).
+ */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.px-text {
+  display: inline-block;
+  vertical-align: top;
+  line-height: 0;
+}
+
+.px-text canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.px-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--sf-px) * 2) calc(var(--sf-px) * 3);
+}
+
+.px-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--sf-px) * 3);
+}
+
+/*
+ * Pixel lines are drawn with box-shadows, never border or outline: Chrome
+ * rounds border and outline widths to whole device pixels *before* the pixel
+ * root's transform (1px becomes 0.667px at 1.5×), which would put them off the
+ * grid. Shadows aren't rounded. Each 1-pixel line is counted in the padding.
+ */
+.px-panel,
+.px-bar {
+  background: var(--sf-panel);
+  /* 4 + the 1-pixel line */
+  padding: calc(var(--sf-px) * 5);
+  box-shadow: inset 0 0 0 var(--sf-px) var(--sf-border);
+}
+
+.px-panel {
+  box-shadow:
+    inset 0 0 0 var(--sf-px) var(--sf-border),
+    var(--sf-px) var(--sf-px) 0 var(--sf-border);
+}
+
+.px-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--sf-px) * 2) calc(var(--sf-px) * 4);
+  padding: calc(var(--sf-px) * 4);
+}
+
+.px-button {
+  position: relative;
+  font: inherit;
+  margin: 0;
+  cursor: pointer;
+  line-height: 0;
+  /* 2 × 3 + the 1-pixel line */
+  padding: calc(var(--sf-px) * 3) calc(var(--sf-px) * 4);
+  border: 0;
+  border-radius: 0;
+  background: var(--sf-panel);
+  box-shadow:
+    inset 0 0 0 var(--sf-px) var(--sf-border),
+    var(--sf-px) var(--sf-px) 0 var(--sf-border);
+}
+
+.px-button.is-filled {
+  background: var(--sf-button);
+}
+
+.px-button:active:not(:disabled) {
+  translate: var(--sf-px) var(--sf-px);
+  box-shadow: inset 0 0 0 var(--sf-px) var(--sf-border);
+}
+
+/* Focus ring: 1 pixel wide, 1 pixel clear of the button. */
+.px-button:focus-visible {
+  outline: none;
+}
+
+.px-button:focus-visible::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--sf-px) * -2);
+  box-shadow: inset 0 0 0 var(--sf-px) var(--sf-focus);
+  pointer-events: none;
+}
+
+.px-dl {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sf-px) * 2);
+}
+
+.px-dl-row {
+  display: flex;
+  gap: calc(var(--sf-px) * 4);
+}
+
+.px-dt {
+  flex: none;
+}
+
+/*
+ * Inside pixel containers only the bitmap canvases may set heights: normal text
+ * line boxes (e.g. 16px × 1.4) are fractional and would push rows off the grid.
+ */
+.px-row,
+.px-stack,
+.px-panel,
+.px-bar,
+.px-dl,
+.px-dl-row,
+.px-dt,
+.px-dd {
+  line-height: 0;
+}
+
+.px-dt,
+.px-dd {
+  display: block;
+}
+
+/* ?pixels debug overlay (PixelCheck). Deliberately plain text. */
+.pixel-check {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 4px 8px;
+  font:
+    12px system-ui,
+    sans-serif;
+  background: var(--sf-night);
+  color: var(--sf-warning);
 }

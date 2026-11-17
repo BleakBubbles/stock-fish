@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { marketOpenNow } from '../data/market';
 import { useHoldings, useProfiles } from '../data/store';
 import { type MarketStatus, useMarketEntries } from '../data/useMarket';
@@ -7,6 +7,9 @@ import { Tank } from '../tank/Tank';
 import { buildFish, weatherFor } from '../tank/model';
 import { FishDetails } from './FishDetails';
 import { formatChangeRatio, formatMoney } from './format';
+import { PixelButton } from './pixel/PixelButton';
+import { PixelText } from './pixel/PixelText';
+import { useSnap } from './pixel/useSnap';
 
 const WEATHER_LABEL: Record<Weather, string> = {
   sunny: 'Sunny',
@@ -72,6 +75,21 @@ export function TankScreen({ market, onAdd, onChangeColours, onSettings }: Props
 
   return (
     <div className="tank-screen">
+      <div className="tank-bar px-bar" role="status">
+        {priced && (
+          <>
+            <PixelText text={WEATHER_LABEL[weather.weather]} />
+            <PixelText text={formatChangeRatio(weather.changeRatio)} />
+            <PixelText
+              text={`(${formatMoney(weather.change, currency, true)}) today`}
+              tone="textMuted"
+            />
+          </>
+        )}
+        {!open && <PixelText text="Market closed" tone="textMuted" />}
+        <MarketMessage market={market} hasFish={fish.length > 0} onSettings={onSettings} />
+      </div>
+
       <Tank
         fish={sceneFish}
         night={!open}
@@ -80,26 +98,7 @@ export function TankScreen({ market, onAdd, onChangeColours, onSettings }: Props
         label={`Fish tank with ${fish.length} fish`}
       />
 
-      <div className="tank-bar panel" role="status">
-        {priced && (
-          <span>
-            <strong>{WEATHER_LABEL[weather.weather]}</strong>{' '}
-            {formatChangeRatio(weather.changeRatio)}{' '}
-            <span className="muted">({formatMoney(weather.change, currency, true)}) today</span>
-          </span>
-        )}
-        {!open && <span className="muted">Market closed</span>}
-        <MarketMessage market={market} hasFish={fish.length > 0} onSettings={onSettings} />
-      </div>
-
-      {holdings?.length === 0 && (
-        <div className="tank-empty panel stack">
-          <p>Your tank is empty.</p>
-          <button type="button" className="button is-primary" onClick={onAdd}>
-            Add your first fish
-          </button>
-        </div>
-      )}
+      {holdings?.length === 0 && <EmptyTank onAdd={onAdd} />}
 
       {selected && (
         <FishDetails
@@ -108,6 +107,17 @@ export function TankScreen({ market, onAdd, onChangeColours, onSettings }: Props
           onClose={() => setSelectedId(undefined)}
         />
       )}
+    </div>
+  );
+}
+
+function EmptyTank({ onAdd }: { onAdd: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useSnap(ref);
+  return (
+    <div ref={ref} className="tank-empty px-panel px-stack">
+      <PixelText text="Your tank is empty." />
+      <PixelButton label="Add your first fish" primary onClick={onAdd} />
     </div>
   );
 }
@@ -124,32 +134,26 @@ function MarketMessage({
   if (!hasFish) return null;
   if (market.state === 'no-provider') {
     return (
-      <span className="message is-warning">
-        Add a market data key in{' '}
-        <button type="button" className="link" onClick={onSettings}>
-          Settings
-        </button>{' '}
-        to see today's moods.
-      </span>
+      <>
+        <PixelText text="Add a market data key to see today's moods." tone="warning" />
+        <PixelButton label="Settings" onClick={onSettings} />
+      </>
     );
   }
-  if (market.state === 'updating') return <span className="muted">Updating prices…</span>;
+  if (market.state === 'updating') return <PixelText text="Updating prices…" tone="textMuted" />;
   if (market.stop === 'auth') {
     return (
-      <span className="message is-warning">
-        Your market data key was rejected. Check{' '}
-        <button type="button" className="link" onClick={onSettings}>
-          Settings
-        </button>
-        .
-      </span>
+      <>
+        <PixelText text="Your market data key was rejected." tone="warning" />
+        <PixelButton label="Settings" onClick={onSettings} />
+      </>
     );
   }
   if (market.stop === 'rate-limit') {
-    return <span className="muted">Request limit reached; retrying in a minute.</span>;
+    return <PixelText text="Request limit reached; retrying in a minute." tone="textMuted" />;
   }
   if (market.failed.length > 0) {
-    return <span className="message is-warning">Couldn't update {market.failed.join(', ')}.</span>;
+    return <PixelText text={`Couldn't update ${market.failed.join(', ')}.`} tone="warning" />;
   }
   return null;
 }
