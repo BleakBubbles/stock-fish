@@ -17,6 +17,7 @@ import { buildFish, weatherFor } from '../tank/model';
 import { measureText, normalizeText, uiFont } from '../theme/pixelFont';
 import { applyLayout, reorder } from '../tank/territory';
 import { FishDetails } from './FishDetails';
+import { FishList } from './FishList';
 import { GroupDetails, type GroupSummary } from './GroupDetails';
 import { formatChangeRatio, formatMoney } from './format';
 import { PenBar } from './PenBar';
@@ -201,6 +202,39 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
     return undefined;
   };
 
+  /** The fish on screen in the order they're arranged (patch order, or group by group). */
+  const arranged = useMemo(() => {
+    const byId = new Map(visible.map((f) => [f.id, f]));
+    const ids = [...new Set(regions.flatMap((r) => r.fishIds))];
+    return ids.flatMap((id) => {
+      const f = byId.get(id);
+      return f ? [f] : [];
+    });
+  }, [visible, regions]);
+
+  /** A pen's patch order: its saved layout, then the rest oldest first. */
+  const penOrder = (penId: string) =>
+    applyLayout(
+      (holdings ?? [])
+        .filter((h) => h.penId === penId)
+        .sort((a, b) => a.createdAt - b.createdAt)
+        .map((h) => h.id),
+      pens?.find((p) => p.id === penId)?.layout,
+    );
+
+  /** Keyboard reordering in a single pen: one place earlier or later. */
+  const reorderByKey = async (id: string, step: -1 | 1) => {
+    if (!home) return undefined;
+    const order = penOrder(home.id);
+    const i = order.indexOf(id);
+    const j = i + step;
+    const onto = order[j];
+    if (i < 0) return undefined;
+    if (!onto) return { place: i + 1, of: order.length };
+    await repo.setPenLayout(home.id, reorder(order, id, onto));
+    return { place: j + 1, of: order.length };
+  };
+
   const onDrop = (id: string, target: DropTarget | undefined) => {
     const f = fish.find((x) => x.id === id);
     if (!f || !target || !pens) return;
@@ -212,14 +246,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
     }
     if (target.kind !== 'region' || !target.region.patch) return;
     // Reorder: take the slot of the fish dropped on (the communal patch means last).
-    const pen = pens.find((p) => p.id === toPen);
-    const order = applyLayout(
-      (holdings ?? [])
-        .filter((h) => h.penId === toPen)
-        .sort((a, b) => a.createdAt - b.createdAt)
-        .map((h) => h.id),
-      pen?.layout,
-    );
+    const order = penOrder(toPen);
     const onto = target.region.fishIds.length === 1 ? target.region.fishIds[0] : order.at(-1);
     if (!onto || onto === id) return;
     void repo.setPenLayout(toPen, reorder(order, id, onto));
@@ -313,6 +340,15 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
             onSelect={(key) => selectGroup(key === selectedGroup ? undefined : key)}
           />
         )}
+        <div className="fish-list">
+          <FishList
+            fish={arranged}
+            penName={(id) => (home ? undefined : pens?.find((p) => p.id === id)?.name)}
+            selectedId={selected?.id}
+            onSelect={setSelectedId}
+            onReorder={home ? reorderByKey : undefined}
+          />
+        </div>
         {(summary || selected) && (
           <div className="details-anchor" style={{ top: `calc(var(--sf-px) * ${detailsTop})` }}>
             {summary && (
