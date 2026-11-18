@@ -30,12 +30,21 @@
     "_note": "Curated per ticker: { \"TICKER\": { \"body\": \"<palette hex>\", \"fin\": \"<palette hex>\" } }. Colours only, never logos. Empty until curated."
   },
   "decor": {
-    "_note": "Tank decoration (art/decor, art/STYLE.md). Grid character -> palette colour. Decor has no black outline, so it stays behind the fish. Sand uses e (top edge), s (sand), S (specks).",
+    "_note": "Tank decoration (art/decor, art/STYLE.md). Grid character -> palette colour. Decor has no black outline, so it stays behind the fish. Sand uses e (top edge), s (sand), S (specks). Mood badges (art/badges) use n for the outline and features, and i for the face, filled with the mood's moodBadge colour.",
     "g": "63c74d", "G": "3e8948", "d": "265c42",
     "h": "8b9bb4", "R": "5a6988", "r": "3a4466",
     "e": "ead4aa", "s": "e4a672", "S": "c28569",
     "T": "5a6988", "t": "3a4466", "n": "181425",
-    "l": "c28569", "w": "b86f50", "W": "733e39", "D": "3e2731"
+    "l": "c28569", "w": "b86f50", "W": "733e39", "D": "3e2731",
+    "i": "ffffff"
+  },
+  "moodBadge": {
+    "_note": "Face colour of each mood badge above a fish: green up, silver flat, pink and red down. It repeats the face, which carries the mood on its own (never colour alone, never the fish's colour).",
+    "ecstatic": "63c74d",
+    "happy": "63c74d",
+    "neutral": "c0cbdc",
+    "uneasy": "f6757a",
+    "sad": "e43b44"
   },
   "ui": {
     "water": "262b44",

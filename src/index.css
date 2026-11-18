@@ -556,7 +556,8 @@ canvas {
   gap: calc(var(--sf-px) * 2);
 }
 
-.arrange .popover-menu {
+.arrange .popover-menu,
+.view .popover-menu {
   right: 0;
 }
 

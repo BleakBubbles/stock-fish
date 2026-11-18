@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import palette from '../../art/palette.json';
 import { INNER_WATER } from '../tank/arrange';
 import { TANK_HEIGHT, TANK_WIDTH } from '../tank/constants';
+import { MOODS } from '../mood/types';
 import { decorColour, decorFrames, decorItems } from './decor';
 import { parseGrid, stretchFrame } from './grid';
 
@@ -16,6 +17,18 @@ const grids = Object.fromEntries(
     parseGrid(text),
   ]),
 );
+
+describe('mood badges', () => {
+  it('has a 9 × 9 badge for every mood', () => {
+    for (const mood of MOODS)
+      expect(decorFrames[`badge-${mood}`], mood).toMatchObject({ w: 9, h: 9 });
+  });
+
+  it('colours every mood with a palette colour', () => {
+    const fills = palette.moodBadge as Record<string, string>;
+    for (const mood of MOODS) expect(palette.colors, mood).toContain(fills[mood]);
+  });
+});
 
 describe('decor art', () => {
   it('uses only palette colours from the decor legend', () => {
@@ -59,8 +72,9 @@ describe('decor art', () => {
   });
 
   it('bakes every grid into the atlas, the frame at full tank size', () => {
-    expect(Object.keys(decorFrames).sort()).toEqual(Object.keys(grids).sort());
+    const baked = Object.keys(decorFrames).filter((n) => !n.startsWith('badge-'));
+    expect(baked.sort()).toEqual(Object.keys(grids).sort());
     expect(decorFrames.frame).toMatchObject({ w: TANK_WIDTH, h: TANK_HEIGHT });
-    expect(decorItems().some((i) => i.name === 'frame')).toBe(false);
+    expect(decorItems().some((i) => i.name === 'frame' || i.name.startsWith('badge-'))).toBe(false);
   });
 });

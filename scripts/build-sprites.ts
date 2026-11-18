@@ -3,7 +3,7 @@
  * art/tools/grid2png.py), so the app build doesn't depend on Python.
  *
  * Writes src/theme/generated/atlas.png and atlas.json (fish), and decor.png and
- * decor.json (art/decor: plants, rocks and the tank frame) (gitignored). Runs
+ * decor.json (art/decor: plants, rocks and the tank frame; art/badges: mood badges) (gitignored). Runs
  * automatically before dev, build, typecheck and test; run it by hand with
  * `npm run sprites`.
  */
@@ -79,9 +79,24 @@ for (const file of readdirSync(decorDir)) {
   const rows = parseGrid(readFileSync(new URL(file, decorDir), 'utf8'));
   decorGrids[name] = name === 'frame' ? stretchFrame(rows, TANK_WIDTH, TANK_HEIGHT) : rows;
 }
-const legend = Object.fromEntries(
+const legend: Record<string, string> = Object.fromEntries(
   Object.entries(palette.decor).filter(([ch]) => !ch.startsWith('_')),
 );
+// Mood badges (art/badges/<mood>.grid) go in the same atlas, as badge-<mood>, the
+// face (i) filled with the mood's colour from palette.json moodBadge. Each badge
+// gets its own digit in the legend for that.
+const badgeDir = new URL('art/badges/', root);
+readdirSync(badgeDir)
+  .filter((file) => file.endsWith('.grid'))
+  .forEach((file, k) => {
+    const mood = file.slice(0, -'.grid'.length);
+    const fill = (palette.moodBadge as Record<string, string>)[mood];
+    if (!fill) throw new Error(`palette.json moodBadge has no colour for ${mood}`);
+    const ch = String(k);
+    legend[ch] = fill;
+    const rows = parseGrid(readFileSync(new URL(file, badgeDir), 'utf8'));
+    decorGrids[`badge-${mood}`] = rows.map((row) => row.replaceAll('i', ch));
+  });
 for (const [ch, hex] of Object.entries(legend)) {
   if (!palette.colors.includes(hex))
     throw new Error(`palette.json decor ${ch}: ${hex} isn't a palette colour`);

@@ -1,5 +1,5 @@
 import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from 'react';
-import { ARRANGE_MODES, type ArrangeMode, type Pen } from '../data/model';
+import { ARRANGE_MODES, type ArrangeMode, type Pen, type TankLabels } from '../data/model';
 import { measureText, normalizeText, uiFont } from '../theme/pixelFont';
 import { PixelButton } from './pixel/PixelButton';
 import type { IconName } from './pixel/PixelIcon';
@@ -42,6 +42,9 @@ interface Props {
   /** Show only this pen, or add or remove it from what's shown. */
   onPen: (penId: string, toggle: boolean) => void;
   onArrange: (mode: ArrangeMode) => void;
+  /** Labels drawn with the fish (the View menu). */
+  labels: TankLabels;
+  onLabels: (labels: TankLabels) => void;
   onNewPen: () => void;
   onEditPen: () => void;
 }
@@ -56,15 +59,20 @@ export function PenBar(props: Props) {
   const { cols } = usePixelScale();
   const all = shown.length === pens.length;
 
-  const right = overview ? (
-    <ArrangeMenu value={arrange} onChange={onArrange} />
-  ) : (
-    <PixelButton label="Edit pen" icon="edit" onClick={props.onEditPen} />
+  const right = (
+    <div className="px-row">
+      <ViewMenu value={props.labels} onChange={props.onLabels} />
+      {overview ? (
+        <ArrangeMenu value={arrange} onChange={onArrange} />
+      ) : (
+        <PixelButton label="Edit pen" icon="edit" onClick={props.onEditPen} />
+      )}
+    </div>
   );
-  const rightWidth = buttonWidth(
-    overview ? `Arrange: ${ARRANGE_LABEL[arrange]}` : 'Edit pen',
-    true,
-  );
+  const rightWidth =
+    ICON_BUTTON +
+    TAB_GAP +
+    buttonWidth(overview ? `Arrange: ${ARRANGE_LABEL[arrange]}` : 'Edit pen', true);
   // The pen tabs, then the icon-only "new pen" button.
   const tabLabels = [...(pens.length > 1 ? ['All'] : []), ...pens.map((p) => p.name)];
   const tabsWidth =
@@ -195,12 +203,15 @@ function Popover({
   label,
   buttonLabel,
   icon,
+  iconOnly,
   className,
   menuLabel,
   children,
 }: {
   label: string;
   icon?: IconName;
+  /** Show only the icon (the label becomes its name and tooltip). */
+  iconOnly?: boolean;
   /** Accessible name, when the visible label is shortened. */
   buttonLabel?: string;
   className: string;
@@ -229,7 +240,8 @@ function Popover({
       <PixelButton
         label={label}
         icon={icon}
-        aria-label={buttonLabel}
+        iconOnly={iconOnly}
+        aria-label={buttonLabel ?? (iconOnly ? label : undefined)}
         aria-expanded={open}
         aria-haspopup="true"
         onClick={() => setOpen((o) => !o)}
@@ -270,6 +282,45 @@ function ArrangeMenu({
             }}
           />
         ))
+      }
+    </Popover>
+  );
+}
+
+const VIEW_OPTIONS: { key: keyof TankLabels; label: string }[] = [
+  { key: 'ticker', label: 'Tickers' },
+  { key: 'change', label: "Today's change" },
+  { key: 'mood', label: 'Mood faces' },
+];
+
+/** What's drawn with the fish: tickers, today's change, mood faces. Ticks, so the menu stays open. */
+function ViewMenu({
+  value,
+  onChange,
+}: {
+  value: TankLabels;
+  onChange: (labels: TankLabels) => void;
+}) {
+  return (
+    <Popover label="Labels" icon="show" iconOnly className="view" menuLabel="Labels">
+      {() =>
+        VIEW_OPTIONS.map(({ key, label }) => {
+          const on = value[key];
+          const flip = () => onChange({ ...value, [key]: !on });
+          return (
+            <div key={key} className="px-input-row">
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={on}
+                aria-label={label}
+                className={on ? 'px-check is-on' : 'px-check'}
+                onClick={flip}
+              />
+              <PixelButton label={label} tabIndex={-1} aria-hidden onClick={flip} />
+            </div>
+          );
+        })
       }
     </Popover>
   );

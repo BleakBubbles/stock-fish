@@ -21,7 +21,9 @@ and compare any new sprite against the reference set in `preview/flat_set.png`.
 | `F` | fins and tail | ramp fin colour |
 
 Sprites store roles, never colours. `palette.json` maps `B` and `F` to a ramp, so one drawn fish
-becomes any species colour. Mood never changes colour.
+becomes any species colour. Mood never changes a fish's colour. Mood badges (`art/badges`, 9 × 9)
+are the one tinted thing: `n` outline and features, `i` face, filled with the mood's `moodBadge`
+colour. Each face must read in white too.
 
 ## Rules
 

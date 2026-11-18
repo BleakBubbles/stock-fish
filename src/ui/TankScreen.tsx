@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { marketOpenNow } from '../data/market';
-import { DEFAULT_TANK_VIEW, type Pen, type TankView } from '../data/model';
+import {
+  DEFAULT_TANK_LABELS,
+  DEFAULT_TANK_VIEW,
+  type Pen,
+  type TankLabels,
+  type TankView,
+} from '../data/model';
 import { SAMPLE_TANK_CSV, importHoldingsCsv } from '../data/importCsv';
 import { repo, useHoldings, usePens, useProfiles, useSettings } from '../data/store';
 import {
@@ -99,6 +105,13 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
   const [localView, setLocalView] = useState<TankView>();
   const view = localView ?? settings?.tankView ?? DEFAULT_TANK_VIEW;
 
+  const [localLabels, setLocalLabels] = useState<TankLabels>();
+  const labels = localLabels ?? settings?.tankLabels ?? DEFAULT_TANK_LABELS;
+  const setLabels = (next: TankLabels) => {
+    setLocalLabels(next);
+    void repo.saveSettings({ tankLabels: next });
+  };
+
   const setView = (next: TankView) => {
     // Group keys belong to one arrangement; never carry one into another.
     setSelectedGroupKey(undefined);
@@ -124,12 +137,18 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
 
   const sceneFish = useMemo(
     () =>
-      visible.map(({ id, body, mood, primary, secondary }) => ({
+      visible.map(({ id, body, mood, primary, secondary, symbol, moodResult }) => ({
         id,
         body,
         mood,
         primary,
         secondary,
+        symbol,
+        change:
+          moodResult && Number.isFinite(moodResult.todayReturn)
+            ? formatChangeRatio(moodResult.todayReturn)
+            : undefined,
+        moodKnown: moodResult !== undefined && moodResult.reason !== 'bad-quote',
       })),
     [visible],
   );
@@ -287,6 +306,8 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
           }}
           onPen={onPen}
           onArrange={(arrange) => setView({ ...view, arrange })}
+          labels={labels}
+          onLabels={setLabels}
           onNewPen={() => setDialog({ kind: 'new-pen' })}
           onEditPen={() => home && setDialog({ kind: 'edit-pen', pen: home })}
         />
@@ -312,6 +333,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
         active={active}
         view={shown.map((p) => p.id).join(',')}
         decorSeed={home ? `pen/${home.id}` : 'overview'}
+        labels={labels}
         regions={regions}
         night={!open}
         selectedId={selected?.id}

@@ -35,6 +35,18 @@ export interface TankView {
 
 export const DEFAULT_TANK_VIEW: TankView = { pens: 'all', arrange: 'mood' };
 
+/** What's drawn with each fish in the tank, besides the fish itself. */
+export interface TankLabels {
+  /** The ticker under the fish. */
+  ticker: boolean;
+  /** Today's % change under the fish. */
+  change: boolean;
+  /** A small face above the fish, repeating its mood. */
+  mood: boolean;
+}
+
+export const DEFAULT_TANK_LABELS: TankLabels = { ticker: false, change: false, mood: false };
+
 export const MAX_PEN_NAME = 24;
 
 /**
@@ -112,6 +124,8 @@ export interface Settings {
   profileUnavailable?: Partial<Record<ProviderId, true>>;
   /** Last tank view, restored on the next visit. */
   tankView?: TankView;
+  /** Labels drawn with the fish in the tank. */
+  tankLabels?: TankLabels;
   /** Currency totals are shown in (ISO 4217). Unset: automatic, the one most value is in. */
   homeCurrency?: string;
 }

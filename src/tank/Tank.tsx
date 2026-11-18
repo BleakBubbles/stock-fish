@@ -10,7 +10,7 @@ import { usePixelScale } from '../ui/pixel/context';
 import type { Region } from './arrange';
 import type { Rect } from './territory';
 import { TANK_HEIGHT, TANK_WIDTH, integerScale } from './constants';
-import { type SceneFish, TankScene } from './scene';
+import { type SceneFish, type SceneLabels, TankScene } from './scene';
 
 /** Where the tank's art pixels sit inside the tank slot, in UI pixels. */
 export interface TankPlacement {
@@ -43,6 +43,8 @@ interface Props {
   view: string;
   /** Picks the tank's sand, plants and rocks: the same seed always looks the same. */
   decorSeed: string;
+  /** Tickers, changes and mood badges drawn with the fish. */
+  labels: SceneLabels;
   regions: readonly Region[];
   /** Market closed: the tank light is off. */
   night: boolean;
@@ -88,6 +90,7 @@ export function Tank({
   alignTop,
   view,
   decorSeed,
+  labels,
   regions,
   night,
   selectedId,
@@ -104,6 +107,7 @@ export function Tank({
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<TankScene>(undefined);
   const decorSeedRef = useRef(decorSeed);
+  const labelsRef = useRef(labels);
   const appRef = useRef<Application>(undefined);
   // The newest props, for the async setup and event handlers below.
   const latest = useRef({
@@ -162,6 +166,7 @@ export function Tank({
       const scene = new TankScene(atlas, decor);
       sceneRef.current = scene;
       scene.setDecor(decorSeedRef.current);
+      scene.setLabels(labelsRef.current);
       scene.setRegions(latest.current.regions);
       scene.setFish(latest.current.fish);
       scene.setNight(latest.current.night);
@@ -373,6 +378,10 @@ export function Tank({
     shownView.current = view;
   }, [fish, view]);
   useEffect(() => sceneRef.current?.setNight(night), [night]);
+  useEffect(() => {
+    labelsRef.current = labels;
+    sceneRef.current?.setLabels(labels);
+  }, [labels]);
   useEffect(() => {
     decorSeedRef.current = decorSeed;
     sceneRef.current?.setDecor(decorSeed);

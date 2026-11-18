@@ -45,7 +45,9 @@ market data provider blocks browser requests (CORS).
    whole number of UI pixels (`--sf-px`: no rem, %, or centring without `useSnap`), and lines are
    box-shadows, never `border` or `outline` (Chrome rounds those before the transform). Check
    with `?pixels` in the URL.
-5. **Mood is shown only by the face.** Never change a fish's colour for mood.
+5. **Mood is shown by faces; colour may only repeat it.** The fish's face shows it; the optional
+   mood badge above a fish repeats the same face, tinted by mood (`palette.json` `moodBadge`). The
+   face must read on its own, and a fish's colour never changes with mood.
 6. **The mood engine is pure and tested.** Volatility and tier logic are plain functions with unit
    tests, independent of React and PixiJS.
 7. **Never execute trades or give advice.** Read-only display; include a "not investment advice"

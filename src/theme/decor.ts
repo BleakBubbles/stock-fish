@@ -32,6 +32,6 @@ export function decorColour(ch: string): Hex {
 /** The decor items a tank can place (not the frame), with their sizes; `sway` if there's a swaying frame. */
 export function decorItems(): { name: string; w: number; h: number; sway: boolean }[] {
   return Object.entries(decorFrames)
-    .filter(([name]) => name !== 'frame' && !name.endsWith('-sway'))
+    .filter(([name]) => name !== 'frame' && !name.startsWith('badge-') && !name.endsWith('-sway'))
     .map(([name, f]) => ({ name, w: f.w, h: f.h, sway: `${name}-sway` in decorFrames }));
 }

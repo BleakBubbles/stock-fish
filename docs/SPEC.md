@@ -21,7 +21,9 @@ A sad fish always means "unusual for this one," not just "red."
   deviation of the last 60 daily returns). A −2% day is nothing for a volatile stock but big for a
   bond ETF.
 - **Five tiers with a wide neutral band:** most days most fish look calm, which is accurate.
-- **Mood is shown by the face only** (eye and mouth). Colour never changes with mood.
+- **Mood is shown by the face** (eye and mouth). A fish's colour never changes with mood. The
+  optional mood badge above a fish (tank labels) repeats the face, tinted green up, silver flat
+  and pink or red down; the tint only repeats what the face says.
 - **Territory = portfolio weight:** each fish claims a patch of the tank sized by its share, so one
   sad fish owning half the tank reads as a bad day.
 - **Portfolio weather:** a tank-level summary (sunny → stormy) of total daily change.
@@ -204,6 +206,6 @@ Before a public launch:
 - Notifications: event-based only, never price-based nudges.
 - Mood edge cases: 24/7 crypto, foreign-currency holdings, mutual funds pricing once a day, new
   listings without volatility history.
-- Accessibility: numbers available to screen readers; mood never conveyed by colour.
+- Accessibility: numbers available to screen readers; mood never conveyed by colour alone.
 - Privacy: data stays in the browser; "not investment advice" disclaimer.
 - Final name and branding (working name: Stock Fish).

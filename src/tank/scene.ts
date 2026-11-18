@@ -6,6 +6,7 @@
 import { Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import type { Mood } from '../mood/types';
 import { css, ui } from '../theme';
+import { drawText, measureText, normalizeText, uiFont } from '../theme/pixelFont';
 import { atlasFrames, frameRect } from '../theme/atlas';
 import { decorFrames, decorItems, sand } from '../theme/decor';
 import type { AtlasLayer, TailPose } from '../theme/grid';
@@ -13,6 +14,7 @@ import type { Body, Face } from '../theme/sprites';
 import { NIGHT_ALPHA, TANK_HEIGHT, TANK_WIDTH, TAP_SLOP } from './constants';
 import { INNER_WATER, type Region, SAND_TOP, WATER, boundsFor } from './arrange';
 import { SWAY_PERIOD, decorLayout } from './decor';
+import { type Box, type LabelHome, type Nudge, placeLabels } from './labels';
 import { STILL_TAIL, type TailMotion, type TailState, stepTail, tailPose } from './tail';
 import type { Rect } from './territory';
 import {
@@ -33,6 +35,19 @@ export interface SceneFish {
   mood: Mood;
   primary: string;
   secondary: string;
+  /** For the ticker label. */
+  symbol: string;
+  /** Today's change, formatted (e.g. "+1.2%"), once there's a price. */
+  change?: string;
+  /** Whether the mood is known (a badge would otherwise claim "calm" without data). */
+  moodKnown: boolean;
+}
+
+/** Labels drawn with every fish. */
+export interface SceneLabels {
+  ticker: boolean;
+  change: boolean;
+  mood: boolean;
 }
 
 interface FishNode {
@@ -43,7 +58,31 @@ interface FishNode {
   tail: TailState;
   /** The frame on screen ("face/tail"), to skip texture swaps that change nothing. */
   shown: string;
+  /**
+   * Text under the fish (ticker and/or change) and the mood badge above it, in
+   * one group so the labels stack in the same order as the fish.
+   */
+  labelGroup: Container;
+  text: Sprite;
+  badge: Sprite;
+  /** Where crowding last pushed the labels, so they don't hop about. */
+  nudges: readonly Nudge[];
+  /** What the text sprite shows, to skip redrawing it. */
+  textKey: string;
 }
+
+/**
+ * Labels in the UI font, in art pixels: each line is 7 rows (the capitals on
+ * rows 1–5, with a row of outline above and below), so the font's 9-row glyphs
+ * are drawn 2 rows up. One pixel of outline each side.
+ */
+const LABEL_LINE = 7;
+const LABEL_FONT_TOP = -2;
+const LABEL_PAD = 1;
+/** Where labels sit relative to the fish's top-left: text below the body, badge above. */
+const LABEL_BELOW = 23;
+const BADGE_ABOVE = 8;
+const BADGE_SIZE = 9;
 
 /** Asleep, fish rest in the lowest few art pixels of their patch... */
 const REST_BAND = 10;
@@ -110,6 +149,11 @@ export class TankScene {
   private decorSeed?: string;
   private swayers: Swayer[] = [];
   private swayClock = 0;
+  /** Tickers, changes and mood badges, above the fish (and the night overlay, to stay readable). */
+  private readonly labelLayer = new Container();
+  private labels: SceneLabels = { ticker: false, change: false, mood: false };
+  /** Label textures by their text, shared by fish that say the same thing. */
+  private readonly labelTextures = new Map<string, Texture>();
 
   constructor(
     private readonly atlas: Texture,
@@ -135,9 +179,65 @@ export class TankScene {
       this.patchOutline,
       this.fishLayer,
       this.night,
+      this.labelLayer,
       frame,
       this.zedLayer,
     );
+  }
+
+  /** Which labels to draw with the fish. */
+  setLabels(labels: SceneLabels): void {
+    this.labels = { ...labels };
+    for (const node of this.fish.values()) this.updateLabel(node);
+    this.layoutLabels();
+  }
+
+  /** A label's texture: its lines in white, outlined in the night colour, drawn once per text. */
+  private labelTexture(lines: readonly string[]): Texture {
+    const key = lines.join('\n');
+    let texture = this.labelTextures.get(key);
+    if (!texture) {
+      const texts = lines.map((l) => normalizeText(uiFont, l));
+      const width = Math.max(...texts.map((t) => measureText(uiFont, t))) + 2 * LABEL_PAD;
+      const height = texts.length * LABEL_LINE;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        // White letters with a one-pixel dark outline (all 8 neighbours): readable on
+        // water, sand and plants without hiding them behind a box.
+        const draw = (dx: number, dy: number, colour: string) =>
+          texts.forEach((t, i) => {
+            // Centre each line on whole pixels (an odd remainder goes to the right).
+            const x = Math.floor((width - measureText(uiFont, t)) / 2);
+            drawText(ctx, uiFont, t, x + dx, i * LABEL_LINE + LABEL_FONT_TOP + dy, colour);
+          });
+        for (const dy of [-1, 0, 1]) for (const dx of [-1, 0, 1]) draw(dx, dy, css(ui.night));
+        draw(0, 0, css(ui.text));
+      }
+      texture = Texture.from(canvas);
+      texture.source.scaleMode = 'nearest';
+      this.labelTextures.set(key, texture);
+    }
+    return texture;
+  }
+
+  /** Show the labels this fish should have now. */
+  private updateLabel(node: FishNode): void {
+    const { spec } = node;
+    const lines = [
+      ...(this.labels.ticker ? [spec.symbol] : []),
+      ...(this.labels.change && spec.change ? [spec.change] : []),
+    ];
+    const key = lines.join('\n');
+    if (key !== node.textKey) {
+      node.textKey = key;
+      node.text.visible = lines.length > 0;
+      if (lines.length) node.text.texture = this.labelTexture(lines);
+    }
+    node.badge.visible = this.labels.mood && spec.moodKnown;
+    if (node.badge.visible) node.badge.texture = this.decorTexture(`badge-${spec.mood}`);
   }
 
   private decorTexture(name: string): Texture {
@@ -222,8 +322,7 @@ export class TankScene {
       if (wanted.has(id)) continue;
       if (instant) {
         if (!node.swim.leaving) this.parked.set(id, node.swim);
-        node.container.destroy({ children: true });
-        this.fish.delete(id);
+        this.removeNode(id, node);
       } else if (!node.swim.leaving) {
         node.swim = leave(node.swim, TANK_BOUNDS, FISH_W);
       }
@@ -249,10 +348,22 @@ export class TankScene {
     layers.highlight.visible = false;
     const parked = this.parked.get(spec.id);
     this.parked.delete(spec.id);
+    const text = new Sprite();
+    const badge = new Sprite();
+    text.visible = false;
+    badge.visible = false;
+    const labelGroup = new Container();
+    labelGroup.addChild(text, badge);
+    this.labelLayer.addChild(labelGroup);
     const node: FishNode = {
       spec,
       tail: STILL_TAIL,
       shown: '',
+      labelGroup,
+      text,
+      badge,
+      nudges: [],
+      textKey: '',
       swim: parked
         ? resume(parked, this.boundsOf(spec.id), this.rand)
         : spawn(this.rand, this.boundsOf(spec.id)),
@@ -263,6 +374,7 @@ export class TankScene {
     this.fish.set(spec.id, node);
     this.fishLayer.addChild(container);
     this.place(node);
+    this.layoutLabels();
   }
 
   private applySpec(node: FishNode, spec: SceneFish, force = false): void {
@@ -273,6 +385,7 @@ export class TankScene {
     node.layers.body.tint = css(spec.primary);
     node.layers.fin.tint = css(spec.secondary);
     node.spec = spec;
+    this.updateLabel(node);
     if (node.swim.leaving && !force) {
       // Re-added before it finished leaving (e.g. an undo): come back.
       node.swim = regroup({ ...node.swim, leaving: false }, this.boundsOf(spec.id), this.rand);
@@ -346,6 +459,7 @@ export class TankScene {
     if (Math.abs(nx - node.swim.x) >= 1) node.swim.facing = nx > node.swim.x ? 1 : -1;
     node.swim = { ...node.swim, x: nx, y: ny, targetX: nx, targetY: ny, pause: 0.3 };
     this.place(node);
+    this.layoutLabels();
   }
 
   /** Let go: the fish swims into whatever region it now belongs to. */
@@ -417,6 +531,7 @@ export class TankScene {
     const topId = this.drag?.id ?? this.selected;
     const top = topId ? this.fish.get(topId) : undefined;
     if (top) this.fishLayer.setChildIndex(top.container, this.fishLayer.children.length - 1);
+    this.layoutLabels();
   }
 
   /** Advance every fish by `dt` seconds. */
@@ -436,12 +551,12 @@ export class TankScene {
       node.swim = step(node.swim, sleeping ? dt * SLEEP_SPEED : dt, this.rand, this.boundsOf(id));
       if (sleeping && !node.swim.leaving && this.rand() < dt * ZED_RATE) this.breathe(node);
       if (hasLeft(node.swim, TANK_BOUNDS, FISH_W)) {
-        node.container.destroy({ children: true });
-        this.fish.delete(id);
+        this.removeNode(id, node);
         continue;
       }
       this.place(node);
     }
+    this.layoutLabels();
     this.updateZeds(dt);
     this.updateSway(dt);
   }
@@ -487,6 +602,68 @@ export class TankScene {
     node.container.position.set(left ? x + FISH_W : x, y);
   }
 
+  /**
+   * Put every label by its fish. Labels never mirror: text centred under the
+   * fish, the badge over it, kept inside the glass. Labels stack like the fish
+   * (the fish in front has its labels in front, at home); where fish crowd, the
+   * labels of fish further back move to the nearest free spot, or hide when
+   * there is none. A fish swimming away takes no labels with it.
+   */
+  private layoutLabels(): void {
+    const byContainer = new Map([...this.fish.values()].map((n) => [n.container as unknown, n]));
+    const backToFront = this.fishLayer.children.flatMap((c) => byContainer.get(c) ?? []);
+    backToFront.forEach((node, i) => {
+      if (this.labelLayer.children[i] !== node.labelGroup) {
+        this.labelLayer.setChildIndex(node.labelGroup, i);
+      }
+    });
+    const homes: LabelHome[] = [];
+    const sprites = new Map<string, Sprite[]>();
+    for (const node of [...backToFront].reverse()) {
+      node.labelGroup.visible = !node.swim.leaving;
+      if (node.swim.leaving) continue;
+      const x = Math.round(node.swim.x);
+      const y = Math.round(node.swim.y);
+      const boxes: { box: Box; away: 1 | -1 }[] = [];
+      const shown: Sprite[] = [];
+      if (node.text.visible) {
+        const { width: w, height: h } = node.text.texture;
+        const box = { x: x + Math.floor((FISH_W - w) / 2), y: y + LABEL_BELOW, w, h };
+        boxes.push({ box, away: 1 });
+        shown.push(node.text);
+      }
+      if (node.badge.visible) {
+        const box: Box = {
+          x: x + Math.floor((FISH_W - BADGE_SIZE) / 2),
+          y: y - BADGE_ABOVE,
+          w: BADGE_SIZE,
+          h: BADGE_SIZE,
+        };
+        boxes.push({ box, away: -1 });
+        shown.push(node.badge);
+      }
+      homes.push({ id: node.spec.id, boxes });
+      sprites.set(node.spec.id, shown);
+    }
+    const previous = new Map([...this.fish.values()].map((n) => [n.spec.id, n.nudges]));
+    for (const [id, { boxes, nudges }] of placeLabels(homes, INNER_WATER, previous)) {
+      const node = this.fish.get(id);
+      if (node) node.nudges = nudges;
+      sprites.get(id)?.forEach((sprite, i) => {
+        const box = boxes[i];
+        sprite.renderable = box !== undefined;
+        if (box) sprite.position.set(box.x, box.y);
+      });
+    }
+  }
+
+  /** Remove a fish and its labels from the scene. */
+  private removeNode(id: string, node: FishNode): void {
+    node.container.destroy({ children: true });
+    node.labelGroup.destroy({ children: true });
+    this.fish.delete(id);
+  }
+
   /** Topmost fish under an art-pixel point (bounding box plus a little slop), if any. */
   fishAt(x: number, y: number): string | undefined {
     const children = this.fishLayer.children;
@@ -510,6 +687,7 @@ export class TankScene {
 
   destroy(): void {
     for (const texture of this.frames.values()) texture.destroy(false);
+    for (const texture of this.labelTextures.values()) texture.destroy(true);
     this.root.destroy({ children: true });
   }
 }
