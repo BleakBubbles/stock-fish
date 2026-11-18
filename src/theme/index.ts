@@ -32,6 +32,8 @@ export const ui = {
   textMuted: palette.ui.textMuted,
   button: palette.ui.button,
   buttonText: palette.ui.buttonText,
+  /** Section headings: warm beige, so they stand apart from the silver buttons. */
+  heading: palette.ui.heading,
   focus: palette.ui.focus,
   warning: palette.ui.warning,
   success: palette.ui.success,
@@ -41,7 +43,23 @@ export const ui = {
   territory: palette.ui.territory,
   /** Background of a selected group name over the tank (white text on it: 5.5:1). */
   groupSelected: palette.ui.groupSelected,
+  /** Bevels: the lit top-left and shaded bottom-right edges of panels and buttons. */
+  panelLight: palette.ui.panelLight,
+  panelShadow: palette.ui.panelShadow,
+  buttonLight: palette.ui.buttonLight,
+  buttonShadow: palette.ui.buttonShadow,
+  /** Hovered buttons light up: slate ones a step lighter (with lighter edges), cream ones white. */
+  panelHover: palette.ui.panelHover,
+  panelHoverLight: palette.ui.panelHoverLight,
+  buttonHover: palette.ui.buttonHover,
 } as const;
+
+/** The ramp the title-bar logo fish is drawn in (the app icon's colours). */
+export const logoRamp: Ramp = (() => {
+  const ramp = ramps[palette.ui.logo];
+  if (!ramp) throw new Error(`palette.json ui.logo: no ramp ${palette.ui.logo}`);
+  return ramp;
+})();
 
 /** '#rrggbb' form for CSS and PixiJS. */
 export function css(hex: Hex): string {

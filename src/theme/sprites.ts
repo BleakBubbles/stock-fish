@@ -5,6 +5,7 @@
  */
 import { MOODS, type Mood } from '../mood/types';
 import { TAIL_POSES, type TailPose, parseGrid, withTail } from './grid';
+import logoText from '../../art/ui/logo.grid?raw';
 import { type Hex, roleColour } from './index';
 
 export const BODIES = [1, 2, 3, 4, 5, 6] as const;
@@ -63,3 +64,20 @@ export function spriteColours(primary: Hex, secondary: Hex): Record<Exclude<Role
     F: secondary,
   };
 }
+
+/** The title-bar logo (art/ui/logo.grid): a small fish in the sprite roles. */
+export const LOGO: readonly string[] = parseGrid(logoText);
+
+const iconFiles = import.meta.glob('../../art/ui/icons/*.grid', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+}) as Record<string, string>;
+
+/** Button icons (art/ui/icons): 7 × 7 grids, 'x' for ink ('#' starts a comment). */
+export const ICONS: Readonly<Record<string, readonly string[]>> = Object.fromEntries(
+  Object.entries(iconFiles).map(([path, text]) => [
+    /([\w-]+)\.grid$/.exec(path)?.[1] ?? path,
+    parseGrid(text),
+  ]),
+);

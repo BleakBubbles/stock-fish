@@ -89,9 +89,9 @@ export function GroupDetails({ summary, onOpen, onEdit, onClose }: Props) {
         )}
       </div>
       <div className="px-row">
-        {onOpen && <PixelButton label="Open pen" primary onClick={onOpen} />}
-        {onEdit && <PixelButton label="Edit pen…" onClick={onEdit} />}
-        <PixelButton label="Close" onClick={onClose} />
+        {onOpen && <PixelButton label="Open pen" icon="forward" primary onClick={onOpen} />}
+        {onEdit && <PixelButton label="Edit pen…" icon="edit" onClick={onEdit} />}
+        <PixelButton label="Close" icon="close" iconOnly onClick={onClose} />
       </div>
     </section>
   );

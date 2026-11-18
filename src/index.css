@@ -10,6 +10,11 @@
 .px-rescale {
   --line: var(--sf-px);
   --gap: calc(var(--sf-px) * 4);
+  --drop: var(--sf-px) var(--sf-px) 0 var(--sf-border);
+  /* Full-width bars: a lit top line, and the outline and a shaded line along the bottom. */
+  --bar-edges:
+    inset 0 var(--sf-px) 0 var(--sf-panelLight), inset 0 calc(var(--sf-px) * -1) 0 var(--sf-border),
+    inset 0 calc(var(--sf-px) * -2) 0 var(--sf-panelShadow);
 }
 
 .px-root {
@@ -89,7 +94,7 @@ canvas {
   /* 3 + the 1-pixel bottom line */
   padding: calc(var(--sf-px) * 3) calc(var(--sf-px) * 3) calc(var(--sf-px) * 4);
   background: var(--sf-panel);
-  box-shadow: inset 0 calc(var(--sf-px) * -1) 0 var(--sf-border);
+  box-shadow: var(--bar-edges);
 }
 
 .topbar h1 {
@@ -143,7 +148,7 @@ canvas {
 .tank-bar.px-bar {
   flex: none;
   padding: calc(var(--sf-px) * 3) calc(var(--sf-px) * 3) calc(var(--sf-px) * 4);
-  box-shadow: inset 0 calc(var(--sf-px) * -1) 0 var(--sf-border);
+  box-shadow: var(--bar-edges);
 }
 
 .tank-empty {
@@ -371,6 +376,27 @@ canvas {
   gap: calc(var(--sf-px) * 3);
 }
 
+.px-panel,
+.px-button {
+  --lit: var(--sf-panelLight);
+  --shade: var(--sf-panelShadow);
+  /*
+   * Bevels (defined here, not on the root, so --lit and --shade set on an
+   * element apply to it): inside the 1-pixel outline, a lit line along the top and left and
+   * a shaded one along the bottom and right (each inset shadow offset by 2
+   * shows 1 pixel past the outline, which is drawn on top).
+   */
+  --bevel:
+    inset 0 0 0 var(--sf-px) var(--sf-border),
+    inset calc(var(--sf-px) * 2) calc(var(--sf-px) * 2) 0 var(--lit),
+    inset calc(var(--sf-px) * -2) calc(var(--sf-px) * -2) 0 var(--shade);
+  /* Pressed: the light comes from below. */
+  --bevel-pressed:
+    inset 0 0 0 var(--sf-px) var(--sf-border),
+    inset calc(var(--sf-px) * 2) calc(var(--sf-px) * 2) 0 var(--shade),
+    inset calc(var(--sf-px) * -2) calc(var(--sf-px) * -2) 0 var(--lit);
+}
+
 /*
  * Pixel lines are drawn with box-shadows, never border or outline: Chrome
  * rounds border and outline widths to whole device pixels *before* the pixel
@@ -386,9 +412,7 @@ canvas {
 }
 
 .px-panel {
-  box-shadow:
-    inset 0 0 0 var(--sf-px) var(--sf-border),
-    var(--sf-px) var(--sf-px) 0 var(--sf-border);
+  box-shadow: var(--bevel), var(--drop);
 }
 
 .px-bar {
@@ -410,18 +434,33 @@ canvas {
   border: 0;
   border-radius: 0;
   background: var(--sf-panel);
-  box-shadow:
-    inset 0 0 0 var(--sf-px) var(--sf-border),
-    var(--sf-px) var(--sf-px) 0 var(--sf-border);
+  box-shadow: var(--bevel), var(--drop);
 }
 
 .px-button.is-filled {
+  --lit: var(--sf-buttonLight);
+  --shade: var(--sf-buttonShadow);
   background: var(--sf-button);
+}
+
+/* Hover (mouse and pen only, so taps don't leave buttons lit): a step lighter. */
+@media (hover: hover) {
+  .px-button:hover:not(:disabled) {
+    --lit: var(--sf-panelHoverLight);
+    --shade: var(--sf-panel);
+    background: var(--sf-panelHover);
+  }
+
+  .px-button.is-filled:hover:not(:disabled) {
+    --lit: var(--sf-buttonHover);
+    --shade: var(--sf-buttonShadow);
+    background: var(--sf-buttonHover);
+  }
 }
 
 .px-button:active:not(:disabled) {
   translate: var(--sf-px) var(--sf-px);
-  box-shadow: inset 0 0 0 var(--sf-px) var(--sf-border);
+  box-shadow: var(--bevel-pressed);
 }
 
 /* Focus ring: 1 pixel wide, 1 pixel clear of the button. */
@@ -492,7 +531,7 @@ canvas {
   flex: none;
   justify-content: space-between;
   padding: calc(var(--sf-px) * 3) calc(var(--sf-px) * 3) calc(var(--sf-px) * 4);
-  box-shadow: inset 0 calc(var(--sf-px) * -1) 0 var(--sf-border);
+  box-shadow: var(--bar-edges);
 }
 
 /* A pen tab a dragged fish is over: a focus-coloured ring. */
@@ -689,7 +728,7 @@ canvas {
   position: absolute;
   left: 0;
   width: 100%;
-  background: var(--sf-panel);
+  background: var(--sf-panelLight);
   box-shadow: inset 0 0 0 var(--sf-px) var(--sf-border);
   cursor: pointer;
   pointer-events: auto;
@@ -779,4 +818,28 @@ canvas {
   box-shadow:
     inset 0 calc(var(--sf-px) * -1) 0 var(--sf-text),
     0 0 0 var(--sf-px) var(--sf-focus);
+}
+
+/* Title: the logo fish beside the name, top-aligned (centring 9 in 9 is exact anyway). */
+.title {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--sf-px) * 4);
+}
+
+.logo {
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* An icon before a button's label. */
+.px-button-content {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--sf-px) * 4);
+}
+
+/* Icon-only buttons are square: 7-pixel icon + 4 each side (the outline included). */
+.px-button.is-icon {
+  padding: calc(var(--sf-px) * 3) calc(var(--sf-px) * 4);
 }

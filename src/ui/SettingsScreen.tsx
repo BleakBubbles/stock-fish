@@ -118,7 +118,7 @@ function MarketDataSettings({ settings }: { settings: Settings }) {
         </>
       )}
       <div className="px-row">
-        <PixelButton type="submit" label="Save" primary />
+        <PixelButton type="submit" label="Save" icon="check" primary />
         <PixelButton
           label={test === 'running' ? 'Testing…' : needsKey ? 'Test key' : 'Test'}
           disabled={test === 'running'}
@@ -190,7 +190,12 @@ function InstallSettings() {
           />
           {state === 'available' && (
             <div className="px-row">
-              <PixelButton label="Install app" primary onClick={() => void promptInstall()} />
+              <PixelButton
+                label="Install app"
+                icon="import"
+                primary
+                onClick={() => void promptInstall()}
+              />
             </div>
           )}
           {state === 'ios' && (
@@ -247,9 +252,10 @@ function BackupSettings() {
         tone="textMuted"
       />
       <div className="px-row">
-        <PixelButton label="Export backup" onClick={() => void exportJson()} />
+        <PixelButton label="Export backup" icon="export" onClick={() => void exportJson()} />
         <PixelFileButton
           label="Import backup…"
+          icon="import"
           accept=".json,application/json"
           onFile={(f) => void readFile(f)}
         />

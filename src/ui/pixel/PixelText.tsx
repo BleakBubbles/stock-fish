@@ -1,17 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
-import { css, ui } from '../../theme';
+import { css } from '../../theme';
+import { TONE_COLOUR, type Tone } from './tones';
 import { drawText, measureText, normalizeText, uiFont, wrapText } from '../../theme/pixelFont';
-
-export type Tone = 'text' | 'textMuted' | 'buttonText' | 'warning' | 'success' | 'heading';
-
-const TONE_COLOUR: Record<Tone, string> = {
-  text: ui.text,
-  textMuted: ui.textMuted,
-  buttonText: ui.buttonText,
-  warning: ui.warning,
-  success: ui.success,
-  heading: ui.button,
-};
 
 /** Blank font pixels between wrapped lines. */
 export const LINE_GAP = 2;

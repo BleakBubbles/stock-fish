@@ -496,7 +496,7 @@ function EmptyTank({ onAdd }: { onAdd: () => void }) {
         wrap={wrap}
       />
       <div className="px-row">
-        <PixelButton label="Add your first fish" primary onClick={onAdd} />
+        <PixelButton label="Add your first fish" icon="plus" primary onClick={onAdd} />
         <PixelButton
           label="Load sample tank"
           onClick={() => void importHoldingsCsv(repo, SAMPLE_TANK_CSV)}
@@ -540,7 +540,7 @@ function MarketMessage({
     return (
       <>
         <PixelText text="Add a market data key to see today's moods." tone="warning" />
-        <PixelButton label="Settings" onClick={onSettings} />
+        <PixelButton label="Settings" icon="settings" onClick={onSettings} />
       </>
     );
   }
@@ -549,7 +549,7 @@ function MarketMessage({
     return (
       <>
         <PixelText text="Your market data key was rejected." tone="warning" />
-        <PixelButton label="Settings" onClick={onSettings} />
+        <PixelButton label="Settings" icon="settings" onClick={onSettings} />
       </>
     );
   }

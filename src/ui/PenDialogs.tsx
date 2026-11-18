@@ -65,7 +65,7 @@ export function PenDialog({
         />
         {error && <PixelText text={error} tone="warning" wrap={FIELD_WIDTH + 40} />}
         <div className="px-row">
-          <PixelButton label="Delete pen" primary onClick={() => void remove()} />
+          <PixelButton label="Delete pen" icon="delete" primary onClick={() => void remove()} />
           <PixelButton label="Cancel" onClick={() => setConfirmDelete(false)} />
         </div>
       </PixelDialog>
@@ -89,9 +89,16 @@ export function PenDialog({
         />
         {error && <PixelText text={error} tone="warning" wrap={FIELD_WIDTH + 40} />}
         <div className="px-row">
-          <PixelButton type="submit" label={pen ? 'Save' : 'Add pen'} primary />
+          <PixelButton
+            type="submit"
+            label={pen ? 'Save' : 'Add pen'}
+            icon={pen ? 'check' : 'plus'}
+            primary
+          />
           <PixelButton label="Cancel" onClick={() => onDone()} />
-          {pen && heir && <PixelButton label="Delete…" onClick={() => setConfirmDelete(true)} />}
+          {pen && heir && (
+            <PixelButton label="Delete…" icon="delete" onClick={() => setConfirmDelete(true)} />
+          )}
         </div>
       </form>
     </PixelDialog>
@@ -168,7 +175,7 @@ export function MoveDialog({
         />
         {error && <PixelText text={error} tone="warning" wrap={FIELD_WIDTH + 40} />}
         <div className="px-row">
-          <PixelButton type="submit" label="Move" primary />
+          <PixelButton type="submit" label="Move" icon="forward" primary />
           <PixelButton label="Cancel" onClick={() => onDone()} />
         </div>
       </form>

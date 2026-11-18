@@ -2,6 +2,7 @@ import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from 're
 import { ARRANGE_MODES, type ArrangeMode, type Pen } from '../data/model';
 import { measureText, normalizeText, uiFont } from '../theme/pixelFont';
 import { PixelButton } from './pixel/PixelButton';
+import type { IconName } from './pixel/PixelIcon';
 import { usePixelScale } from './pixel/context';
 
 const ARRANGE_LABEL: Record<ArrangeMode, string> = {
@@ -15,13 +16,18 @@ const ARRANGE_LABEL: Record<ArrangeMode, string> = {
 
 /** UI pixels a PixelButton adds around its text: padding 3 + line 1 each side. */
 const BUTTON_CHROME = 8;
+/** An icon before a button's label: 7 pixels and a 4-pixel gap (see .px-button-content). */
+const ICON_WIDTH = 11;
+/** An icon-only button: the 7-pixel icon and the chrome. */
+const ICON_BUTTON = 7 + BUTTON_CHROME;
 /** Gaps between tabs, and the bar's padding (see .px-row and .pen-bar). */
 const TAB_GAP = 3;
 const BAR_PADDING = 3;
 const SIDE_GAP = 4;
 
 const textWidth = (s: string) => measureText(uiFont, normalizeText(uiFont, s));
-const buttonWidth = (s: string) => textWidth(s) + BUTTON_CHROME;
+const buttonWidth = (s: string, icon = false) =>
+  textWidth(s) + BUTTON_CHROME + (icon ? ICON_WIDTH : 0);
 
 interface Props {
   pens: readonly Pen[];
@@ -53,12 +59,16 @@ export function PenBar(props: Props) {
   const right = overview ? (
     <ArrangeMenu value={arrange} onChange={onArrange} />
   ) : (
-    <PixelButton label="Edit pen" onClick={props.onEditPen} />
+    <PixelButton label="Edit pen" icon="edit" onClick={props.onEditPen} />
   );
-  const rightWidth = buttonWidth(overview ? `Arrange: ${ARRANGE_LABEL[arrange]}` : 'Edit pen');
-  const tabLabels = [...(pens.length > 1 ? ['All'] : []), ...pens.map((p) => p.name), '+'];
+  const rightWidth = buttonWidth(
+    overview ? `Arrange: ${ARRANGE_LABEL[arrange]}` : 'Edit pen',
+    true,
+  );
+  // The pen tabs, then the icon-only "new pen" button.
+  const tabLabels = [...(pens.length > 1 ? ['All'] : []), ...pens.map((p) => p.name)];
   const tabsWidth =
-    tabLabels.reduce((a, l) => a + buttonWidth(l), 0) + TAB_GAP * (tabLabels.length - 1);
+    tabLabels.reduce((a, l) => a + buttonWidth(l), 0) + ICON_BUTTON + TAB_GAP * tabLabels.length;
   // The root can be one column wider than the window; leave it out.
   const room = cols - 1 - 2 * BAR_PADDING - SIDE_GAP - rightWidth;
 
@@ -93,7 +103,7 @@ export function PenBar(props: Props) {
             />
           );
         })}
-        <PixelButton label="+" aria-label="New pen" onClick={props.onNewPen} />
+        <PixelButton label="New pen" icon="plus" iconOnly onClick={props.onNewPen} />
       </nav>
       {right}
     </div>
@@ -168,6 +178,7 @@ function PensMenu({
           })}
           <PixelButton
             label="New pen…"
+            icon="plus"
             onClick={() => {
               onNewPen();
               close();
@@ -183,11 +194,13 @@ function PensMenu({
 function Popover({
   label,
   buttonLabel,
+  icon,
   className,
   menuLabel,
   children,
 }: {
   label: string;
+  icon?: IconName;
   /** Accessible name, when the visible label is shortened. */
   buttonLabel?: string;
   className: string;
@@ -215,6 +228,7 @@ function Popover({
     <div ref={ref} className={`popover ${className}`}>
       <PixelButton
         label={label}
+        icon={icon}
         aria-label={buttonLabel}
         aria-expanded={open}
         aria-haspopup="true"
@@ -237,7 +251,12 @@ function ArrangeMenu({
   onChange: (mode: ArrangeMode) => void;
 }) {
   return (
-    <Popover label={`Arrange: ${ARRANGE_LABEL[value]}`} className="arrange" menuLabel="Arrange by">
+    <Popover
+      label={`Arrange: ${ARRANGE_LABEL[value]}`}
+      icon="arrange"
+      className="arrange"
+      menuLabel="Arrange by"
+    >
       {(close) =>
         ARRANGE_MODES.map((m) => (
           <PixelButton

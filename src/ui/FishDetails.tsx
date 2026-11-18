@@ -110,9 +110,9 @@ export function FishDetails({
         <PixelText text={`Last update failed: ${fish.error}`} tone="warning" wrap={textWidth} />
       )}
       <div className="px-row">
-        <PixelButton label="Change colours" onClick={onChangeColours} />
-        <PixelButton label="Move…" onClick={onMove} />
-        <PixelButton label="Close" onClick={onClose} />
+        <PixelButton label="Change colours" icon="colours" onClick={onChangeColours} />
+        <PixelButton label="Move…" icon="forward" onClick={onMove} />
+        <PixelButton label="Close" icon="close" iconOnly onClick={onClose} />
       </div>
     </section>
   );

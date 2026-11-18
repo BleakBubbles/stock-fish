@@ -4,6 +4,7 @@ import { useMarketRefresh } from './data/useMarket';
 import { AddHolding } from './ui/AddHolding';
 import { EditHolding } from './ui/EditHolding';
 import { HoldingsScreen } from './ui/HoldingsScreen';
+import { Logo } from './ui/Logo';
 import { SettingsScreen } from './ui/SettingsScreen';
 import { TankScreen } from './ui/TankScreen';
 import { PixelButton } from './ui/pixel/PixelButton';
@@ -20,9 +21,9 @@ type View =
   | { name: 'edit'; id: string; focus: 'details' | 'colours'; returnTo: TabView['name'] };
 
 const TABS = [
-  { name: 'tank', label: 'Tank' },
-  { name: 'holdings', label: 'Holdings' },
-  { name: 'settings', label: 'Settings' },
+  { name: 'tank', label: 'Tank', icon: 'tank' },
+  { name: 'holdings', label: 'Holdings', icon: 'holdings' },
+  { name: 'settings', label: 'Settings', icon: 'settings' },
 ] as const;
 
 export function App() {
@@ -45,7 +46,8 @@ export function App() {
     <>
       <PixelRoot className="app">
         <header className="topbar">
-          <h1>
+          <h1 className="title">
+            <Logo />
             <PixelText text="Stock Fish" />
           </h1>
           <nav aria-label="Main" className="px-row">
@@ -53,6 +55,7 @@ export function App() {
               <PixelButton
                 key={t.name}
                 label={t.label}
+                icon={t.icon}
                 active={activeTab === t.name}
                 aria-current={activeTab === t.name ? 'page' : undefined}
                 onClick={() => setView({ name: t.name })}

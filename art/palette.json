@@ -45,13 +45,22 @@
     "border": "181425",
     "text": "ffffff",
     "textMuted": "c0cbdc",
-    "button": "ead4aa",
+    "button": "c0cbdc",
     "buttonText": "181425",
+    "heading": "ead4aa",
     "focus": "feae34",
     "warning": "feae34",
     "success": "63c74d",
     "night": "181425",
     "territory": "8b9bb4",
-    "groupSelected": "5a6988"
+    "groupSelected": "5a6988",
+    "panelLight": "5a6988",
+    "panelShadow": "262b44",
+    "buttonLight": "ffffff",
+    "buttonShadow": "8b9bb4",
+    "panelHover": "5a6988",
+    "panelHoverLight": "8b9bb4",
+    "buttonHover": "ffffff",
+    "logo": "orange"
   }
 }

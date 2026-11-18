@@ -35,14 +35,16 @@ export function HoldingsScreen({ onAdd, onEdit, onColours }: Props) {
 
       <div className="px-panel px-stack px-wide">
         <div className="px-row">
-          <PixelButton label="Add a holding" primary onClick={onAdd} />
+          <PixelButton label="Add a holding" icon="plus" primary onClick={onAdd} />
           <PixelFileButton
             label="Import CSV…"
+            icon="import"
             accept=".csv,text/csv"
             onFile={(f) => void f.text().then(importText)}
           />
           <PixelButton
             label="CSV template"
+            icon="export"
             onClick={() => downloadText('stock-fish-template.csv', CSV_TEMPLATE, 'text/csv')}
           />
           <PixelButton label="Load sample tank" onClick={() => void importText(SAMPLE_TANK_CSV)} />
@@ -106,13 +108,15 @@ export function HoldingsScreen({ onAdd, onEdit, onColours }: Props) {
                       </div>
                       <div className="px-row">
                         <PixelButton
-                          label="Colours"
-                          aria-label={`Change colours of ${h.symbol}`}
+                          label={`Change colours of ${h.symbol}`}
+                          icon="colours"
+                          iconOnly
                           onClick={() => onColours(h.id)}
                         />
                         <PixelButton
-                          label="Edit"
-                          aria-label={`Edit ${h.symbol}`}
+                          label={`Edit ${h.symbol}`}
+                          icon="edit"
+                          iconOnly
                           onClick={() => onEdit(h.id)}
                         />
                       </div>

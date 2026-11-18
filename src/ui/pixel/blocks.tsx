@@ -12,7 +12,9 @@ import {
   useState,
 } from 'react';
 import { PixelButton } from './PixelButton';
-import { PixelText, type Tone } from './PixelText';
+import type { IconName } from './PixelIcon';
+import { PixelText } from './PixelText';
+import type { Tone } from './tones';
 import { usePixelScale } from './context';
 import { useWidth } from './useWidth';
 
@@ -211,6 +213,7 @@ export function PixelScroll({ className, children }: { className?: string; child
 /** Props for a button that opens a hidden file input. */
 export type FileButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onChange'> & {
   label: string;
+  icon?: IconName;
   accept: string;
   onFile: (file: File) => void;
 };

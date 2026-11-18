@@ -129,7 +129,13 @@ function DetailsStep({ onNext, onCancel }: { onNext: (d: Draft) => void; onCance
         />
         {error && <PixelParagraph text={error} tone="warning" role="alert" />}
         <div className="px-row">
-          <PixelButton type="submit" label={busy ? 'Checking…' : 'Next'} primary disabled={busy} />
+          <PixelButton
+            type="submit"
+            label={busy ? 'Checking…' : 'Next'}
+            icon="forward"
+            primary
+            disabled={busy}
+          />
           <PixelButton label="Cancel" onClick={onCancel} />
         </div>
       </div>
@@ -204,8 +210,14 @@ function MeetYourFish({
         </div>
         {draft.notice && <PixelParagraph text={draft.notice} tone="warning" />}
         <div className="px-row">
-          <PixelButton label="Add this fish" primary onClick={() => void save()} autoFocus />
-          <PixelButton label="Back" onClick={onBack} />
+          <PixelButton
+            label="Add this fish"
+            icon="check"
+            primary
+            onClick={() => void save()}
+            autoFocus
+          />
+          <PixelButton label="Back" icon="back" onClick={onBack} />
         </div>
         {error && <PixelParagraph text={error} tone="warning" role="alert" />}
       </div>

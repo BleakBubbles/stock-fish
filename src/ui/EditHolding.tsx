@@ -79,7 +79,7 @@ function EditLook({
           />
         </div>
         <div className="px-row">
-          <PixelButton label="Save" primary onClick={() => void save()} />
+          <PixelButton label="Save" icon="check" primary onClick={() => void save()} />
           <PixelButton label="Cancel" onClick={onDone} />
         </div>
       </div>
@@ -176,7 +176,7 @@ function EditDetails({
         />
         {error && <PixelParagraph text={error} tone="warning" role="alert" />}
         <div className="px-row">
-          <PixelButton type="submit" label="Save" primary />
+          <PixelButton type="submit" label="Save" icon="check" primary />
           <PixelButton label="Cancel" onClick={onDone} />
         </div>
       </div>
@@ -186,13 +186,17 @@ function EditDetails({
           <>
             <PixelParagraph text={`Remove ${holding.symbol} from your tank?`} tone="warning" />
             <div className="px-row">
-              <PixelButton label="Yes, remove" onClick={() => void remove()} />
+              <PixelButton label="Yes, remove" icon="delete" onClick={() => void remove()} />
               <PixelButton label="Keep it" onClick={() => setConfirmingRemove(false)} />
             </div>
           </>
         ) : (
           <div className="px-row">
-            <PixelButton label="Remove holding…" onClick={() => setConfirmingRemove(true)} />
+            <PixelButton
+              label="Remove holding…"
+              icon="delete"
+              onClick={() => setConfirmingRemove(true)}
+            />
           </div>
         )}
       </div>
