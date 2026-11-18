@@ -1,0 +1,29 @@
+# Cloudflare Pages response headers (https://developers.cloudflare.com/pages/configuration/headers/).
+#
+# The Content Security Policy lets the page talk only to itself and Twelve Data, so even injected
+# script couldn't send the user's API key (kept in this browser) anywhere else.
+# - style-src 'unsafe-inline': React sets pixel sizes with style attributes.
+# - worker-src blob: and img-src blob: data:: PixiJS decodes textures in a worker made from a blob.
+# - connect-src data:: the sprite atlas is inlined as a data: URL, which PixiJS loads with fetch
+#   (a data: URL can't send anything anywhere).
+# Keep this in sync with src/data/providers when adding a market data provider.
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' data: https://api.twelvedata.com; worker-src 'self' blob:; manifest-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+
+# The service worker must be re-checked on every visit, or updates reach installed apps late.
+/sw.js
+  Cache-Control: no-cache
+
+/registerSW.js
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Cache-Control: no-cache
+
+# Hashed build files never change: cache them for a year.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

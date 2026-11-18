@@ -1,4 +1,7 @@
 import { Application, Assets, RenderTexture, Sprite, type Texture } from 'pixi.js';
+// Shader setup without eval(), so the site's Content Security Policy can forbid it
+// (public/_headers). Despite the name, this is the module that avoids unsafe-eval.
+import 'pixi.js/unsafe-eval';
 import { type ReactNode, useEffect, useRef } from 'react';
 import { atlasUrl } from '../theme/atlas';
 import { Rescale } from '../ui/pixel/PixelRoot';
