@@ -28,6 +28,7 @@ const palette = JSON.parse(readFileSync(new URL('art/palette.json', root), 'utf8
   colors: string[];
   roles: Record<string, { color: string | null }>;
   decor: Record<string, string>;
+  moodBadge: Record<string, string>;
 };
 
 // Each body folder has faces (the moods and "sleeping") and tail poses
@@ -90,7 +91,7 @@ readdirSync(badgeDir)
   .filter((file) => file.endsWith('.grid'))
   .forEach((file, k) => {
     const mood = file.slice(0, -'.grid'.length);
-    const fill = (palette.moodBadge as Record<string, string>)[mood];
+    const fill = palette.moodBadge[mood];
     if (!fill) throw new Error(`palette.json moodBadge has no colour for ${mood}`);
     const ch = String(k);
     legend[ch] = fill;
