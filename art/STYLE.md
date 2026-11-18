@@ -83,6 +83,23 @@ font: one block per character, `#` for ink and `.` for clear, 9 rows tall with 8
 baseline and capitals 5 rows tall. Edit glyphs like sprites. Characters the font lacks are
 substituted (e.g. minus sign → hyphen) or drawn as `?`.
 
+## Tank decor
+
+`decor/` holds the tank's frame, plants and rocks as grids of any size. Their characters map to
+palette colours through `palette.json` `decor` (not the fish roles above).
+
+- **No black outline.** Decor sits behind the fish, so it stays flat and unoutlined; only fish
+  get the outline. Plants are greens (`g` light, `G`, `d` dark), rocks greys (`h`, `R`, `r`).
+- **Sway:** a plant with a `NAME-sway.grid` alternates with it. The swayed frame is the same
+  size, with its upper part shifted one pixel. Rocks have no sway frame and hold still.
+- **Kinds** go by name: `kelp-*` and `sword-*` stand behind the sand's edge; `rock-*`, `bush-*`
+  and `grass-*` in front of it. Each tank picks a few of each and places them along the floor,
+  seeded by its pen, so a tank always looks the same.
+- **Sand** is drawn by the app, not a grid: `s` sand, a pale `e` top edge, `S` specks.
+- **`frame.grid`** is the lid, glass edges, rim and stand, stretched to 320 × 180 at build time:
+  the middle column repeats across, and the first row with water (`.`) in the middle repeats
+  down. Its sizes must match `FRAME` in `src/tank/constants.ts` (a test checks).
+
 ## Tools
 
 - `tools/grid2png.py SPRITE.grid --ramp orange --scale 8` renders a preview.

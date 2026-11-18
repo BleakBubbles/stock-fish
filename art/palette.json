@@ -29,6 +29,14 @@
   "brandPresets": {
     "_note": "Curated per ticker: { \"TICKER\": { \"body\": \"<palette hex>\", \"fin\": \"<palette hex>\" } }. Colours only, never logos. Empty until curated."
   },
+  "decor": {
+    "_note": "Tank decoration (art/decor, art/STYLE.md). Grid character -> palette colour. Decor has no black outline, so it stays behind the fish. Sand uses e (top edge), s (sand), S (specks).",
+    "g": "63c74d", "G": "3e8948", "d": "265c42",
+    "h": "8b9bb4", "R": "5a6988", "r": "3a4466",
+    "e": "ead4aa", "s": "e4a672", "S": "c28569",
+    "T": "5a6988", "t": "3a4466", "n": "181425",
+    "l": "c28569", "w": "b86f50", "W": "733e39", "D": "3e2731"
+  },
   "ui": {
     "water": "262b44",
     "selectionOutline": "ffffff",

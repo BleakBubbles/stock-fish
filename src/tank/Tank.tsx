@@ -4,6 +4,7 @@ import { Application, Assets, RenderTexture, Sprite, type Texture } from 'pixi.j
 import 'pixi.js/unsafe-eval';
 import { type ReactNode, useEffect, useRef } from 'react';
 import { atlasUrl } from '../theme/atlas';
+import { decorUrl } from '../theme/decor';
 import { Rescale } from '../ui/pixel/PixelRoot';
 import { usePixelScale } from '../ui/pixel/context';
 import type { Region } from './arrange';
@@ -40,6 +41,8 @@ interface Props {
   alignTop?: boolean;
   /** Which pens are shown: when it changes, fish no longer shown vanish instead of swimming off. */
   view: string;
+  /** Picks the tank's sand, plants and rocks: the same seed always looks the same. */
+  decorSeed: string;
   regions: readonly Region[];
   /** Market closed: the tank light is off. */
   night: boolean;
@@ -84,6 +87,7 @@ export function Tank({
   groupOutline,
   alignTop,
   view,
+  decorSeed,
   regions,
   night,
   selectedId,
@@ -99,6 +103,7 @@ export function Tank({
   const fitRef = useRef<() => void>(undefined);
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<TankScene>(undefined);
+  const decorSeedRef = useRef(decorSeed);
   const appRef = useRef<Application>(undefined);
   // The newest props, for the async setup and event handlers below.
   const latest = useRef({
@@ -143,15 +148,20 @@ export function Tank({
 
     void (async () => {
       await app.init({ width: TANK_WIDTH, height: TANK_HEIGHT, antialias: false, resolution: 1 });
-      const atlas = await Assets.load<Texture>(atlasUrl);
+      const [atlas, decor] = await Promise.all([
+        Assets.load<Texture>(atlasUrl),
+        Assets.load<Texture>(decorUrl),
+      ]);
       if (disposed) {
         app.destroy(true);
         return;
       }
       atlas.source.scaleMode = 'nearest';
+      decor.source.scaleMode = 'nearest';
 
-      const scene = new TankScene(atlas);
+      const scene = new TankScene(atlas, decor);
       sceneRef.current = scene;
+      scene.setDecor(decorSeedRef.current);
       scene.setRegions(latest.current.regions);
       scene.setFish(latest.current.fish);
       scene.setNight(latest.current.night);
@@ -363,6 +373,10 @@ export function Tank({
     shownView.current = view;
   }, [fish, view]);
   useEffect(() => sceneRef.current?.setNight(night), [night]);
+  useEffect(() => {
+    decorSeedRef.current = decorSeed;
+    sceneRef.current?.setDecor(decorSeed);
+  }, [decorSeed]);
   useEffect(() => sceneRef.current?.setSelected(selectedId), [selectedId]);
   useEffect(() => sceneRef.current?.setGroupOutline(groupOutline), [groupOutline]);
 

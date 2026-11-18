@@ -140,8 +140,8 @@ describe('geometry', () => {
   });
 
   it('a region narrower than a fish centres it, but never outside the water', () => {
-    const b = boundsFor({ x: 0, y: 6, w: 20, h: 170 });
-    expect(b.minX).toBe(0);
-    expect(b.maxX).toBe(0);
+    const b = boundsFor({ x: 0, y: WATER.y, w: 20, h: WATER.h });
+    expect(b.minX).toBe(WATER.x);
+    expect(b.maxX).toBe(WATER.x);
   });
 });

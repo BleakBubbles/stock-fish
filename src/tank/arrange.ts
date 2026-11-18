@@ -8,17 +8,28 @@ import { MOODS, type Mood } from '../mood/types';
 import { atlasFrames } from '../theme/atlas';
 import { FAMILIES } from '../theme/bodies';
 import type { Body } from '../theme/sprites';
-import { TANK_HEIGHT, TANK_MARGIN_BOTTOM, TANK_MARGIN_TOP, TANK_WIDTH } from './constants';
+import { FRAME, SAND_DEPTH, SAND_OVERLAP, TANK_HEIGHT, TANK_WIDTH } from './constants';
 import { type Patch, type Rect, applyLayout, layoutTerritory, orderedTreemap } from './territory';
 
 export const FISH_SIZE = { w: atlasFrames.frameWidth, h: atlasFrames.frameHeight };
 
-/** The water fish can use. */
+/** All the water inside the tank frame, sand included. */
+export const INNER_WATER: Rect = {
+  x: FRAME.side,
+  y: FRAME.lid,
+  w: TANK_WIDTH - 2 * FRAME.side,
+  h: TANK_HEIGHT - FRAME.lid - FRAME.bottom,
+};
+
+/** The average sand line: the first art row of sand. */
+export const SAND_TOP = INNER_WATER.y + INNER_WATER.h - SAND_DEPTH;
+
+/** The water fish can use: inside the frame, below the lid, down to the sand. */
 export const WATER: Rect = {
-  x: 0,
-  y: TANK_MARGIN_TOP,
-  w: TANK_WIDTH,
-  h: TANK_HEIGHT - TANK_MARGIN_TOP - TANK_MARGIN_BOTTOM,
+  x: INNER_WATER.x,
+  y: INNER_WATER.y + 1,
+  w: INNER_WATER.w,
+  h: SAND_TOP + SAND_OVERLAP - (INNER_WATER.y + 1),
 };
 
 /** Smallest patch: a fish plus a little room to swim. */
@@ -297,7 +308,13 @@ export function boundsFor(rect: Rect): { minX: number; minY: number; maxX: numbe
     const c = Math.min(hi, Math.max(lo, start + (size - fish) / 2));
     return [c, c];
   };
-  const [minX = 0, maxX = 0] = span(rect.x, rect.w, FISH_SIZE.w, 0, TANK_WIDTH - FISH_SIZE.w);
+  const [minX = 0, maxX = 0] = span(
+    rect.x,
+    rect.w,
+    FISH_SIZE.w,
+    WATER.x,
+    WATER.x + WATER.w - FISH_SIZE.w,
+  );
   const [minY = 0, maxY = 0] = span(
     rect.y,
     rect.h,

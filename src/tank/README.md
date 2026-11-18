@@ -4,6 +4,8 @@
   shows it upscaled by the largest whole number that fits, measured in device pixels.
 - `scene.ts`: the scene in art pixels (water, fish, night overlay, hit testing, regions, the
   selected fish's territory outline, dragging). No React.
+- `decor.ts`: pure, seeded layout of a tank's floor (sand surface, specks, plants and rocks), so
+  each pen always looks the same. The frame and decor art come from `art/decor/`.
 - `swim.ts`: pure fish movement; positions round to whole art pixels only when drawn.
 - `model.ts`: pure derivation of what each fish shows (body, colours, mood, numbers) and the weather.
 - `territory.ts`: pure, order-preserving treemap. Each fish's patch is sized by its value; holdings

@@ -136,3 +136,79 @@ export function buildAtlas(
     frames: { frameWidth: w, frameHeight: h, layers: ATLAS_LAYERS, columns },
   };
 }
+
+/**
+ * Stretch a frame grid to `width` × `height` (art/decor/frame.grid): the middle
+ * column repeats across, and the first row with water ('.') in its middle
+ * repeats down. Everything else keeps its exact pixels.
+ */
+export function stretchFrame(rows: readonly string[], width: number, height: number): string[] {
+  const w = rows[0]?.length ?? 0;
+  const mid = Math.floor(w / 2);
+  const repeatRow = rows.findIndex((r) => r[mid] === '.');
+  if (w === 0 || repeatRow === -1) throw new Error('Frame grid needs a water row');
+  if (rows.some((r) => r.length !== w)) throw new Error('Frame grid rows differ in width');
+  const extraX = width - w;
+  const extraY = height - rows.length;
+  if (extraX < 0 || extraY < 0) throw new Error('Frame grid is larger than the tank');
+  const wide = rows.map(
+    (r) => r.slice(0, mid) + (r[mid] ?? '.').repeat(extraX + 1) + r.slice(mid + 1),
+  );
+  const repeated = wide[repeatRow] ?? '';
+  return [
+    ...wide.slice(0, repeatRow),
+    ...Array.from({ length: extraY + 1 }, () => repeated),
+    ...wide.slice(repeatRow + 1),
+  ];
+}
+
+export interface DecorFrame {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Bake decor grids (any sizes) into one image, side by side along the top.
+ * Each grid character is drawn in its legend colour; '.' is transparent.
+ */
+export function buildDecorAtlas(
+  grids: Record<string, readonly string[]>,
+  legend: Record<string, string>,
+): { image: AtlasImage; frames: Record<string, DecorFrame> } {
+  const names = Object.keys(grids).sort();
+  const frames: Record<string, DecorFrame> = {};
+  let x = 0;
+  let height = 0;
+  for (const name of names) {
+    const rows = grids[name] ?? [];
+    const w = rows[0]?.length ?? 0;
+    if (rows.some((r) => r.length !== w)) throw new Error(`${name}: rows differ in width`);
+    frames[name] = { x, y: 0, w, h: rows.length };
+    x += w;
+    height = Math.max(height, rows.length);
+  }
+  const width = x;
+  const pixels = new Uint8Array(width * height * 4);
+  for (const name of names) {
+    const f = frames[name];
+    if (!f) continue;
+    (grids[name] ?? []).forEach((row, y) => {
+      for (let i = 0; i < row.length; i++) {
+        const ch = row[i] ?? '.';
+        if (ch === '.') continue;
+        const hex = legend[ch];
+        if (!hex)
+          throw new Error(`${name}: unknown decor character ${JSON.stringify(ch)} at ${i},${y}`);
+        const c = rgb(hex);
+        const p = (y * width + f.x + i) * 4;
+        pixels[p] = c[0];
+        pixels[p + 1] = c[1];
+        pixels[p + 2] = c[2];
+        pixels[p + 3] = 255;
+      }
+    });
+  }
+  return { image: { width, height, pixels }, frames };
+}

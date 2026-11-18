@@ -10,9 +10,16 @@ export function integerScale(boxWidth: number, boxHeight: number): number {
 /** Strength of the "light off" overlay when the market is closed (0–1). */
 export const NIGHT_ALPHA = 0.55;
 
-/** Art pixels kept clear at the top and bottom of the tank. */
-export const TANK_MARGIN_TOP = 6;
-export const TANK_MARGIN_BOTTOM = 4;
+/**
+ * The tank frame (art/decor/frame.grid) in art pixels: the lid along the top,
+ * the glass edges at the sides, and the rim and stand along the bottom.
+ */
+export const FRAME = { lid: 5, side: 2, bottom: 10 } as const;
+
+/** Average depth of the sand floor, in art pixels. */
+export const SAND_DEPTH = 10;
+/** Art pixels a fish may dip below the sand line (its sprite has empty rows at the bottom). */
+export const SAND_OVERLAP = 2;
 
 /** Extra art pixels around a fish that still count as tapping it (easier on touch). */
 export const TAP_SLOP = 2;

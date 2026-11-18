@@ -7,17 +7,12 @@ import { Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import type { Mood } from '../mood/types';
 import { css, ui } from '../theme';
 import { atlasFrames, frameRect } from '../theme/atlas';
+import { decorFrames, decorItems, sand } from '../theme/decor';
 import type { AtlasLayer, TailPose } from '../theme/grid';
 import type { Body, Face } from '../theme/sprites';
-import {
-  NIGHT_ALPHA,
-  TANK_HEIGHT,
-  TANK_MARGIN_BOTTOM,
-  TANK_MARGIN_TOP,
-  TANK_WIDTH,
-  TAP_SLOP,
-} from './constants';
-import { type Region, boundsFor } from './arrange';
+import { NIGHT_ALPHA, TANK_HEIGHT, TANK_WIDTH, TAP_SLOP } from './constants';
+import { INNER_WATER, type Region, SAND_TOP, WATER, boundsFor } from './arrange';
+import { SWAY_PERIOD, decorLayout } from './decor';
 import { STILL_TAIL, type TailMotion, type TailState, stepTail, tailPose } from './tail';
 import type { Rect } from './territory';
 import {
@@ -74,12 +69,16 @@ const FISH_W = atlasFrames.frameWidth;
 const FISH_H = atlasFrames.frameHeight;
 
 /** The whole water, for fish without a region (and for leaving). */
-export const TANK_BOUNDS: Bounds = {
-  minX: 0,
-  minY: TANK_MARGIN_TOP,
-  maxX: TANK_WIDTH - FISH_W,
-  maxY: TANK_HEIGHT - FISH_H - TANK_MARGIN_BOTTOM,
-};
+export const TANK_BOUNDS: Bounds = boundsFor(WATER);
+
+/** A plant that sways between its still and swayed frames. */
+interface Swayer {
+  sprite: Sprite;
+  frames: [Texture, Texture];
+  phase: number;
+}
+/** At night the water is calm: plants sway at this fraction of their usual pace. */
+const NIGHT_SWAY = 0.5;
 
 export class TankScene {
   /** Everything drawn in the tank, in art pixels. Render this into the low-res texture. */
@@ -104,18 +103,99 @@ export class TankScene {
    * spot. Kept for the visit only; a sold fish's entry just goes unused.
    */
   private readonly parked = new Map<string, SwimState>();
+  /** Plants behind the sand's edge, the sand, then rocks and low plants in front of it. */
+  private readonly decorBack = new Container();
+  private readonly sandLayer = new Graphics();
+  private readonly decorFront = new Container();
+  private decorSeed?: string;
+  private swayers: Swayer[] = [];
+  private swayClock = 0;
 
   constructor(
     private readonly atlas: Texture,
+    private readonly decorAtlas: Texture,
     private readonly rand: Rand = Math.random,
   ) {
-    const water = new Graphics().rect(0, 0, TANK_WIDTH, TANK_HEIGHT).fill(css(ui.water));
-    this.night
-      .rect(0, 0, TANK_WIDTH, TANK_HEIGHT)
-      .fill({ color: css(ui.night), alpha: NIGHT_ALPHA });
+    // Around the tank: the room (the slot's colour), where the stand's legs stand.
+    const room = new Graphics().rect(0, 0, TANK_WIDTH, TANK_HEIGHT).fill(css(ui.night));
+    const { x, y, w, h } = INNER_WATER;
+    const water = new Graphics().rect(x, y, w, h).fill(css(ui.water));
+    // The light goes off in the water; the frame stays as it is.
+    this.night.rect(x, y, w, h).fill({ color: css(ui.night), alpha: NIGHT_ALPHA });
     this.night.visible = false;
+    const frame = new Sprite(this.decorTexture('frame'));
+    // Fish swim behind the frame, so leaving fish slip out of sight past the glass.
     // Z's float above the dimmed tank, so they're readable at night.
-    this.root.addChild(water, this.patchOutline, this.fishLayer, this.night, this.zedLayer);
+    this.root.addChild(
+      room,
+      water,
+      this.decorBack,
+      this.sandLayer,
+      this.decorFront,
+      this.patchOutline,
+      this.fishLayer,
+      this.night,
+      frame,
+      this.zedLayer,
+    );
+  }
+
+  private decorTexture(name: string): Texture {
+    const key = `decor/${name}`;
+    let texture = this.frames.get(key);
+    if (!texture) {
+      const f = decorFrames[name];
+      if (!f) throw new Error(`No decor frame ${name}`);
+      texture = new Texture({
+        source: this.decorAtlas.source,
+        frame: new Rectangle(f.x, f.y, f.w, f.h),
+      });
+      this.frames.set(key, texture);
+    }
+    return texture;
+  }
+
+  /** Lay out a tank's floor: the same seed always gives the same sand, plants and rocks. */
+  setDecor(seed: string): void {
+    if (seed === this.decorSeed) return;
+    this.decorSeed = seed;
+    for (const layer of [this.decorBack, this.decorFront]) {
+      for (const child of layer.removeChildren()) child.destroy();
+    }
+    this.swayers = [];
+    const layout = decorLayout(seed, INNER_WATER, SAND_TOP, decorItems());
+    for (const item of layout.items) {
+      const still = this.decorTexture(item.name);
+      const sprite = new Sprite(still);
+      sprite.position.set(item.x, item.y);
+      (item.front ? this.decorFront : this.decorBack).addChild(sprite);
+      if (item.sway) {
+        this.swayers.push({
+          sprite,
+          frames: [still, this.decorTexture(`${item.name}-sway`)],
+          phase: item.phase,
+        });
+      }
+    }
+    // Sand: one column at a time (its pale top edge, then the sand), then the specks.
+    const g = this.sandLayer.clear();
+    const bottom = INNER_WATER.y + INNER_WATER.h;
+    layout.sandTops.forEach((top, i) => g.rect(INNER_WATER.x + i, top + 1, 1, bottom - top - 1));
+    g.fill(css(sand.base));
+    layout.sandTops.forEach((top, i) => g.rect(INNER_WATER.x + i, top, 1, 1));
+    g.fill(css(sand.edge));
+    for (const { x, y } of layout.specks) g.rect(x, y, 1, 1);
+    if (layout.specks.length) g.fill(css(sand.speck));
+  }
+
+  /** Plants sway: half of each cycle still, half swayed, each on its own phase. */
+  private updateSway(dt: number): void {
+    this.swayClock += this.asleep ? dt * NIGHT_SWAY : dt;
+    for (const s of this.swayers) {
+      const t = (this.swayClock + s.phase) % SWAY_PERIOD;
+      const texture = s.frames[t < SWAY_PERIOD / 2 ? 0 : 1];
+      if (s.sprite.texture !== texture) s.sprite.texture = texture;
+    }
   }
 
   private frame(body: Body, face: Face, layer: AtlasLayer, tail: TailPose = 'mid'): Texture {
@@ -363,6 +443,7 @@ export class TankScene {
       this.place(node);
     }
     this.updateZeds(dt);
+    this.updateSway(dt);
   }
 
   /** What the tail should be doing, from what the fish is doing. */

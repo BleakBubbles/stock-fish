@@ -311,6 +311,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
         fish={sceneFish}
         active={active}
         view={shown.map((p) => p.id).join(',')}
+        decorSeed={home ? `pen/${home.id}` : 'overview'}
         regions={regions}
         night={!open}
         selectedId={selected?.id}
