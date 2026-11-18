@@ -14,6 +14,11 @@ export interface TankPlacement {
   top: number;
   /** Device pixels per art pixel. */
   scale: number;
+  /** The tank's size and the space it sits in (the slot), in UI pixels. */
+  width: number;
+  height: number;
+  slotWidth: number;
+  slotHeight: number;
 }
 
 /** Where a dragged fish was let go. */
@@ -28,6 +33,8 @@ interface Props {
   active: boolean;
   /** A selected group's whole area, outlined like a fish's territory. */
   groupOutline?: Rect;
+  /** Sit at the top of the slot instead of centred (details go below it). */
+  alignTop?: boolean;
   /** Which pens are shown: when it changes, fish no longer shown vanish instead of swimming off. */
   view: string;
   regions: readonly Region[];
@@ -66,6 +73,7 @@ export function Tank({
   fish,
   active,
   groupOutline,
+  alignTop,
   view,
   regions,
   night,
@@ -88,6 +96,7 @@ export function Tank({
     fish,
     active,
     groupOutline,
+    alignTop,
     regions,
     night,
     selectedId,
@@ -103,6 +112,7 @@ export function Tank({
       fish,
       active,
       groupOutline,
+      alignTop,
       regions,
       night,
       selectedId,
@@ -172,11 +182,22 @@ export function Tank({
         canvas.style.height = `${TANK_HEIGHT * scale}px`;
         // Centre on whole UI pixels, so labels drawn over the tank share its grid.
         const left = Math.max(0, Math.floor((hostW - TANK_WIDTH * scale) / 2 / ui));
-        const top = Math.max(0, Math.floor((hostH - TANK_HEIGHT * scale) / 2 / ui));
+        // At the top when the screen puts details below the tank (phones), else centred.
+        const top = latest.current.alignTop
+          ? 0
+          : Math.max(0, Math.floor((hostH - TANK_HEIGHT * scale) / 2 / ui));
         canvas.style.marginLeft = `${left * ui}px`;
         canvas.style.marginTop = `${top * ui}px`;
         display.scale.set(scale);
-        latest.current.onPlacement({ left, top, scale });
+        latest.current.onPlacement({
+          left,
+          top,
+          scale,
+          width: Math.ceil((TANK_WIDTH * scale) / ui),
+          height: Math.ceil((TANK_HEIGHT * scale) / ui),
+          slotWidth: Math.floor(hostW / ui),
+          slotHeight: Math.floor(hostH / ui),
+        });
       };
       fitRef.current = fit;
       fit();
@@ -310,7 +331,7 @@ export function Tank({
     };
   }, []);
 
-  useEffect(() => fitRef.current?.(), [pixelScale]);
+  useEffect(() => fitRef.current?.(), [pixelScale, alignTop]);
   useEffect(() => {
     const ticker = appRef.current?.ticker;
     if (!ticker) return;

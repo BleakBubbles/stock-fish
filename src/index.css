@@ -153,12 +153,15 @@ canvas {
   align-items: center;
 }
 
-.fish-details {
+/*
+ * Where a fish's or group's details go: the tank area's top-left corner, or
+ * below the tank on phones (TankScreen sets top). Whole UI pixels.
+ */
+.details-anchor {
   position: absolute;
-  /* Anchored to the top-left in whole UI pixels so it stays on the grid. */
-  top: calc(var(--sf-px) * 4);
-  left: calc(var(--sf-px) * 4);
   z-index: 5;
+  left: calc(var(--sf-px) * 4);
+  line-height: 0;
 }
 
 /* Fish sprites: 32 × 25 art pixels, a whole number of UI pixels each. */
@@ -490,17 +493,59 @@ canvas {
   pointer-events: none;
 }
 
-.arrange {
+/* A button with a menu panel below it (pens, arrange). */
+.popover {
   position: relative;
   line-height: 0;
 }
 
-.arrange-menu {
+.popover-menu {
   position: absolute;
   z-index: 10;
-  right: 0;
   top: calc(var(--sf-px) * 18);
   gap: calc(var(--sf-px) * 2);
+}
+
+.arrange .popover-menu {
+  right: 0;
+}
+
+.pens-menu .popover-menu {
+  left: 0;
+}
+
+/* A pixel checkbox, as tall as a button: a box, filled in the middle when on. */
+.px-check {
+  position: relative;
+  flex: none;
+  width: calc(var(--sf-px) * 15);
+  height: calc(var(--sf-px) * 15);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  background: var(--sf-water);
+  box-shadow: inset 0 0 0 var(--sf-px) var(--sf-border);
+}
+
+.px-check.is-on::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--sf-px) * 4);
+  background: var(--sf-button);
+}
+
+.px-check:focus-visible {
+  outline: none;
+}
+
+.px-check:focus-visible::before {
+  content: '';
+  position: absolute;
+  inset: calc(var(--sf-px) * -2);
+  box-shadow: inset 0 0 0 var(--sf-px) var(--sf-focus);
+  pointer-events: none;
 }
 
 .tank-labels {

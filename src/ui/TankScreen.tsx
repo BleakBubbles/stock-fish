@@ -52,6 +52,10 @@ function shownPens(pens: readonly Pen[], view: TankView): Pen[] {
   return shown.length ? shown : [...pens];
 }
 
+/** UI pixels needed below the tank, and missing beside it, to put details underneath. */
+const STACK_BELOW = 100;
+const STACK_BESIDE = 210;
+
 type Dialog =
   { kind: 'new-pen' } | { kind: 'edit-pen'; pen: Pen } | { kind: 'move'; holdingId: string };
 
@@ -179,6 +183,17 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
   }, [groupRegion, visible, entries, view.arrange]);
   const groupPen = groupRegion?.penId ? pens?.find((p) => p.id === groupRegion.penId) : undefined;
 
+  /**
+   * Phones held upright: no room beside the tank, plenty below. The tank sits
+   * at the top and a fish's or group's details go underneath it, so both show.
+   * Elsewhere details sit in the tank area's top-left corner.
+   */
+  const stacked =
+    !!placement &&
+    placement.slotHeight - placement.height >= STACK_BELOW &&
+    placement.slotWidth - placement.width < STACK_BESIDE;
+  const detailsTop = stacked && placement ? placement.top + placement.height + 4 : 4;
+
   /** The pen a region belongs to: the home pen, or (in Pen mode) the pen it shows. */
   const penOfRegion = (region: Region): string | undefined => {
     if (home) return home.id;
@@ -266,6 +281,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
         night={!open}
         selectedId={selected?.id}
         groupOutline={groupRegion?.group?.rect}
+        alignTop={stacked}
         onSelect={setSelectedId}
         onTapWater={(tapX, tapY) => {
           // In an overview, open water belongs to a group: tap it for that
@@ -297,24 +313,27 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
             onSelect={(key) => selectGroup(key === selectedGroup ? undefined : key)}
           />
         )}
-        {/* Details sit in the tank's own corner, below however tall the bars are. */}
-        {summary && (
-          <GroupDetails
-            summary={summary}
-            onOpen={groupPen && (() => setView({ ...view, pens: [groupPen.id] }))}
-            onEdit={groupPen && (() => setDialog({ kind: 'edit-pen', pen: groupPen }))}
-            onClose={() => selectGroup(undefined)}
-          />
-        )}
+        {(summary || selected) && (
+          <div className="details-anchor" style={{ top: `calc(var(--sf-px) * ${detailsTop})` }}>
+            {summary && (
+              <GroupDetails
+                summary={summary}
+                onOpen={groupPen && (() => setView({ ...view, pens: [groupPen.id] }))}
+                onEdit={groupPen && (() => setDialog({ kind: 'edit-pen', pen: groupPen }))}
+                onClose={() => selectGroup(undefined)}
+              />
+            )}
 
-        {selected && (
-          <FishDetails
-            fish={selected}
-            penName={home ? undefined : pens?.find((p) => p.id === selected.penId)?.name}
-            onChangeColours={() => onChangeColours(selected.id)}
-            onMove={() => setDialog({ kind: 'move', holdingId: selected.id })}
-            onClose={() => setSelectedId(undefined)}
-          />
+            {selected && (
+              <FishDetails
+                fish={selected}
+                penName={home ? undefined : pens?.find((p) => p.id === selected.penId)?.name}
+                onChangeColours={() => onChangeColours(selected.id)}
+                onMove={() => setDialog({ kind: 'move', holdingId: selected.id })}
+                onClose={() => setSelectedId(undefined)}
+              />
+            )}
+          </div>
         )}
       </Tank>
 
