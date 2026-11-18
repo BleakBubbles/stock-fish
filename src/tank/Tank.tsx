@@ -57,6 +57,12 @@ interface Props {
 
 /** Longest frame step we simulate, so a backgrounded tab doesn't teleport fish. */
 const MAX_DT = 0.1;
+/**
+ * With the system's "reduce motion" setting, the tank runs at this fraction of
+ * normal speed: fish swim, pause and regroup slowly, but still visibly.
+ */
+const REDUCED_MOTION_SPEED = 0.3;
+
 /** Art pixels a press must move before it becomes a drag. */
 const DRAG_START = 3;
 
@@ -206,8 +212,10 @@ export function Tank({
 
       appRef.current = app;
       if (!latest.current.active) app.ticker.stop();
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
       app.ticker.add((ticker) => {
-        scene.update(Math.min(ticker.deltaMS / 1000, MAX_DT));
+        const speed = reduced.matches ? REDUCED_MOTION_SPEED : 1;
+        scene.update(Math.min(ticker.deltaMS / 1000, MAX_DT) * speed);
         app.renderer.render({ container: scene.root, target, clear: true });
       });
 

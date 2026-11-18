@@ -150,7 +150,8 @@ canvas {
   position: absolute;
   inset: 40% auto auto 50%;
   transform: translate(-50%, -50%);
-  align-items: center;
+  /* Left-aligned: centring odd-width lines would put them on half pixels. */
+  align-items: flex-start;
 }
 
 /*

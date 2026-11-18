@@ -101,6 +101,9 @@ Build and verify in this order; each milestone should work on its own.
 6. **Polish:** installable PWA, empty state and onboarding, accessibility (fish details reachable by
    keyboard and screen reader with the numbers).
 
+All six are done (November 2026). Next work comes from the spec's later phases and its open
+questions.
+
 ## Placeholders until decided
 
 - Selling a holding: the fish swims away.

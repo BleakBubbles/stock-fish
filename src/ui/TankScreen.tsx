@@ -467,12 +467,25 @@ function fitLabel(label: string, width: number): string {
   return '';
 }
 
+/** First run: what the app is, and two ways to start. */
 function EmptyTank({ onAdd }: { onAdd: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useSnap(ref);
+  const { cols } = usePixelScale();
+  // Text width: up to 190 UI pixels, less on narrow phones (panel chrome is 12).
+  const wrap = Math.min(190, cols - 24);
   return (
-    <div ref={ref} className="tank-empty px-panel px-stack">
-      <PixelText text="Your tank is empty." />
+    <section ref={ref} className="tank-empty px-panel px-stack" aria-label="Welcome">
+      <PixelText text="Welcome to Stock Fish" tone="heading" />
+      <PixelText
+        text="Each fish is one of your holdings. Its face shows how today is going, compared with a normal day for that stock."
+        wrap={wrap}
+      />
+      <PixelText
+        text="Prices need a free market data key (in Settings). The sample works with demo data too."
+        tone="textMuted"
+        wrap={wrap}
+      />
       <div className="px-row">
         <PixelButton label="Add your first fish" primary onClick={onAdd} />
         <PixelButton
@@ -481,11 +494,11 @@ function EmptyTank({ onAdd }: { onAdd: () => void }) {
         />
       </div>
       <PixelText
-        text="The sample is made-up holdings in three pens, to try things out."
-        tone="textMuted"
-        wrap={180}
+        text="Not investment advice. Stock Fish never trades."
+        tone="warning"
+        wrap={wrap}
       />
-    </div>
+    </section>
   );
 }
 

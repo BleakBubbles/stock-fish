@@ -9,6 +9,7 @@ import {
 } from '../data/providers';
 import { db, repo, useSettings } from '../data/store';
 import { downloadText } from './files';
+import { promptInstall, useInstallState } from './install';
 import { PixelButton } from './pixel/PixelButton';
 import { PixelInput } from './pixel/PixelInput';
 import {
@@ -28,6 +29,7 @@ export function SettingsScreen() {
       <PixelHeading text="Settings" id="settings-title" />
       <MarketDataSettings settings={settings} />
       <BackupSettings />
+      <InstallSettings />
       <div className="px-panel px-stack px-wide">
         <PixelHeading text="About" level={3} />
         <PixelParagraph text="Not investment advice." tone="warning" />
@@ -127,6 +129,40 @@ function MarketDataSettings({ settings }: { settings: Settings }) {
         )}
       </div>
     </form>
+  );
+}
+
+/** Add Stock Fish to the home screen or desktop, as an app that also opens offline. */
+function InstallSettings() {
+  const state = useInstallState();
+  return (
+    <div className="px-panel px-stack px-wide">
+      <PixelHeading text="App" level={3} />
+      {state === 'installed' ? (
+        <PixelParagraph
+          text="Installed. Stock Fish opens like an app, even offline."
+          tone="success"
+        />
+      ) : (
+        <>
+          <PixelParagraph
+            text="Install Stock Fish to open it like an app. It works offline, showing the last prices it saw."
+            tone="textMuted"
+          />
+          {state === 'available' && (
+            <div className="px-row">
+              <PixelButton label="Install app" primary onClick={() => void promptInstall()} />
+            </div>
+          )}
+          {state === 'ios' && (
+            <PixelParagraph text="On iPhone or iPad: tap Share, then Add to Home Screen." />
+          )}
+          {state === 'menu' && (
+            <PixelParagraph text="Use your browser's menu: Install, or Add to Home screen." />
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
