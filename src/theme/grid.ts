@@ -13,6 +13,29 @@ export function parseGrid(text: string): string[] {
 }
 
 /**
+ * Tail poses for the swimming animation: the tail as drawn ('mid'), and the
+ * tail-up / tail-down grids (art/sprites/<body>/tail-*.grid).
+ */
+export const TAIL_POSES = ['mid', 'up', 'down'] as const;
+export type TailPose = (typeof TAIL_POSES)[number];
+
+/** In a tail grid: "keep the face's pixel here" (everything but the tail). */
+export const KEEP = '~';
+
+/** A face with a tail pose drawn over it; `tail` undefined means the face's own tail. */
+export function withTail(face: readonly string[], tail: readonly string[] | undefined): string[] {
+  if (!tail) return [...face];
+  if (tail.length !== face.length) throw new Error('Tail grid and face differ in height');
+  return face.map((row, y) => {
+    const t = tail[y] ?? '';
+    if (t.length !== row.length) throw new Error(`Tail grid row ${y} differs in width`);
+    let out = '';
+    for (let x = 0; x < row.length; x++) out += t[x] === KEEP ? (row[x] ?? '.') : (t[x] ?? '.');
+    return out;
+  });
+}
+
+/**
  * Atlas layers, one row of frames each. Body and fin are white masks tinted
  * at runtime with the fish's colours (white × tint = the exact tint), so any
  * palette colour works without baking every combination.
@@ -27,7 +50,7 @@ export interface AtlasFrameMap {
   frameWidth: number;
   frameHeight: number;
   layers: readonly AtlasLayer[];
-  /** "body/mood" → column index. Layer L of that frame is at (column × w, L × h). */
+  /** "body/face/tail" → column index. Layer L of that frame is at (column × w, L × h). */
   columns: Record<string, number>;
 }
 

@@ -7,8 +7,8 @@ import { Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import type { Mood } from '../mood/types';
 import { css, ui } from '../theme';
 import { atlasFrames, frameRect } from '../theme/atlas';
-import type { AtlasLayer } from '../theme/grid';
-import type { Body } from '../theme/sprites';
+import type { AtlasLayer, TailPose } from '../theme/grid';
+import type { Body, Face } from '../theme/sprites';
 import {
   NIGHT_ALPHA,
   TANK_HEIGHT,
@@ -18,6 +18,7 @@ import {
   TAP_SLOP,
 } from './constants';
 import { type Region, boundsFor } from './arrange';
+import { STILL_TAIL, type TailMotion, type TailState, stepTail, tailPose } from './tail';
 import type { Rect } from './territory';
 import {
   type Bounds,
@@ -44,7 +45,30 @@ interface FishNode {
   swim: SwimState;
   container: Container;
   layers: Record<AtlasLayer, Sprite>;
+  tail: TailState;
+  /** The frame on screen ("face/tail"), to skip texture swaps that change nothing. */
+  shown: string;
 }
+
+/** Asleep, fish rest in the lowest few art pixels of their patch... */
+const REST_BAND = 10;
+/** ...and drift there, and about, at this fraction of their usual speed. */
+const SLEEP_SPEED = 0.2;
+
+/** A rising Z over a sleeping fish (art pixels; age in seconds). */
+interface Zed {
+  x: number;
+  y: number;
+  age: number;
+}
+/** How often a sleeping fish breathes out a Z (per second), and how many show at once. */
+const ZED_RATE = 1 / 14;
+const ZED_MAX = 3;
+const ZED_LIFE = 2.4;
+/** Art pixels a Z rises per second. */
+const ZED_RISE = 4;
+/** A 4 × 4 "Z", drawn in pixels. */
+const ZED_PIXELS = ['####', '..#.', '.#..', '####'];
 
 const FISH_W = atlasFrames.frameWidth;
 const FISH_H = atlasFrames.frameHeight;
@@ -70,6 +94,10 @@ export class TankScene {
   private regionOf = new Map<string, Region>();
   private readonly patchOutline = new Graphics();
   private drag?: { id: string; dx: number; dy: number };
+  /** Market closed: fish sleep (except the selected one, which wakes up). */
+  private asleep = false;
+  private zeds: Zed[] = [];
+  private readonly zedLayer = new Graphics();
   private groupOutline?: Rect;
   /**
    * Where fish were when their pen was hidden, so they come back to the same
@@ -86,14 +114,15 @@ export class TankScene {
       .rect(0, 0, TANK_WIDTH, TANK_HEIGHT)
       .fill({ color: css(ui.night), alpha: NIGHT_ALPHA });
     this.night.visible = false;
-    this.root.addChild(water, this.patchOutline, this.fishLayer, this.night);
+    // Z's float above the dimmed tank, so they're readable at night.
+    this.root.addChild(water, this.patchOutline, this.fishLayer, this.night, this.zedLayer);
   }
 
-  private frame(body: Body, mood: Mood, layer: AtlasLayer): Texture {
-    const key = `${body}/${mood}/${layer}`;
+  private frame(body: Body, face: Face, layer: AtlasLayer, tail: TailPose = 'mid'): Texture {
+    const key = `${body}/${face}/${tail}/${layer}`;
     let texture = this.frames.get(key);
     if (!texture) {
-      const r = frameRect(body, mood, layer);
+      const r = frameRect(body, face, layer, tail);
       texture = new Texture({
         source: this.atlas.source,
         frame: new Rectangle(r.x, r.y, r.width, r.height),
@@ -142,6 +171,8 @@ export class TankScene {
     this.parked.delete(spec.id);
     const node: FishNode = {
       spec,
+      tail: STILL_TAIL,
+      shown: '',
       swim: parked
         ? resume(parked, this.boundsOf(spec.id), this.rand)
         : spawn(this.rand, this.boundsOf(spec.id)),
@@ -156,11 +187,9 @@ export class TankScene {
 
   private applySpec(node: FishNode, spec: SceneFish, force = false): void {
     const old = node.spec;
-    if (force || old.body !== spec.body || old.mood !== spec.mood) {
-      for (const layer of Object.keys(node.layers) as AtlasLayer[]) {
-        node.layers[layer].texture = this.frame(spec.body, spec.mood, layer);
-      }
-    }
+    node.spec = spec;
+    if (force || old.body !== spec.body || old.mood !== spec.mood) node.shown = '';
+    this.showFrame(node);
     node.layers.body.tint = css(spec.primary);
     node.layers.fin.tint = css(spec.secondary);
     node.spec = spec;
@@ -185,7 +214,11 @@ export class TankScene {
 
   private boundsOf(id: string): Bounds {
     const region = this.regionOf.get(id);
-    return region ? boundsFor(region.rect) : TANK_BOUNDS;
+    const b = region ? boundsFor(region.rect) : TANK_BOUNDS;
+    // Sleeping fish rest low in their patch.
+    return this.asleep && id !== this.selected
+      ? { ...b, minY: Math.max(b.minY, b.maxY - REST_BAND) }
+      : b;
   }
 
   /** Outline the selected fish's territory (1 art pixel, inside its edges). */
@@ -244,12 +277,48 @@ export class TankScene {
     this.refreshHighlights();
   }
 
+  /** The face a fish shows now: asleep at night, unless it's the one tapped awake. */
+  private faceOf(id: string, node: FishNode): Face {
+    return this.asleep && id !== this.selected && id !== this.drag?.id
+      ? 'sleeping'
+      : node.spec.mood;
+  }
+
+  /** Set the textures for the fish's current face and tail pose (if they changed). */
+  private showFrame(node: FishNode, id = node.spec.id): void {
+    const face = this.faceOf(id, node);
+    const tail = tailPose(node.tail);
+    const key = `${face}/${tail}`;
+    if (key === node.shown) return;
+    node.shown = key;
+    for (const layer of Object.keys(node.layers) as AtlasLayer[]) {
+      node.layers[layer].texture = this.frame(node.spec.body, face, layer, tail);
+    }
+  }
+
   setNight(on: boolean): void {
     this.night.visible = on;
+    if (on === this.asleep) return;
+    this.asleep = on;
+    // Settle down to rest at the bottom of each patch (or wake and spread out).
+    for (const [id, node] of this.fish) {
+      if (id !== this.drag?.id) node.swim = regroup(node.swim, this.boundsOf(id), this.rand);
+      this.showFrame(node, id);
+    }
+    if (!on) this.zeds = [];
   }
 
   setSelected(id: string | undefined): void {
+    const before = this.selected;
     this.selected = id;
+    // Tapping a sleeping fish wakes it (its mood face shows); the last one dozes off.
+    for (const fid of [before, id]) {
+      const node = fid ? this.fish.get(fid) : undefined;
+      if (fid && node) {
+        this.showFrame(node, fid);
+        node.swim = regroup(node.swim, this.boundsOf(fid), this.rand);
+      }
+    }
     this.refreshHighlights();
     this.drawPatch();
   }
@@ -273,8 +342,19 @@ export class TankScene {
   /** Advance every fish by `dt` seconds. */
   update(dt: number): void {
     for (const [id, node] of this.fish) {
+      const sleeping = this.faceOf(id, node) === 'sleeping';
+      node.tail = stepTail(
+        node.tail,
+        dt,
+        this.motionOf(id, node, sleeping),
+        node.swim.speed,
+        this.rand,
+      );
+      this.showFrame(node, id);
       if (id === this.drag?.id) continue;
-      node.swim = step(node.swim, dt, this.rand, this.boundsOf(id));
+      // Asleep, everything happens slowly: drifting down, and drifting about.
+      node.swim = step(node.swim, sleeping ? dt * SLEEP_SPEED : dt, this.rand, this.boundsOf(id));
+      if (sleeping && !node.swim.leaving && this.rand() < dt * ZED_RATE) this.breathe(node);
       if (hasLeft(node.swim, TANK_BOUNDS, FISH_W)) {
         node.container.destroy({ children: true });
         this.fish.delete(id);
@@ -282,6 +362,39 @@ export class TankScene {
       }
       this.place(node);
     }
+    this.updateZeds(dt);
+  }
+
+  /** What the tail should be doing, from what the fish is doing. */
+  private motionOf(id: string, node: FishNode, sleeping: boolean): TailMotion {
+    if (id === this.drag?.id) return 'held';
+    if (sleeping) return 'asleep';
+    if (node.swim.pause > 0) return 'rest';
+    return node.swim.hurry || node.swim.leaving ? 'hurry' : 'swim';
+  }
+
+  /** A Z rises from a sleeping fish's head (the nose end, wherever it faces). */
+  private breathe(node: FishNode): void {
+    if (this.zeds.length >= ZED_MAX) return;
+    const x = Math.round(node.swim.x);
+    const head = node.swim.facing === 1 ? x + FISH_W - 9 : x + 5;
+    this.zeds.push({ x: head, y: Math.round(node.swim.y) + 2, age: 0 });
+  }
+
+  /** Age, move and draw the Z's: whole art pixels, the muted text colour. */
+  private updateZeds(dt: number): void {
+    this.zeds = this.zeds.flatMap((z) =>
+      z.age + dt < ZED_LIFE ? [{ ...z, age: z.age + dt }] : [],
+    );
+    const g = this.zedLayer.clear();
+    for (const z of this.zeds) {
+      const zx = z.x + Math.round(Math.sin(z.age * 2) * 1.5);
+      const zy = z.y - Math.round(z.age * ZED_RISE) - ZED_PIXELS.length;
+      ZED_PIXELS.forEach((row, y) => {
+        for (let x = 0; x < row.length; x++) if (row[x] === '#') g.rect(zx + x, zy + y, 1, 1);
+      });
+    }
+    if (this.zeds.length) g.fill(css(ui.textMuted));
   }
 
   /** Snap to whole art pixels; mirror (never rotate) to face left. */

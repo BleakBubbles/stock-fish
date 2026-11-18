@@ -5,7 +5,8 @@ and compare any new sprite against the reference set in `preview/flat_set.png`.
 
 ## Format
 
-- One sprite per file: `sprites/<n>-<sector>-<shape>/<mood>.grid`.
+- One sprite per file: `sprites/<n>-<sector>-<shape>/<face>.grid`, where a face is a mood or
+  `sleeping`, plus two tail poses per body (`tail-up.grid`, `tail-down.grid`; see below).
 - Canvas: **32 × 25** characters, one character per pixel, facing right.
 - Legend:
 
@@ -49,6 +50,20 @@ Eye templates (4 × 4; `B` = body showing through, `W` = white, `P` = dark):
 | Neutral | `BBBB` `WWPP` `WWPP` `BWWB` (lid slightly lowered) | Flat line |
 | Uneasy | `BWWB` `PPWW` `PPWW` `BWWB` (glancing back) | Wavy line; shorter on pointed noses |
 | Sad | `BBBB` `PPPP` `WWPP` `BPPB` (drooping lid, pupil down) | Downturned line |
+| Sleeping | `BBBB` `BBBB` `PBBP` `BPPB` (closed, a lid curve; never paint over outline) | Short flat line, 2 px at the nose |
+
+Fish sleep while the market is closed; tapping one wakes it to show its mood.
+
+## Tail poses
+
+Fish wag while swimming: mid (the tail as drawn in each face), up, mid, down. `tail-up.grid` and
+`tail-down.grid` draw only the tail; every other cell is `~`, meaning "keep the face's pixel", and
+the build lays each pose over every face. Up makes the upper lobe one row longer and the lower lobe
+one row shorter (down is the reverse), changing length at the stem so each tip keeps its shape,
+and both are one pixel shorter than mid: the tail flaps side
+to side, so at its extremes it's foreshortened, curling toward or away from the viewer. Free lobe
+pieces slide in whole (keeping fins 2+ px thick); a stalk is never thinned to nothing. Outlines
+stay whole and the base never moves. 1-pixel changes are enough: they read in motion. `preview/swim_and_sleep.gif` shows the set.
 
 ## Bodies
 
@@ -76,5 +91,4 @@ substituted (e.g. minus sign → hyphen) or drawn as `?`.
 
 ## Not drawn yet
 
-Sleeping face (market closed), tail-wag animation frames (2–3 per loop), code-generated
-patterns, special bodies for ETFs, funds and crypto.
+Code-generated patterns, special bodies for ETFs, funds and crypto.

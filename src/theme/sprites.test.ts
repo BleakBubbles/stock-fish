@@ -4,15 +4,47 @@ import { ROLES, SPRITE_HEIGHT, SPRITE_WIDTH, allSprites, spriteColours } from '.
 import { parseGrid } from './grid';
 
 describe('sprites', () => {
-  it('loads all 30 body × mood grids at 32 × 25 using only legal roles', () => {
+  it('builds every body × face × tail frame at 32 × 25 using only legal roles', () => {
     const all = allSprites();
-    expect(all).toHaveLength(30);
-    for (const { body, mood, rows } of all) {
-      expect(rows, `${body}/${mood}`).toHaveLength(SPRITE_HEIGHT);
+    expect(all).toHaveLength(6 * 6 * 3);
+    for (const { body, face, tail, rows } of all) {
+      const name = `${body}/${face}/${tail}`;
+      expect(rows, name).toHaveLength(SPRITE_HEIGHT);
       for (const row of rows) {
-        expect(row, `${body}/${mood}`).toHaveLength(SPRITE_WIDTH);
+        expect(row, name).toHaveLength(SPRITE_WIDTH);
         for (const ch of row) expect(ROLES).toContain(ch);
       }
+    }
+  });
+
+  it('outlines every edge: no body, fin or eye-white pixel touches empty water (STYLE rule 3)', () => {
+    for (const { body, face, tail, rows } of allSprites()) {
+      const at = (x: number, y: number) => rows[y]?.[x] ?? '.';
+      for (let y = 0; y < rows.length; y++) {
+        for (let x = 0; x < SPRITE_WIDTH; x++) {
+          if (!'BFw'.includes(at(x, y))) continue;
+          const open = [at(x - 1, y), at(x + 1, y), at(x, y - 1), at(x, y + 1)].includes('.');
+          expect(open, `${body}/${face}/${tail} at ${x},${y}`).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('keeps the outer row and column clear for the selection ring', () => {
+    for (const { body, face, tail, rows } of allSprites()) {
+      const edges = [
+        rows[0],
+        rows.at(-1),
+        rows.map((r) => r[0]).join(''),
+        rows.map((r) => r.at(-1)).join(''),
+      ];
+      for (const edge of edges) expect(edge, `${body}/${face}/${tail}`).toMatch(/^\.+$/);
+    }
+  });
+
+  it('sleeping faces have closed eyes: no eye white', () => {
+    for (const { body, face, rows } of allSprites()) {
+      if (face === 'sleeping') expect(rows.join(''), `${body}`).not.toContain('w');
     }
   });
 

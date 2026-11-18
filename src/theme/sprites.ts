@@ -4,11 +4,15 @@
  * same grids into the tank's atlas (see ./atlas.ts).
  */
 import { MOODS, type Mood } from '../mood/types';
-import { parseGrid } from './grid';
+import { TAIL_POSES, type TailPose, parseGrid, withTail } from './grid';
 import { type Hex, roleColour } from './index';
 
 export const BODIES = [1, 2, 3, 4, 5, 6] as const;
 export type Body = (typeof BODIES)[number];
+
+/** What a fish's face shows: its mood, or asleep while the market is closed. */
+export const FACES = [...MOODS, 'sleeping'] as const;
+export type Face = (typeof FACES)[number];
 
 export const SPRITE_WIDTH = 32;
 export const SPRITE_HEIGHT = 25;
@@ -25,20 +29,26 @@ const files = import.meta.glob('../../art/sprites/*/*.grid', {
 
 const sprites = new Map<string, string[]>();
 for (const [path, text] of Object.entries(files)) {
-  const match = /sprites\/(\d)-[^/]+\/(\w+)\.grid$/.exec(path);
+  const match = /sprites\/(\d)-[^/]+\/([\w-]+)\.grid$/.exec(path);
   if (match) sprites.set(`${match[1]}/${match[2]}`, parseGrid(text));
 }
 
-export function getSprite(body: Body, mood: Mood): string[] {
-  const rows = sprites.get(`${body}/${mood}`);
-  if (!rows) throw new Error(`Missing sprite for body ${body}, mood ${mood}`);
-  return rows;
+/** One frame: a body's face with a tail pose ('mid' is the tail as drawn). */
+export function getSprite(body: Body, face: Face | Mood, tail: TailPose = 'mid'): string[] {
+  const rows = sprites.get(`${body}/${face}`);
+  if (!rows) throw new Error(`Missing sprite for body ${body}, face ${face}`);
+  if (tail === 'mid') return rows;
+  const pose = sprites.get(`${body}/tail-${tail}`);
+  if (!pose) throw new Error(`Missing tail-${tail} grid for body ${body}`);
+  return withTail(rows, pose);
 }
 
-/** Every body × mood pair, for checks and atlas building. */
-export function allSprites(): { body: Body; mood: Mood; rows: string[] }[] {
+/** Every body × face × tail frame, for checks. */
+export function allSprites(): { body: Body; face: Face; tail: TailPose; rows: string[] }[] {
   return BODIES.flatMap((body) =>
-    MOODS.map((mood) => ({ body, mood, rows: getSprite(body, mood) })),
+    FACES.flatMap((face) =>
+      TAIL_POSES.map((tail) => ({ body, face, tail, rows: getSprite(body, face, tail) })),
+    ),
   );
 }
 

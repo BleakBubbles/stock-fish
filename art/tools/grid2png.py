@@ -54,7 +54,8 @@ def scale(img, s):
 
 
 def build_atlas(out, s):
-    sprites = sorted(p for p in (ART / "sprites").glob("*/*.grid"))
+    # Faces only: tail-*.grid hold just a tail pose (with ~ for "keep the face").
+    sprites = sorted(p for p in (ART / "sprites").glob("*/*.grid") if not p.stem.startswith("tail-"))
     ramps = PALETTE["rampOrder"]
     first = read_grid(sprites[0])
     w, h = len(first[0]), len(first)

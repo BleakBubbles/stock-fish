@@ -7,7 +7,7 @@
  * `npm run sprites`.
  */
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { FIXED_ROLES, buildAtlas, parseGrid } from '../src/theme/grid.ts';
+import { FIXED_ROLES, TAIL_POSES, buildAtlas, parseGrid, withTail } from '../src/theme/grid.ts';
 import { encodePng } from './png.ts';
 
 const root = new URL('../', import.meta.url);
@@ -18,16 +18,26 @@ const palette = JSON.parse(readFileSync(new URL('art/palette.json', root), 'utf8
   roles: Record<string, { color: string | null }>;
 };
 
+// Each body folder has faces (the moods and "sleeping") and tail poses
+// (tail-up, tail-down). Every face is baked with every tail pose.
 const sprites: Record<string, string[]> = {};
 for (const folder of readdirSync(spritesDir, { withFileTypes: true })) {
   if (!folder.isDirectory()) continue;
   const body = /^(\d)-/.exec(folder.name)?.[1];
   if (!body) continue;
+  const grids = new Map<string, string[]>();
   for (const file of readdirSync(new URL(`${folder.name}/`, spritesDir))) {
     if (!file.endsWith('.grid')) continue;
-    const mood = file.slice(0, -'.grid'.length);
     const text = readFileSync(new URL(`${folder.name}/${file}`, spritesDir), 'utf8');
-    sprites[`${body}/${mood}`] = parseGrid(text);
+    grids.set(file.slice(0, -'.grid'.length), parseGrid(text));
+  }
+  for (const [face, rows] of grids) {
+    if (face.startsWith('tail-')) continue;
+    for (const pose of TAIL_POSES) {
+      const tail = pose === 'mid' ? undefined : grids.get(`tail-${pose}`);
+      if (pose !== 'mid' && !tail) throw new Error(`${folder.name}: missing tail-${pose}.grid`);
+      sprites[`${body}/${face}/${pose}`] = withTail(rows, tail);
+    }
   }
 }
 
