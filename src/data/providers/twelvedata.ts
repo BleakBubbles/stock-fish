@@ -1,6 +1,7 @@
 import { type Throttle, createThrottle } from './throttle';
 import {
   type DailyBar,
+  type ExchangeRate,
   type MarketDataProvider,
   type Profile,
   type Quote,
@@ -117,6 +118,20 @@ export function createTwelveDataProvider(options: TwelveDataOptions): MarketData
       return values
         .map((v) => ({ date: v.datetime.slice(0, 10), close: toNumber(v.close, 'close') }))
         .reverse();
+    },
+
+    async getExchangeRate(from: string, to: string): Promise<ExchangeRate> {
+      const body = (await get('/exchange_rate', { symbol: `${from}/${to}` })) as Record<
+        string,
+        unknown
+      >;
+      return {
+        from,
+        to,
+        rate: toNumber(body.rate, 'rate'),
+        timestamp:
+          body.timestamp === undefined ? Date.now() : toNumber(body.timestamp, 'timestamp') * 1000,
+      };
     },
 
     async getProfile(symbol: string): Promise<Profile> {

@@ -87,6 +87,18 @@ export interface MarketEntry {
   error?: { kind: ProviderErrorKind; message: string; at: number };
 }
 
+/** Cached exchange rate for one pair, e.g. USD/CAD. Rebuilt from the provider; never backed up. */
+export interface FxEntry {
+  /** 'FROM/TO', e.g. 'USD/CAD'. */
+  pair: string;
+  provider: string;
+  /** Units of TO per unit of FROM. */
+  rate?: number;
+  /** When `rate` was fetched (ms). */
+  at?: number;
+  error?: { kind: ProviderErrorKind; message: string; at: number };
+}
+
 export type ProviderId = 'twelvedata' | 'mock';
 
 export interface Settings {
@@ -100,6 +112,8 @@ export interface Settings {
   profileUnavailable?: Partial<Record<ProviderId, true>>;
   /** Last tank view, restored on the next visit. */
   tankView?: TankView;
+  /** Currency totals are shown in (ISO 4217). Unset: automatic, the one most value is in. */
+  homeCurrency?: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = { provider: 'twelvedata', apiKeys: {} };

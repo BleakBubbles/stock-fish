@@ -3,7 +3,12 @@ import { marketOpenNow } from '../data/market';
 import { DEFAULT_TANK_VIEW, type Pen, type TankView } from '../data/model';
 import { SAMPLE_TANK_CSV, importHoldingsCsv } from '../data/importCsv';
 import { repo, useHoldings, usePens, useProfiles, useSettings } from '../data/store';
-import { type MarketStatus, useMarketEntries } from '../data/useMarket';
+import {
+  type MarketStatus,
+  useFxRates,
+  useHomeCurrency,
+  useMarketEntries,
+} from '../data/useMarket';
 import type { Weather } from '../mood';
 import { type DropTarget, Tank, type TankPlacement } from '../tank/Tank';
 import {
@@ -101,9 +106,15 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
     void repo.saveSettings({ tankView: next });
   };
 
+  // Totals are in one home currency (fish details keep each stock's own).
+  const homeCurrency = useHomeCurrency();
+  const rates = useFxRates();
   const fish = useMemo(
-    () => (holdings && profiles ? buildFish(holdings, profiles, entries ?? new Map()) : []),
-    [holdings, profiles, entries],
+    () =>
+      holdings && profiles
+        ? buildFish(holdings, profiles, entries ?? new Map(), { home: homeCurrency, rates })
+        : [],
+    [holdings, profiles, entries, homeCurrency, rates],
   );
   const shown = useMemo(() => shownPens(pens ?? [], view), [pens, view]);
   const shownIds = useMemo(() => new Set(shown.map((p) => p.id)), [shown]);
@@ -132,7 +143,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
       penId: f.penId,
       mood: f.mood,
       body: f.body,
-      value: f.quote ? f.quantity * f.quote.price : undefined,
+      value: f.home?.value,
     }));
     return home ? homeRegions(items, home.layout) : overviewRegions(view.arrange, items, shown);
   }, [visible, holdings, home, view.arrange, shown]);
@@ -148,9 +159,8 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
   }, [entries, now]);
 
   const selected = visible.find((f) => f.id === selectedId);
-  const currencies = new Set(visible.flatMap((f) => (f.quote?.currency ? [f.quote.currency] : [])));
-  const currency = currencies.size === 1 ? [...currencies][0] : undefined;
-  const priced = visible.some((f) => f.quote);
+  const currency = homeCurrency;
+  const priced = visible.some((f) => f.home);
 
   const groupRegion = home ? undefined : regions.find((r) => r.key === selectedGroup && r.group);
   const summary = useMemo((): GroupSummary | undefined => {
@@ -158,14 +168,11 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
     if (!groupRegion || !group) return undefined;
     const ids = new Set(group.fishIds);
     const members = visible.filter((f) => ids.has(f.id));
-    const pricedMembers = members.filter((f) => f.quote);
-    const valueOf = (list: typeof visible) =>
-      list.reduce((a, f) => a + (f.quote ? f.quantity * f.quote.price : 0), 0);
+    // Priced = has a quote and an exchange rate into the home currency.
+    const pricedMembers = members.filter((f) => f.home);
+    const valueOf = (list: typeof visible) => list.reduce((a, f) => a + (f.home?.value ?? 0), 0);
     const value = valueOf(pricedMembers);
     const total = valueOf(visible);
-    const cur = new Set(
-      pricedMembers.flatMap((f) => (f.quote?.currency ? [f.quote.currency] : [])),
-    );
     return {
       kind:
         groupRegion.key === 'other'
@@ -179,9 +186,9 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
       value: pricedMembers.length ? value : undefined,
       share: pricedMembers.length && total > 0 ? value / total : undefined,
       unpriced: members.length - pricedMembers.length,
-      currency: cur.size === 1 ? [...cur][0] : undefined,
+      currency: homeCurrency,
     };
-  }, [groupRegion, visible, entries, view.arrange]);
+  }, [groupRegion, visible, entries, view.arrange, homeCurrency]);
   const groupPen = groupRegion?.penId ? pens?.find((p) => p.id === groupRegion.penId) : undefined;
 
   /**
@@ -364,6 +371,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
               <FishDetails
                 fish={selected}
                 penName={home ? undefined : pens?.find((p) => p.id === selected.penId)?.name}
+                homeCurrency={homeCurrency}
                 onChangeColours={() => onChangeColours(selected.id)}
                 onMove={() => setDialog({ kind: 'move', holdingId: selected.id })}
                 onClose={() => setSelectedId(undefined)}

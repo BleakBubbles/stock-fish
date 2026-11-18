@@ -32,7 +32,7 @@ export interface GroupSummary {
   share?: number;
   /** How many of its fish have no price yet. */
   unpriced: number;
-  /** Set when all its fish trade in one currency. */
+  /** The home currency every amount here is in. */
   currency?: string;
 }
 

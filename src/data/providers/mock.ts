@@ -1,5 +1,6 @@
 import {
   type DailyBar,
+  type ExchangeRate,
   type MarketDataProvider,
   type Profile,
   type Quote,
@@ -70,6 +71,31 @@ export interface MockOptions {
  * volatility (0.5%–4% a day), so the mood engine sees a spread of moods. The
  * last bar is "today", and the quote's price equals it.
  */
+/**
+ * The demo data's currency for a symbol, from its exchange suffix (Twelve Data
+ * style, e.g. RY:TSX): Toronto in CAD, London in pence, a few others; USD
+ * otherwise.
+ */
+export function mockCurrency(symbol: string): string {
+  const s = symbol.toUpperCase();
+  if (/(:TSXV?|:NEO|\.TO|\.V)$/.test(s)) return 'CAD';
+  if (/(:LSE|\.L)$/.test(s)) return 'GBp';
+  if (/(:XETR|:EURONEXT|\.DE|\.PA|\.AS)$/.test(s)) return 'EUR';
+  if (/(:ASX|\.AX)$/.test(s)) return 'AUD';
+  if (/(:TSE|\.T)$/.test(s)) return 'JPY';
+  return 'USD';
+}
+
+/** Made-up but plausible US dollars per unit, for demo exchange rates. */
+const MOCK_USD_PER: Record<string, number> = {
+  USD: 1,
+  CAD: 0.72,
+  GBP: 1.27,
+  EUR: 1.08,
+  AUD: 0.66,
+  JPY: 0.0066,
+};
+
 export function createMockProvider(options: MockOptions = {}): MarketDataProvider {
   const now = options.now ?? Date.now;
   const HISTORY = 250;
@@ -103,12 +129,21 @@ export function createMockProvider(options: MockOptions = {}): MarketDataProvide
         timestamp: now(),
         name: MOCK_PROFILES[symbol.toUpperCase()]?.name,
         tradingDay: last.date,
-        currency: 'USD',
+        currency: mockCurrency(symbol),
       };
     },
 
     async getDailyHistory(symbol: string, days: number): Promise<DailyBar[]> {
       return series(symbol).slice(-days);
+    },
+
+    async getExchangeRate(from: string, to: string): Promise<ExchangeRate> {
+      const a = MOCK_USD_PER[from];
+      const b = MOCK_USD_PER[to];
+      if (a === undefined || b === undefined) {
+        throw new ProviderError('not-found', `No demo rate for ${from}/${to}`);
+      }
+      return { from, to, rate: a / b, timestamp: now() };
     },
 
     async getProfile(symbol: string): Promise<Profile> {

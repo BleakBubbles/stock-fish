@@ -1,6 +1,7 @@
 import type { Mood } from '../mood/types';
 import type { FishView } from '../tank/model';
 import { measureText, uiFont } from '../theme/pixelFont';
+import { normalizeCurrency } from '../data/currency';
 import { formatChangeRatio, formatMoney } from './format';
 import { PixelButton } from './pixel/PixelButton';
 import { PixelText } from './pixel/PixelText';
@@ -25,13 +26,22 @@ interface Props {
   fish: FishView;
   /** The pen it lives in, shown in an overview of several pens. */
   penName?: string;
+  /** Totals' currency: the holding's value is also shown in it when the stock trades in another. */
+  homeCurrency?: string;
   onChangeColours: () => void;
   onMove: () => void;
   onClose: () => void;
 }
 
 /** The numbers behind one fish: what a price board would show. */
-export function FishDetails({ fish, penName, onChangeColours, onMove, onClose }: Props) {
+export function FishDetails({
+  fish,
+  penName,
+  homeCurrency,
+  onChangeColours,
+  onMove,
+  onClose,
+}: Props) {
   const scale = usePixelScale();
   const quote = fish.quote;
   const result = fish.moodResult;
@@ -42,6 +52,11 @@ export function FishDetails({ fish, penName, onChangeColours, onMove, onClose }:
   const textWidth = Math.min(MAX_WIDTH, viewportUi - PANEL_CHROME);
   const labelWidth = Math.max(...LABELS.map((l) => measureText(uiFont, l)));
   const valueWidth = textWidth - labelWidth - LABEL_GAP;
+
+  // In the home currency too, when the stock trades in another one.
+  const foreign = homeCurrency && currency && normalizeCurrency(currency).code !== homeCurrency;
+  const converted =
+    foreign && fish.home ? ` (≈ ${formatMoney(fish.home.value, homeCurrency)})` : '';
 
   const row = (label: string, value: string, muted?: string) => (
     <div className="px-dl-row">
@@ -78,7 +93,7 @@ export function FishDetails({ fish, penName, onChangeColours, onMove, onClose }:
           {row('Price', formatMoney(quote.price, currency))}
           {row(
             'Holding',
-            `${fish.quantity.toLocaleString()} × ${formatMoney(quote.price, currency)} = ${formatMoney(fish.quantity * quote.price, currency)}`,
+            `${fish.quantity.toLocaleString()} × ${formatMoney(quote.price, currency)} = ${formatMoney(fish.quantity * quote.price, currency)}${converted}`,
           )}
           {row('Mood', MOOD_LABEL[fish.mood], moodNote)}
         </div>

@@ -126,3 +126,21 @@ describe('twelvedata provider', () => {
     await expect(p.getQuote('AAPL')).rejects.toBeInstanceOf(ProviderError);
   });
 });
+
+describe('twelvedata exchange rates', () => {
+  it('asks /exchange_rate for the pair and parses the rate', async () => {
+    const seen: string[] = [];
+    const p = createTwelveDataProvider({
+      throttle: NO_THROTTLE,
+      apiKey: 'KEY',
+      fetch: fakeFetch(200, { symbol: 'USD/CAD', rate: 1.3874, timestamp: 1794934620 }, seen),
+    });
+    expect(await p.getExchangeRate?.('USD', 'CAD')).toEqual({
+      from: 'USD',
+      to: 'CAD',
+      rate: 1.3874,
+      timestamp: 1794934620_000,
+    });
+    expect(seen[0]).toContain('/exchange_rate?symbol=USD%2FCAD');
+  });
+});

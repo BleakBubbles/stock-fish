@@ -2,6 +2,7 @@
  * What the tank shows, derived from holdings, symbol profiles and cached
  * market data. Pure, so it's easy to test; the React hook lives in Tank.tsx.
  */
+import { type RateTable, homeFactor } from '../data/currency';
 import type { Holding, MarketEntry, SymbolProfile } from '../data/model';
 import type { Quote } from '../data/providers/types';
 import { resolveSector } from '../data/sectors';
@@ -38,12 +39,24 @@ export interface FishView {
   change?: number;
   /** Message from the last failed fetch, if any. */
   error?: string;
+  /**
+   * The holding in the home currency, for totals: set once there's a quote
+   * and an exchange rate. `factor` turns a price into home currency.
+   */
+  home?: { factor: number; value: number; change: number };
+}
+
+/** The currency totals are shown in, and the rates to get there. */
+export interface Money {
+  home: string;
+  rates: RateTable;
 }
 
 export function buildFish(
   holdings: readonly Holding[],
   profiles: ReadonlyMap<string, SymbolProfile>,
   market: ReadonlyMap<string, MarketEntry>,
+  money?: Money,
 ): FishView[] {
   return holdings.map((h) => {
     const profile = profiles.get(h.symbol);
@@ -70,30 +83,39 @@ export function buildFish(
       history: entry.bars ?? [],
       asOf: quote.tradingDay,
     });
+    const change = h.quantity * (quote.price - quote.previousClose);
+    const factor = money ? homeFactor(quote.currency, money.home, money.rates) : 1;
     return {
       ...base,
       mood: moodResult.mood,
       state: 'ok',
       quote,
       moodResult,
-      change: h.quantity * (quote.price - quote.previousClose),
+      change,
+      ...(factor !== undefined && {
+        home: { factor, value: h.quantity * quote.price * factor, change: change * factor },
+      }),
     };
   });
 }
 
-/** Weather for a set of fish (only those with quotes count). */
+/**
+ * Weather for a set of fish, in the home currency. Only fish with a quote and
+ * an exchange rate count. Each price is converted at today's rate, so the
+ * change is the stocks' own move (not the currency's).
+ */
 export function weatherFor(
   fish: readonly FishView[],
   market: ReadonlyMap<string, MarketEntry>,
 ): WeatherResult {
   return portfolioWeather(
     fish.flatMap((f) =>
-      f.quote
+      f.quote && f.home
         ? [
             {
               quantity: f.quantity,
-              price: f.quote.price,
-              previousClose: f.quote.previousClose,
+              price: f.quote.price * f.home.factor,
+              previousClose: f.quote.previousClose * f.home.factor,
               history: market.get(f.symbol)?.bars ?? [],
               asOf: f.quote.tradingDay,
             },

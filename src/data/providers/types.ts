@@ -29,6 +29,15 @@ export interface DailyBar {
   close: number;
 }
 
+/** How many units of `to` one unit of `from` buys. */
+export interface ExchangeRate {
+  from: string;
+  to: string;
+  rate: number;
+  /** When the rate was observed, in ms since the Unix epoch. */
+  timestamp: number;
+}
+
 export interface Profile {
   sector?: string;
   name?: string;
@@ -44,6 +53,8 @@ export interface MarketDataProvider {
    */
   getDailyHistory(symbol: string, days: number): Promise<DailyBar[]>;
   getProfile?(symbol: string): Promise<Profile>;
+  /** Latest exchange rate between two ISO 4217 currencies (major units, e.g. GBP not GBp). */
+  getExchangeRate?(from: string, to: string): Promise<ExchangeRate>;
 }
 
 export type ProviderErrorKind =

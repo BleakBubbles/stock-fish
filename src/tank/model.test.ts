@@ -92,3 +92,38 @@ describe('weatherFor', () => {
     expect(weatherFor([], market).reason).toBe('empty');
   });
 });
+
+describe('mixed currencies', () => {
+  const inCurrency = (symbol: string, move: number, currency: string): MarketEntry => {
+    const e = entry(symbol, move);
+    return { ...e, quote: e.quote && { ...e.quote, currency } };
+  };
+  const market = new Map([
+    ['AAPL', inCurrency('AAPL', 0.01, 'USD')],
+    ['RY:TSX', inCurrency('RY:TSX', 0.01, 'CAD')],
+    ['SONY', inCurrency('SONY', 0.01, 'JPY')],
+  ]);
+  const holdings = [holding('AAPL', 10), holding('RY:TSX', 10), holding('SONY', 10)];
+  const money = { home: 'CAD', rates: new Map([['USD/CAD', 1.4]]) };
+
+  it('values each fish in the home currency, once its rate is known', () => {
+    const fish = buildFish(holdings, new Map(), market, money);
+    const [aapl, ry, sony] = fish;
+    const native = 10 * (aapl?.quote?.price ?? 0);
+    expect(aapl?.home?.value).toBeCloseTo(native * 1.4);
+    expect(ry?.home?.value).toBeCloseTo(native);
+    expect(sony?.home).toBeUndefined(); // no JPY rate yet
+    // The fish's own numbers stay in its own currency.
+    expect(aapl?.change).toBeCloseTo(10 * (aapl!.quote!.price - aapl!.quote!.previousClose));
+  });
+
+  it('adds up the weather in CAD, leaving out fish without a rate', () => {
+    const fish = buildFish(holdings, new Map(), market, money);
+    const [aapl, ry] = fish;
+    const expected = (aapl?.home?.change ?? 0) + (ry?.home?.change ?? 0);
+    const weather = weatherFor(fish, market);
+    expect(weather.change).toBeCloseTo(expected);
+    // Same move everywhere, so the portfolio moved by that much too.
+    expect(weather.changeRatio).toBeCloseTo(0.01);
+  });
+});

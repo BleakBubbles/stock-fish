@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useState } from 'react';
+import { type RateTable, autoHomeCurrency } from './currency';
 import type { MarketEntry } from './model';
 import { providerFromSettings } from './providers';
 import { type RefreshStop, refreshMarketData } from './refresh';
@@ -20,6 +21,7 @@ export type MarketStatus =
 export function useMarketRefresh(): MarketStatus {
   const settings = useSettings();
   const holdings = useHoldings();
+  const home = useHomeCurrency();
   const [status, setStatus] = useState<MarketStatus>({ state: 'updating' });
 
   const providerKey = settings
@@ -46,6 +48,7 @@ export function useMarketRefresh(): MarketStatus {
       try {
         const result = await refreshMarketData(db, provider, symbols, {
           signal: controller.signal,
+          home,
         });
         if (!controller.signal.aborted) {
           setStatus({ state: 'idle', stop: result.stop, failed: result.failed });
@@ -61,7 +64,7 @@ export function useMarketRefresh(): MarketStatus {
       controller.abort();
       clearInterval(timer);
     };
-  }, [provider, symbolKey]);
+  }, [provider, symbolKey, home]);
 
   return provider ? status : { state: 'no-provider' };
 }
@@ -75,4 +78,39 @@ export function useMarketEntries(): Map<string, MarketEntry> | undefined {
     const rows = await db.market.toArray();
     return new Map(rows.filter((r) => r.provider === providerId).map((r) => [r.symbol, r]));
   }, [providerId]);
+}
+
+/** Cached exchange rates for the current provider: 'USD/CAD' → rate. */
+export function useFxRates(): RateTable {
+  const settings = useSettings();
+  const providerId = settings?.provider;
+  const rates = useLiveQuery(async () => {
+    if (!providerId) return new Map<string, number>();
+    const rows = await db.fx.toArray();
+    return new Map(
+      rows.flatMap((r) =>
+        r.provider === providerId && r.rate !== undefined ? [[r.pair, r.rate] as const] : [],
+      ),
+    );
+  }, [providerId]);
+  return rates ?? EMPTY_RATES;
+}
+
+const EMPTY_RATES: RateTable = new Map();
+
+/**
+ * The currency totals are shown in: the user's choice in Settings, else the
+ * one most of their holdings' value is in.
+ */
+export function useHomeCurrency(): string {
+  const settings = useSettings();
+  const holdings = useHoldings();
+  const entries = useMarketEntries();
+  if (settings?.homeCurrency) return settings.homeCurrency;
+  return autoHomeCurrency(
+    (holdings ?? []).flatMap((h) => {
+      const quote = entries?.get(h.symbol)?.quote;
+      return quote ? [{ currency: quote.currency, value: h.quantity * quote.price }] : [];
+    }),
+  );
 }

@@ -7,7 +7,9 @@ import {
   providerFromSettings,
   testProvider,
 } from '../data/providers';
+import { normalizeCurrency } from '../data/currency';
 import { db, repo, useSettings } from '../data/store';
+import { useHomeCurrency, useMarketEntries } from '../data/useMarket';
 import { downloadText } from './files';
 import { promptInstall, useInstallState } from './install';
 import { PixelButton } from './pixel/PixelButton';
@@ -28,6 +30,7 @@ export function SettingsScreen() {
     <section className="px-stack px-page-stack" aria-labelledby="settings-title">
       <PixelHeading text="Settings" id="settings-title" />
       <MarketDataSettings settings={settings} />
+      <CurrencySettings settings={settings} />
       <BackupSettings />
       <InstallSettings />
       <div className="px-panel px-stack px-wide">
@@ -129,6 +132,42 @@ function MarketDataSettings({ settings }: { settings: Settings }) {
         )}
       </div>
     </form>
+  );
+}
+
+const COMMON_CURRENCIES = ['USD', 'CAD', 'EUR', 'GBP', 'AUD', 'JPY'];
+const AUTO = 'auto';
+
+/** The currency totals are shown in. Fish keep their own stock's currency. */
+function CurrencySettings({ settings }: { settings: Settings }) {
+  const home = useHomeCurrency();
+  const entries = useMarketEntries();
+  const held = [...(entries?.values() ?? [])].flatMap((e) =>
+    e.quote?.currency ? [normalizeCurrency(e.quote.currency).code] : [],
+  );
+  const codes = [...new Set([...COMMON_CURRENCIES, ...held])];
+  const value = settings.homeCurrency ?? AUTO;
+  return (
+    <div className="px-panel px-stack px-wide">
+      <PixelHeading text="Currency" level={3} />
+      <PixelParagraph
+        text="Totals (weather, groups, territory) are shown in one currency. Each fish keeps its own."
+        tone="textMuted"
+      />
+      <PixelChoice
+        label="Home currency"
+        options={[
+          { value: AUTO, label: settings.homeCurrency ? 'Automatic' : `Automatic (${home})` },
+          ...codes.map((c) => ({ value: c, label: c })),
+        ]}
+        value={value}
+        onChange={(v) => void repo.saveSettings({ homeCurrency: v === AUTO ? undefined : v })}
+      />
+      <PixelParagraph
+        text="Automatic uses the currency most of your holdings are in. Rates update twice a day."
+        tone="textMuted"
+      />
+    </div>
   );
 }
 

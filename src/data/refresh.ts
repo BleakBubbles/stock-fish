@@ -1,12 +1,15 @@
+import { pairsNeeded } from './currency';
 import type { StockFishDb } from './db';
 import { lastSettledClose, marketOpenNow } from './market';
-import type { MarketEntry } from './model';
+import type { FxEntry, MarketEntry } from './model';
 import { type MarketDataProvider, ProviderError } from './providers';
 
 /** Quotes refresh this often while the market is open (CLAUDE.md placeholder). */
 export const QUOTE_INTERVAL = 15 * 60_000;
 /** A symbol that failed isn't retried for this long. */
 export const ERROR_RETRY = 15 * 60_000;
+/** Exchange rates refresh this often (totals only need a recent rate). */
+export const FX_INTERVAL = 12 * 60 * 60_000;
 /** Daily bars to fetch: 60 returns need 61 closes, plus today's unfinished bar. */
 export const HISTORY_DAYS = 62;
 
@@ -47,6 +50,15 @@ export function needsHistory(entry: MarketEntry | undefined, now: number): boole
   return at < lastSettledClose(now);
 }
 
+/** Does this currency pair need a new rate? Twice a day, after an error's back-off. */
+export function needsRate(entry: FxEntry | undefined, now: number): boolean {
+  if (entry?.error !== undefined && entry.error.at <= now && now - entry.error.at < ERROR_RETRY) {
+    return false;
+  }
+  const at = fetchedAt(entry?.rate === undefined ? undefined : entry.at, now);
+  return at === undefined || now - at >= FX_INTERVAL;
+}
+
 export type RefreshStop =
   /** Everything due was fetched (or nothing was due). */
   | 'done'
@@ -60,19 +72,25 @@ export type RefreshStop =
 export interface RefreshResult {
   stop: RefreshStop;
   requests: number;
-  /** Symbols that failed this run. */
+  /** Symbols (or currency pairs) that failed this run. */
   failed: string[];
 }
 
 /**
  * Fetch whatever is due for these symbols, one request at a time (the
- * provider paces itself). Quotes first, so moods appear quickly, then history.
+ * provider paces itself): quotes first, so moods appear quickly, then the
+ * exchange rates totals need, then history.
  */
 export async function refreshMarketData(
   db: StockFishDb,
   provider: MarketDataProvider,
   symbols: readonly string[],
-  options: { now?: () => number; signal?: AbortSignal } = {},
+  options: {
+    now?: () => number;
+    signal?: AbortSignal;
+    /** Currency for totals: fetch rates from each quote currency into it. */
+    home?: string;
+  } = {},
 ): Promise<RefreshResult> {
   const now = options.now ?? Date.now;
   const unique = [...new Set(symbols)];
@@ -92,38 +110,90 @@ export async function refreshMarketData(
   );
   const open = marketOpenNow(now(), recent);
 
-  type Job = { symbol: string; kind: 'quote' | 'history' };
-  const jobs: Job[] = [
-    ...unique
-      .filter((_, i) => needsQuote(entries[i], now(), open))
-      .map((symbol) => ({ symbol, kind: 'quote' as const })),
-    ...unique
-      .filter((_, i) => needsHistory(entries[i], now()))
-      .map((symbol) => ({ symbol, kind: 'history' as const })),
-  ];
+  const quoteJobs = unique.filter((_, i) => needsQuote(entries[i], now(), open));
+  const historyJobs = unique.filter((_, i) => needsHistory(entries[i], now()));
 
-  for (const job of jobs) {
-    if (options.signal?.aborted) return { ...result, stop: 'aborted' };
-    if (result.failed.includes(job.symbol)) continue;
+  /** Run one request; false means stop the whole run (result.stop says why). */
+  const attempt = async (
+    label: string,
+    task: () => Promise<void>,
+    onError: (error: FxEntry['error'] & {}) => Promise<void>,
+  ) => {
+    if (options.signal?.aborted) {
+      result.stop = 'aborted';
+      return false;
+    }
     try {
       result.requests++;
-      if (job.kind === 'quote') {
-        const quote = await provider.getQuote(job.symbol);
-        if (options.signal?.aborted) return { ...result, stop: 'aborted' };
-        await save(job.symbol, { quote, quoteAt: now(), error: undefined });
-      } else {
-        const bars = await provider.getDailyHistory(job.symbol, HISTORY_DAYS);
-        if (options.signal?.aborted) return { ...result, stop: 'aborted' };
-        await save(job.symbol, { bars, barsAt: now(), error: undefined });
+      await task();
+      if (options.signal?.aborted) {
+        result.stop = 'aborted';
+        return false;
       }
     } catch (e) {
       const kind = e instanceof ProviderError ? e.kind : 'unknown';
-      if (kind === 'auth' || kind === 'rate-limit') return { ...result, stop: kind };
-      result.failed.push(job.symbol);
-      await save(job.symbol, {
-        error: { kind, message: e instanceof Error ? e.message : String(e), at: now() },
-      });
+      if (kind === 'auth' || kind === 'rate-limit') {
+        result.stop = kind;
+        return false;
+      }
+      result.failed.push(label);
+      await onError({ kind, message: e instanceof Error ? e.message : String(e), at: now() });
     }
+    return true;
+  };
+
+  // 1. Quotes, so moods appear quickly.
+  for (const symbol of quoteJobs) {
+    const ok = await attempt(
+      symbol,
+      async () => {
+        const quote = await provider.getQuote(symbol);
+        if (!options.signal?.aborted)
+          await save(symbol, { quote, quoteAt: now(), error: undefined });
+      },
+      (error) => save(symbol, { error }),
+    );
+    if (!ok) return result;
+  }
+
+  // 2. Exchange rates into the home currency, so totals add up.
+  const home = options.home;
+  const getRate = provider.getExchangeRate?.bind(provider);
+  if (home && getRate) {
+    const quotes = await Promise.all(unique.map(load));
+    const currencies = quotes.flatMap((e) => (e?.quote?.currency ? [e.quote.currency] : []));
+    for (const pair of pairsNeeded(currencies, home)) {
+      const stored = await db.fx.get(pair);
+      const entry = stored?.provider === provider.id ? stored : undefined;
+      if (!needsRate(entry, now())) continue;
+      const [from = '', to = ''] = pair.split('/');
+      const ok = await attempt(
+        pair,
+        async () => {
+          const { rate } = await getRate(from, to);
+          if (!options.signal?.aborted) {
+            await db.fx.put({ pair, provider: provider.id, rate, at: now() });
+          }
+        },
+        (error) =>
+          db.fx.put({ ...entry, pair, provider: provider.id, error }).then(() => undefined),
+      );
+      if (!ok) return result;
+    }
+  }
+
+  // 3. History, for the typical size of a day's move.
+  for (const symbol of historyJobs) {
+    if (result.failed.includes(symbol)) continue;
+    const ok = await attempt(
+      symbol,
+      async () => {
+        const bars = await provider.getDailyHistory(symbol, HISTORY_DAYS);
+        if (!options.signal?.aborted) await save(symbol, { bars, barsAt: now(), error: undefined });
+      },
+      (error) => save(symbol, { error }),
+    );
+    if (!ok) return result;
   }
   return result;
 }

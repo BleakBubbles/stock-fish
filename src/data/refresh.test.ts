@@ -6,10 +6,12 @@ import { createMockProvider } from './providers/mock';
 import { type MarketDataProvider, ProviderError } from './providers/types';
 import {
   ERROR_RETRY,
+  FX_INTERVAL,
   HISTORY_DAYS,
   QUOTE_INTERVAL,
   needsHistory,
   needsQuote,
+  needsRate,
   refreshMarketData,
   usableEntry,
 } from './refresh';
@@ -156,5 +158,45 @@ describe('refreshMarketData', () => {
     await refreshMarketData(db, other.provider, ['KO'], { now: () => now });
     expect(other.calls).toHaveLength(2);
     expect((await db.market.get('KO'))?.provider).toBe('other');
+  });
+});
+
+describe('exchange rates in the refresh', () => {
+  let db: StockFishDb;
+  beforeEach(() => {
+    db = new StockFishDb(`test-${crypto.randomUUID()}`);
+  });
+
+  it('fetches each foreign currency into home, between quotes and history, twice a day', async () => {
+    const calls: string[] = [];
+    const mock = createMockProvider({ now: () => at(12) });
+    const provider: MarketDataProvider = {
+      ...mock,
+      getQuote: (s) => (calls.push(`quote:${s}`), mock.getQuote(s)),
+      getDailyHistory: (s, d) => (calls.push(`history:${s}`), mock.getDailyHistory(s, d)),
+      getExchangeRate: (f, t) => (calls.push(`fx:${f}/${t}`), mock.getExchangeRate!(f, t)),
+    };
+    const symbols = ['AAPL', 'RY:TSX', 'VOD:LSE'];
+    await refreshMarketData(db, provider, symbols, { now: () => at(12), home: 'CAD' });
+    expect(calls.filter((c) => c.startsWith('fx:'))).toEqual(['fx:GBP/CAD', 'fx:USD/CAD']);
+    // Rates come after every quote and before any history.
+    const firstFx = calls.findIndex((c) => c.startsWith('fx:'));
+    expect(calls.slice(0, firstFx).every((c) => c.startsWith('quote:'))).toBe(true);
+    expect(calls.slice(firstFx + 2).every((c) => c.startsWith('history:'))).toBe(true);
+    expect((await db.fx.get('USD/CAD'))?.rate).toBeCloseTo(1 / 0.72);
+
+    calls.length = 0;
+    await refreshMarketData(db, provider, symbols, { now: () => at(14), home: 'CAD' });
+    expect(calls.filter((c) => c.startsWith('fx:'))).toEqual([]);
+  });
+
+  it('needs a rate when missing, stale, or after an error has backed off', () => {
+    const fx = (changes: object) => ({ pair: 'USD/CAD', provider: 'mock', ...changes });
+    expect(needsRate(undefined, at(12))).toBe(true);
+    expect(needsRate(fx({ rate: 1.4, at: at(11) }), at(12))).toBe(false);
+    expect(needsRate(fx({ rate: 1.4, at: at(11) }), at(11) + FX_INTERVAL)).toBe(true);
+    const error = { kind: 'network' as const, message: 'x', at: at(12) };
+    expect(needsRate(fx({ error }), at(12) + 60_000)).toBe(false);
+    expect(needsRate(fx({ error }), at(12) + ERROR_RETRY)).toBe(true);
   });
 });

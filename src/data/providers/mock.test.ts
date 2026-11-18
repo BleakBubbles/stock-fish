@@ -49,3 +49,14 @@ describe('mock provider with the mood engine', () => {
     expect(moods.size).toBeGreaterThanOrEqual(3);
   });
 });
+
+describe('mock currencies', () => {
+  it('prices by exchange suffix, with rates between them', async () => {
+    const p = createMockProvider({ now: () => Date.UTC(2026, 10, 17, 20) });
+    expect((await p.getQuote('RY:TSX')).currency).toBe('CAD');
+    expect((await p.getQuote('VOD:LSE')).currency).toBe('GBp');
+    expect((await p.getQuote('AAPL')).currency).toBe('USD');
+    const usdCad = await p.getExchangeRate?.('USD', 'CAD');
+    expect(usdCad?.rate).toBeCloseTo(1 / 0.72);
+  });
+});
