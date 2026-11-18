@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { type Backup, exportBackup, restoreBackup, validateBackup } from '../data/backup';
 import type { ProviderId, Settings } from '../data/model';
 import {
@@ -9,27 +9,33 @@ import {
 } from '../data/providers';
 import { db, repo, useSettings } from '../data/store';
 import { downloadText } from './files';
+import { PixelButton } from './pixel/PixelButton';
+import { PixelInput } from './pixel/PixelInput';
+import {
+  PixelChoice,
+  PixelField,
+  PixelFileButton,
+  PixelHeading,
+  PixelLink,
+  PixelParagraph,
+} from './pixel/blocks';
 
 export function SettingsScreen() {
   const settings = useSettings();
   if (!settings) return null;
   return (
-    <section className="stack" aria-labelledby="settings-title">
-      <h2 id="settings-title" className="visually-hidden">
-        Settings
-      </h2>
+    <section className="px-stack px-page-stack" aria-labelledby="settings-title">
+      <PixelHeading text="Settings" id="settings-title" />
       <MarketDataSettings settings={settings} />
       <BackupSettings />
-      <div className="panel stack">
-        <h3>About</h3>
-        <p>
-          <strong>Not investment advice.</strong> Stock Fish only displays prices for fun. It never
-          executes trades and doesn't tell you what to buy or sell.
-        </p>
-        <p className="muted">
-          Your holdings and key stay in this browser. Clearing site data wipes the tank, so export a
-          backup now and then.
-        </p>
+      <div className="px-panel px-stack px-wide">
+        <PixelHeading text="About" level={3} />
+        <PixelParagraph text="Not investment advice." tone="warning" />
+        <PixelParagraph text="Stock Fish only shows prices, for fun. It never trades and never says what to buy or sell." />
+        <PixelParagraph
+          text="Your fish and key stay in this browser. Clearing site data empties the tank, so export a backup now and then."
+          tone="textMuted"
+        />
       </div>
     </section>
   );
@@ -48,7 +54,7 @@ function MarketDataSettings({ settings }: { settings: Settings }) {
   };
   const needsKey = PROVIDERS.find((p) => p.id === provider)?.needsKey ?? false;
 
-  async function save(e: React.FormEvent) {
+  async function save(e: FormEvent) {
     e.preventDefault();
     await repo.saveSettings(draft);
     setSaved(true);
@@ -62,71 +68,62 @@ function MarketDataSettings({ settings }: { settings: Settings }) {
   }
 
   return (
-    <form className="panel stack" onSubmit={save}>
-      <h3>Market data</h3>
-      <fieldset className="stack">
-        <legend>Source</legend>
-        {PROVIDERS.map((p) => (
-          <label key={p.id} className="choice">
-            <input
-              type="radio"
-              name="provider"
-              value={p.id}
-              checked={provider === p.id}
-              onChange={() => {
-                setProvider(p.id);
-                setSaved(false);
-                setTest(undefined);
-              }}
-            />
-            {p.name}
-          </label>
-        ))}
-      </fieldset>
+    <form className="px-panel px-stack px-wide" onSubmit={(e) => void save(e)}>
+      <PixelHeading text="Market data" level={3} />
+      <PixelField label="Source">
+        <PixelChoice
+          label="Source"
+          options={PROVIDERS.map((p) => ({ value: p.id, label: p.name }))}
+          value={provider}
+          onChange={(id) => {
+            setProvider(id);
+            setSaved(false);
+            setTest(undefined);
+          }}
+        />
+      </PixelField>
       {needsKey && (
         <>
-          <div className="field">
-            <label htmlFor="api-key">Twelve Data API key</label>
-            <div className="inline">
-              <input
-                id="api-key"
+          <PixelField label="Twelve Data API key">
+            <div className="px-input-row">
+              <PixelInput
+                label="Twelve Data API key"
                 type={showKey ? 'text' : 'password'}
                 value={key}
-                onChange={(e) => {
-                  setKey(e.target.value);
+                onChange={(v) => {
+                  setKey(v);
                   setSaved(false);
                   setTest(undefined);
                 }}
-                autoComplete="off"
-                spellCheck={false}
               />
-              <button type="button" className="button" onClick={() => setShowKey(!showKey)}>
-                {showKey ? 'Hide' : 'Show'}
-              </button>
+              <PixelButton
+                label={showKey ? 'Hide' : 'Show'}
+                aria-pressed={showKey}
+                onClick={() => setShowKey(!showKey)}
+              />
             </div>
+          </PixelField>
+          <div className="px-row">
+            <PixelLink href="https://twelvedata.com/pricing" text="Get a free key" />
           </div>
-          <p className="muted">
-            Get a free key at{' '}
-            <a href="https://twelvedata.com/pricing" target="_blank" rel="noreferrer">
-              twelvedata.com
-            </a>
-            . It's stored only in this browser and sent only to Twelve Data. The free plan allows
-            800 requests a day.
-          </p>
+          <PixelParagraph
+            text="It stays in this browser and goes only to Twelve Data. Free plan: 800 requests a day."
+            tone="textMuted"
+          />
         </>
       )}
-      <div className="actions">
-        <button type="submit" className="button is-primary">
-          Save
-        </button>
-        <button type="button" className="button" onClick={runTest} disabled={test === 'running'}>
-          {test === 'running' ? 'Testing…' : needsKey ? 'Test key' : 'Test'}
-        </button>
+      <div className="px-row">
+        <PixelButton type="submit" label="Save" primary />
+        <PixelButton
+          label={test === 'running' ? 'Testing…' : needsKey ? 'Test key' : 'Test'}
+          disabled={test === 'running'}
+          onClick={() => void runTest()}
+        />
       </div>
-      <div role="status">
-        {saved && <p className="message is-success">Saved.</p>}
+      <div role="status" className="px-stack">
+        {saved && <PixelParagraph text="Saved." tone="success" />}
         {test && test !== 'running' && (
-          <p className={`message ${test.ok ? 'is-success' : 'is-warning'}`}>{test.detail}</p>
+          <PixelParagraph text={test.detail} tone={test.ok ? 'success' : 'warning'} />
         )}
       </div>
     </form>
@@ -134,7 +131,6 @@ function MarketDataSettings({ settings }: { settings: Settings }) {
 }
 
 function BackupSettings() {
-  const fileRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<Backup>();
   const [message, setMessage] = useState<{ ok: boolean; text: string }>();
 
@@ -150,7 +146,7 @@ function BackupSettings() {
     try {
       data = JSON.parse(await file.text());
     } catch {
-      return setMessage({ ok: false, text: 'That file is not valid JSON.' });
+      return setMessage({ ok: false, text: "That file isn't a backup (not valid JSON)." });
     }
     const result = validateBackup(data);
     if (!result.ok) return setMessage({ ok: false, text: result.errors.join(' ') });
@@ -163,55 +159,41 @@ function BackupSettings() {
     await restoreBackup(db, pending);
     setMessage({
       ok: true,
-      text: `Restored ${pending.holdings.length} holdings in ${pending.pens.length} pens.`,
+      text: `Restored ${pending.holdings.length} fish in ${pending.pens.length} pens.`,
     });
     setPending(undefined);
   }
 
   return (
-    <div className="panel stack">
-      <h3>Backup</h3>
-      <p className="muted">
-        A JSON file with your pens and holdings. It doesn't include your API key.
-      </p>
-      <div className="actions">
-        <button type="button" className="button" onClick={exportJson}>
-          Export backup
-        </button>
-        <button type="button" className="button" onClick={() => fileRef.current?.click()}>
-          Import backup…
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
+    <div className="px-panel px-stack px-wide">
+      <PixelHeading text="Backup" level={3} />
+      <PixelParagraph
+        text="A file with your pens, fish and colours. Your API key isn't in it."
+        tone="textMuted"
+      />
+      <div className="px-row">
+        <PixelButton label="Export backup" onClick={() => void exportJson()} />
+        <PixelFileButton
+          label="Import backup…"
           accept=".json,application/json"
-          hidden
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = '';
-            if (file) void readFile(file);
-          }}
+          onFile={(f) => void readFile(f)}
         />
       </div>
       {pending && (
-        <div className="stack" role="alertdialog" aria-label="Confirm restore">
-          <p className="message is-warning">
-            Replace everything in your tank with this backup ({pending.holdings.length} holdings in{' '}
-            {pending.pens.length} pens)? Your current holdings will be lost.
-          </p>
-          <div className="actions">
-            <button type="button" className="button" onClick={restore}>
-              Replace my tank
-            </button>
-            <button type="button" className="button" onClick={() => setPending(undefined)}>
-              Cancel
-            </button>
+        <div className="px-stack" role="alertdialog" aria-label="Confirm restore">
+          <PixelParagraph
+            text={`Replace your whole tank with this backup (${pending.holdings.length} fish in ${pending.pens.length} pens)? Your current fish will be lost.`}
+            tone="warning"
+          />
+          <div className="px-row">
+            <PixelButton label="Replace my tank" onClick={() => void restore()} />
+            <PixelButton label="Cancel" onClick={() => setPending(undefined)} />
           </div>
         </div>
       )}
       <div role="status">
         {message && (
-          <p className={`message ${message.ok ? 'is-success' : 'is-warning'}`}>{message.text}</p>
+          <PixelParagraph text={message.text} tone={message.ok ? 'success' : 'warning'} />
         )}
       </div>
     </div>

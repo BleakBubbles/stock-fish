@@ -1,12 +1,15 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { CSV_TEMPLATE } from '../data/csv';
 import { type ImportReport, SAMPLE_TANK_CSV, importHoldingsCsv } from '../data/importCsv';
+import { resolveSector } from '../data/sectors';
 import { repo, useHoldings, usePens, useProfiles } from '../data/store';
 import { fishColours } from '../theme';
-import { resolveSector } from '../data/sectors';
 import { bodyForSector } from '../theme/bodies';
 import { FishSprite } from './FishSprite';
 import { downloadText } from './files';
+import { PixelButton } from './pixel/PixelButton';
+import { PixelText } from './pixel/PixelText';
+import { PixelFileButton, PixelHeading, PixelParagraph } from './pixel/blocks';
 
 interface Props {
   onAdd: () => void;
@@ -14,93 +17,73 @@ interface Props {
   onColours: (id: string) => void;
 }
 
+const formatCost = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+
 export function HoldingsScreen({ onAdd, onEdit, onColours }: Props) {
   const holdings = useHoldings();
   const pens = usePens();
   const profiles = useProfiles();
-  const fileRef = useRef<HTMLInputElement>(null);
   const [report, setReport] = useState<ImportReport>();
 
   if (!holdings || !pens || !profiles) return null;
 
-  async function importCsv(file: File) {
-    setReport(await importHoldingsCsv(repo, await file.text()));
-  }
+  const importText = async (text: string) => setReport(await importHoldingsCsv(repo, text));
 
   return (
-    <section className="stack" aria-labelledby="holdings-title">
-      <div className="panel stack">
-        <h2 id="holdings-title">Holdings</h2>
-        <div className="actions">
-          <button type="button" className="button is-primary" onClick={onAdd}>
-            Add a holding
-          </button>
-          <button type="button" className="button" onClick={() => fileRef.current?.click()}>
-            Import CSV…
-          </button>
-          <button
-            type="button"
-            className="button"
-            onClick={() => downloadText('stock-fish-template.csv', CSV_TEMPLATE, 'text/csv')}
-          >
-            Download CSV template
-          </button>
-          <button
-            type="button"
-            className="button"
-            onClick={() => void importHoldingsCsv(repo, SAMPLE_TANK_CSV).then(setReport)}
-          >
-            Load sample tank
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
+    <section className="px-stack px-page-stack" aria-labelledby="holdings-title">
+      <PixelHeading text="Holdings" id="holdings-title" />
+
+      <div className="px-panel px-stack px-wide">
+        <div className="px-row">
+          <PixelButton label="Add a holding" primary onClick={onAdd} />
+          <PixelFileButton
+            label="Import CSV…"
             accept=".csv,text/csv"
-            hidden
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = '';
-              if (file) void importCsv(file);
-            }}
+            onFile={(f) => void f.text().then(importText)}
           />
+          <PixelButton
+            label="CSV template"
+            onClick={() => downloadText('stock-fish-template.csv', CSV_TEMPLATE, 'text/csv')}
+          />
+          <PixelButton label="Load sample tank" onClick={() => void importText(SAMPLE_TANK_CSV)} />
         </div>
-        <p className="muted">
-          CSV columns: <code>symbol,quantity,pen</code>. Re-importing replaces the quantity of a
-          symbol already in that pen. Imported fish get default colours; change them below. The
-          sample tank adds made-up holdings in three "Sample" pens, to try the app.
-        </p>
+        <PixelParagraph
+          text="CSV columns: symbol, quantity, pen. Importing again updates quantities instead of adding fish twice."
+          tone="textMuted"
+        />
+        <PixelParagraph
+          text="The sample is made-up fish in three Sample pens, for trying things out."
+          tone="textMuted"
+        />
         {report && (
-          <div role="status" className="stack">
-            <p className={`message ${report.errors.length ? 'is-warning' : 'is-success'}`}>
-              Imported {report.added} new, updated {report.updated}
-              {report.errors.length ? `, skipped ${report.errors.length}` : ''}.
-            </p>
-            {report.errors.length > 0 && (
-              <ul className="message is-warning">
-                {report.errors.map((e) => (
-                  <li key={e.line}>
-                    Line {e.line}: {e.message}
-                  </li>
-                ))}
-              </ul>
-            )}
+          <div role="status" className="px-stack px-wide">
+            <PixelParagraph
+              text={`Added ${report.added}, updated ${report.updated}${report.errors.length ? `, skipped ${report.errors.length}` : ''}.`}
+              tone={report.errors.length ? 'warning' : 'success'}
+            />
+            {report.errors.map((e) => (
+              <PixelParagraph key={e.line} text={`Line ${e.line}: ${e.message}`} tone="warning" />
+            ))}
           </div>
         )}
       </div>
 
       {holdings.length === 0 ? (
-        <p className="panel">No fish yet. Add a holding or import a CSV.</p>
+        <div className="px-panel px-stack px-wide">
+          <PixelParagraph text="No fish yet. Add a holding, import a CSV or load the sample." />
+        </div>
       ) : (
         pens.map((pen) => {
           const inPen = holdings.filter((h) => h.penId === pen.id);
           if (inPen.length === 0) return null;
           return (
-            <div key={pen.id} className="panel stack">
-              <h3>{pen.name}</h3>
+            <section key={pen.id} className="px-panel px-stack px-wide" aria-label={pen.name}>
+              <PixelHeading text={pen.name} level={3} />
               <ul className="holding-list">
                 {inPen.map((h) => {
                   const { primary, secondary } = fishColours(h);
                   const profile = profiles.get(h.symbol);
+                  const shares = `${h.quantity.toLocaleString()} ${h.quantity === 1 ? 'share' : 'shares'}`;
                   return (
                     <li key={h.id} className="holding-row">
                       <FishSprite
@@ -108,39 +91,36 @@ export function HoldingsScreen({ onAdd, onEdit, onColours }: Props) {
                         mood="neutral"
                         primary={primary}
                         secondary={secondary}
-                        scale={2}
+                        scale={1}
                       />
                       <div className="holding-text">
-                        <strong>{h.symbol}</strong>
-                        <span className="muted">
-                          {h.quantity.toLocaleString()} {h.quantity === 1 ? 'share' : 'shares'}
-                          {h.costBasis !== undefined &&
-                            ` · cost ${h.costBasis.toLocaleString(undefined, { maximumFractionDigits: 4 })}`}
-                        </span>
+                        <PixelText text={h.symbol} />
+                        <PixelText
+                          text={
+                            h.costBasis === undefined
+                              ? shares
+                              : `${shares} · cost ${formatCost(h.costBasis)}`
+                          }
+                          tone="textMuted"
+                        />
                       </div>
-                      <div className="actions">
-                        <button
-                          type="button"
-                          className="button"
-                          onClick={() => onColours(h.id)}
+                      <div className="px-row">
+                        <PixelButton
+                          label="Colours"
                           aria-label={`Change colours of ${h.symbol}`}
-                        >
-                          Colours
-                        </button>
-                        <button
-                          type="button"
-                          className="button"
-                          onClick={() => onEdit(h.id)}
+                          onClick={() => onColours(h.id)}
+                        />
+                        <PixelButton
+                          label="Edit"
                           aria-label={`Edit ${h.symbol}`}
-                        >
-                          Edit
-                        </button>
+                          onClick={() => onEdit(h.id)}
+                        />
                       </div>
                     </li>
                   );
                 })}
               </ul>
-            </div>
+            </section>
           );
         })
       )}

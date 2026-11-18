@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { colours, css, type FishColours, type Hex } from '../theme';
+import { PixelText } from './pixel/PixelText';
 
 interface Props {
   value: FishColours;
@@ -21,18 +22,18 @@ export function ColourPicker({ value, onChange }: Props) {
 
   return (
     <div className="colour-picker">
-      <div className="slot-tabs" role="radiogroup" aria-label="Colour to change">
+      <div className="px-row" role="radiogroup" aria-label="Colour to change">
         {(['primary', 'secondary'] as const).map((s) => (
           <button
             key={s}
             type="button"
             role="radio"
             aria-checked={slot === s}
-            className={`slot-tab${slot === s ? ' is-active' : ''}`}
+            className={`px-button slot-tab${slot === s ? ' is-filled' : ''}`}
             onClick={() => setSlot(s)}
           >
             <span className="swatch-chip" style={{ background: css(value[s]) }} aria-hidden />
-            {SLOT_LABEL[s]}
+            <PixelText text={SLOT_LABEL[s]} tone={slot === s ? 'buttonText' : 'text'} />
           </button>
         ))}
       </div>

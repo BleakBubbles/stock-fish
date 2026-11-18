@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import type { Holding, Pen, SymbolProfile } from '../data/model';
-import { SOURCE_LABEL, resolveSector } from '../data/sectors';
 import { isValidCostBasis, isValidQuantity } from '../data/model';
+import { SOURCE_LABEL, resolveSector } from '../data/sectors';
 import { repo, usePens, useProfiles } from '../data/store';
 import { type FishColours, defaultColours, fishColours } from '../theme';
 import { bodyForSector, familyLabel } from '../theme/bodies';
@@ -10,6 +10,9 @@ import { FamilyPicker } from './FamilyPicker';
 import { FishSprite } from './FishSprite';
 import { NEW_PEN, PenField } from './PenField';
 import { parseNumberInput } from './files';
+import { PixelButton } from './pixel/PixelButton';
+import { PixelInput } from './pixel/PixelInput';
+import { PixelField, PixelHeading, PixelParagraph } from './pixel/blocks';
 
 interface Props {
   holding: Holding;
@@ -62,44 +65,48 @@ function EditLook({
   }
 
   return (
-    <section className="panel stack" aria-labelledby="look-title">
-      <h2 id="look-title">Change colours: {holding.symbol}</h2>
-      <div className="meet">
-        <FishSprite
-          body={bodyForSector(sector)}
-          mood="happy"
-          primary={colours.primary}
-          secondary={colours.secondary}
-          scale={4}
-          label={`${holding.symbol} fish`}
-        />
-      </div>
-      <ColourPicker value={colours} onChange={setColours} />
-      <div className="actions">
-        <button type="button" className="button" onClick={() => setColours(defaults)}>
-          Default colours
-        </button>
-      </div>
-      <h3>Family</h3>
-      <p className="muted">
-        {familyLabel(sector)}
-        {source && ` (${SOURCE_LABEL[source]})`}. Changing it reshapes every {holding.symbol} fish.
-      </p>
-      <FamilyPicker sector={sector} colours={colours} onChange={setUserSector} />
-      {userSector && automatic.sector && (
-        <div className="actions">
-          <button type="button" className="button" onClick={() => setUserSector(undefined)}>
-            Use {familyLabel(automatic.sector)} ({SOURCE_LABEL[automatic.source ?? 'builtin']})
-          </button>
+    <section className="px-stack px-page-stack" aria-labelledby="look-title">
+      <PixelHeading text={`${holding.symbol} colours`} id="look-title" />
+      <div className="px-panel px-stack px-wide">
+        <div className="meet">
+          <FishSprite
+            body={bodyForSector(sector)}
+            mood="happy"
+            primary={colours.primary}
+            secondary={colours.secondary}
+            scale={3}
+            label={`${holding.symbol} fish`}
+          />
         </div>
-      )}
-      <div className="actions">
-        <button type="button" className="button is-primary" onClick={save}>
-          Save
-        </button>
-        <button type="button" className="button" onClick={onDone}>
-          Cancel
-        </button>
+        <div className="px-row">
+          <PixelButton label="Save" primary onClick={() => void save()} />
+          <PixelButton label="Cancel" onClick={onDone} />
+        </div>
+      </div>
+
+      <div className="px-panel px-stack px-wide">
+        <PixelHeading text="Colours" level={3} />
+        <ColourPicker value={colours} onChange={setColours} />
+        <div className="px-row">
+          <PixelButton label="Default colours" onClick={() => setColours(defaults)} />
+        </div>
+      </div>
+
+      <div className="px-panel px-stack px-wide">
+        <PixelHeading text="Family" level={3} />
+        <PixelParagraph
+          text={`${familyLabel(sector)}${source ? ` (${SOURCE_LABEL[source]})` : ''}. Changing it reshapes every ${holding.symbol} fish.`}
+          tone="textMuted"
+        />
+        <FamilyPicker sector={sector} colours={colours} onChange={setUserSector} />
+        {userSector && automatic.sector && (
+          <div className="px-row">
+            <PixelButton
+              label={`Use ${familyLabel(automatic.sector)} (${SOURCE_LABEL[automatic.source ?? 'builtin']})`}
+              onClick={() => setUserSector(undefined)}
+            />
+          </div>
+        )}
       </div>
     </section>
   );
@@ -123,7 +130,7 @@ function EditDetails({
   const [error, setError] = useState<string>();
   const [confirmingRemove, setConfirmingRemove] = useState(false);
 
-  async function save(e: React.FormEvent) {
+  async function save(e: FormEvent) {
     e.preventDefault();
     const q = parseNumberInput(quantity);
     const c = parseNumberInput(costBasis);
@@ -141,63 +148,52 @@ function EditDetails({
   }
 
   return (
-    <form className="panel stack" onSubmit={save} noValidate>
-      <h2>Edit {holding.symbol}</h2>
-      <div className="field">
-        <label htmlFor="quantity">Quantity</label>
-        <input
-          id="quantity"
-          inputMode="decimal"
-          value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
+    <form className="px-stack px-page-stack" onSubmit={(e) => void save(e)} noValidate>
+      <PixelHeading text={`Edit ${holding.symbol}`} />
+      <div className="px-panel px-stack px-wide">
+        <PixelField label="Quantity">
+          <PixelInput
+            label="Quantity"
+            inputMode="decimal"
+            value={quantity}
+            onChange={setQuantity}
+          />
+        </PixelField>
+        <PixelField label="Average cost per share" hint="optional">
+          <PixelInput
+            label="Average cost per share (optional)"
+            inputMode="decimal"
+            value={costBasis}
+            onChange={setCostBasis}
+          />
+        </PixelField>
+        <PenField
+          pens={pens}
+          value={penId}
+          newName={newPenName}
+          onChange={setPenId}
+          onNewNameChange={setNewPenName}
         />
+        {error && <PixelParagraph text={error} tone="warning" role="alert" />}
+        <div className="px-row">
+          <PixelButton type="submit" label="Save" primary />
+          <PixelButton label="Cancel" onClick={onDone} />
+        </div>
       </div>
-      <div className="field">
-        <label htmlFor="cost">
-          Average cost per share <span className="muted">(optional)</span>
-        </label>
-        <input
-          id="cost"
-          inputMode="decimal"
-          value={costBasis}
-          onChange={(e) => setCostBasis(e.target.value)}
-        />
-      </div>
-      <PenField
-        pens={pens}
-        value={penId}
-        newName={newPenName}
-        onChange={setPenId}
-        onNewNameChange={setNewPenName}
-      />
-      {error && (
-        <p className="message is-warning" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="actions">
-        <button type="submit" className="button is-primary">
-          Save
-        </button>
-        <button type="button" className="button" onClick={onDone}>
-          Cancel
-        </button>
-      </div>
-      <div className="actions">
+
+      <div className="px-panel px-stack px-wide">
         {confirmingRemove ? (
           <>
-            <span>Remove {holding.symbol} from your tank?</span>
-            <button type="button" className="button" onClick={remove}>
-              Yes, remove
-            </button>
-            <button type="button" className="button" onClick={() => setConfirmingRemove(false)}>
-              Keep it
-            </button>
+            <PixelParagraph text={`Remove ${holding.symbol} from your tank?`} tone="warning" />
+            <div className="px-row">
+              <PixelButton label="Yes, remove" onClick={() => void remove()} />
+              <PixelButton label="Keep it" onClick={() => setConfirmingRemove(false)} />
+            </div>
           </>
         ) : (
-          <button type="button" className="button" onClick={() => setConfirmingRemove(true)}>
-            Remove holding…
-          </button>
+          <div className="px-row">
+            <PixelButton label="Remove holding…" onClick={() => setConfirmingRemove(true)} />
+          </div>
         )}
       </div>
     </form>

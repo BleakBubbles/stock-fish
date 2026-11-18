@@ -24,29 +24,17 @@ export function PixelRoot({ className, children }: { className?: string; childre
 }
 
 /**
- * Fills its (positioned) parent with a layer in another unit, undoing the
- * pixel root's scale:
- * - `device`: 1 CSS px = 1 device pixel (the tank's canvas).
- * - `css`: 1 CSS px = 1 normal CSS px, for screens not converted to pixel UI
- *   yet; --sf-px is the UI pixel in CSS px there, as before, and isn't exact.
+ * Fills its (positioned) parent with a layer in device pixels (1 CSS px = 1
+ * device pixel), undoing the pixel root's scale: for the tank's canvas, whose
+ * art pixels are whole device pixels rather than whole UI pixels.
  */
-export function Rescale({
-  unit,
-  className,
-  children,
-}: {
-  unit: 'device' | 'css';
-  className?: string;
-  children: ReactNode;
-}) {
-  const { dpr, ui } = usePixelScale();
-  // Local units per UI pixel.
-  const f = unit === 'device' ? ui : ui / dpr;
+export function Rescale({ className, children }: { className?: string; children: ReactNode }) {
+  const { ui } = usePixelScale();
   const style = {
-    width: `${100 * f}%`,
-    height: `${100 * f}%`,
-    transform: `scale(${1 / f})`,
-    '--sf-px': `${f}px`,
+    width: `${100 * ui}%`,
+    height: `${100 * ui}%`,
+    transform: `scale(${1 / ui})`,
+    '--sf-px': `${ui}px`,
   } as CSSProperties;
   return (
     <div className={['px-rescale', className].filter(Boolean).join(' ')} style={style}>

@@ -8,7 +8,8 @@ import { SettingsScreen } from './ui/SettingsScreen';
 import { TankScreen } from './ui/TankScreen';
 import { PixelButton } from './ui/pixel/PixelButton';
 import { PixelCheck } from './ui/pixel/PixelCheck';
-import { PixelRoot, Rescale } from './ui/pixel/PixelRoot';
+import { PixelRoot } from './ui/pixel/PixelRoot';
+import { PixelScroll } from './ui/pixel/blocks';
 import { PixelText } from './ui/pixel/PixelText';
 
 type TabView = { name: 'tank' | 'holdings' | 'settings' };
@@ -76,9 +77,8 @@ export function App() {
             />
           </div>
           {view.name !== 'tank' && (
-            // Not converted to pixel UI yet (milestone 6): normal CSS pixels.
-            <Rescale unit="css">
-              <div className="main-scroll">
+            <PixelScroll>
+              <div className="px-page">
                 {view.name === 'holdings' && (
                   <HoldingsScreen
                     onAdd={() => setView({ name: 'add' })}
@@ -101,7 +101,7 @@ export function App() {
                 )}
                 {view.name === 'settings' && <SettingsScreen />}
               </div>
-            </Rescale>
+            </PixelScroll>
           )}
         </main>
       </PixelRoot>

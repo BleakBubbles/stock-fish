@@ -21,7 +21,7 @@
   transform-origin: 0 0;
 }
 
-/* A layer in device or CSS pixels inside the root (Rescale). */
+/* A layer in device pixels inside the root (Rescale). */
 .px-rescale {
   position: absolute;
   left: 0;
@@ -59,24 +59,9 @@ ul {
   margin: 0;
 }
 
-h1 {
-  font-size: 1.25rem;
-}
-
-h2 {
-  font-size: 1.2rem;
-}
-
-h3 {
-  font-size: 1rem;
-}
-
-a {
-  color: var(--sf-text);
-}
-
-code {
-  font-size: 0.95em;
+ul {
+  padding: 0;
+  list-style: none;
 }
 
 canvas {
@@ -86,19 +71,6 @@ canvas {
 :focus-visible {
   outline: var(--line) solid var(--sf-focus);
   outline-offset: var(--line);
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.muted {
-  color: var(--sf-textMuted);
 }
 
 /* Layout */
@@ -129,17 +101,6 @@ canvas {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-}
-
-.main-scroll {
-  height: 100%;
-  overflow: auto;
-  padding: var(--gap);
-}
-
-.main-scroll > * {
-  max-width: 40rem;
-  margin-inline: auto;
 }
 
 .tank-page {
@@ -200,216 +161,159 @@ canvas {
   z-index: 5;
 }
 
-.stack {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap);
-}
-
-.actions,
-.inline {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: calc(var(--sf-px) * 2);
-}
-
-.inline input {
-  flex: 1;
-}
-
-/* Pixel panels and controls: square corners, hard borders, no blur. */
-
-.panel {
-  background: var(--sf-panel);
-  border: var(--line) solid var(--sf-border);
-  padding: var(--gap);
-  box-shadow: var(--sf-px) var(--sf-px) 0 var(--sf-border);
-}
-
-.button,
-.tab {
-  font: inherit;
-  cursor: pointer;
-  padding: calc(var(--sf-px) * 2) calc(var(--sf-px) * 4);
-  border: var(--line) solid var(--sf-border);
-  border-radius: 0;
-  background: var(--sf-panel);
-  color: var(--sf-text);
-  box-shadow: var(--sf-px) var(--sf-px) 0 var(--sf-border);
-}
-
-.button:active:not(:disabled),
-.tab:active {
-  translate: var(--sf-px) var(--sf-px);
-  box-shadow: none;
-}
-
-.button.is-primary,
-.tab.is-active {
-  background: var(--sf-button);
-  color: var(--sf-buttonText);
-}
-
-.button:disabled {
-  cursor: progress;
-  opacity: 0.7;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sf-px);
-}
-
-input:not([type='radio']):not([type='file']),
-select {
-  font: inherit;
-  padding: calc(var(--sf-px) * 2);
-  border: var(--line) solid var(--sf-border);
-  border-radius: 0;
-  background: var(--sf-water);
-  color: var(--sf-text);
-}
-
-fieldset {
-  border: var(--line) solid var(--sf-border);
-  margin: 0;
-  padding: var(--gap);
-}
-
-.choice {
-  display: flex;
-  gap: calc(var(--sf-px) * 2);
-  align-items: center;
-}
-
-.message {
-  padding-left: calc(var(--sf-px) * 3);
-  border-left: calc(var(--sf-px) * 2) solid currentColor;
-}
-
-.message.is-warning {
-  color: var(--sf-warning);
-}
-
-.message.is-success {
-  color: var(--sf-success);
-}
-
-/* Fish */
+/* Fish sprites: 32 × 25 art pixels, a whole number of UI pixels each. */
 
 .fish-sprite {
+  display: block;
   width: calc(32 * var(--sf-px) * var(--fish-scale, 1));
   height: calc(25 * var(--sf-px) * var(--fish-scale, 1));
   flex: none;
 }
 
+/* Meet your fish: the fish on open water beside its name. */
 .meet {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--gap);
-  padding: var(--gap);
+  /* Top-aligned: centring could land the fish on half a pixel. */
+  align-items: flex-start;
+  gap: calc(var(--sf-px) * 6);
+  padding: calc(var(--sf-px) * 5);
   background: var(--sf-water);
-  border: var(--line) solid var(--sf-border);
+  box-shadow: inset 0 0 0 var(--sf-px) var(--sf-border);
+  line-height: 0;
+}
+
+/* The name and family beside the fish: a real column for paragraphs to wrap in. */
+.meet-text {
+  flex: 1;
+  min-width: calc(var(--sf-px) * 100);
+  align-items: stretch;
 }
 
 .holding-list {
-  list-style: none;
-  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: calc(var(--sf-px) * 2);
+  gap: calc(var(--sf-px) * 4);
+  line-height: 0;
 }
 
 .holding-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--gap);
+  gap: calc(var(--sf-px) * 3) calc(var(--sf-px) * 4);
 }
 
+/*
+ * Centred in a 25-pixel row, so its height must leave an even remainder:
+ * 9 + 3 + 9 = 21 sits 2 pixels down (a 2-pixel gap would sit 2.5 down).
+ */
 .holding-text {
   display: flex;
   flex-direction: column;
+  gap: calc(var(--sf-px) * 3);
   flex: 1;
-  min-width: 8rem;
+  min-width: calc(var(--sf-px) * 70);
 }
 
-/* Colour picker */
+/* Colour picker: body/fins tabs, then the 32 swatches. */
 
-.slot-tabs {
+.colour-picker {
   display: flex;
-  gap: calc(var(--sf-px) * 2);
+  flex-direction: column;
+  gap: calc(var(--sf-px) * 4);
+  line-height: 0;
 }
 
 .slot-tab {
-  font: inherit;
   display: flex;
   align-items: center;
-  gap: calc(var(--sf-px) * 2);
-  padding: calc(var(--sf-px) * 2) calc(var(--sf-px) * 4);
-  border: var(--line) solid var(--sf-border);
-  background: var(--sf-panel);
-  color: var(--sf-text);
-  cursor: pointer;
-}
-
-.slot-tab.is-active {
-  outline: var(--line) solid var(--sf-selectionOutline);
+  gap: calc(var(--sf-px) * 3);
 }
 
 .swatch-chip {
-  display: inline-block;
-  width: calc(var(--sf-px) * 6);
-  height: calc(var(--sf-px) * 6);
-  border: var(--line) solid var(--sf-border);
+  display: block;
+  width: calc(var(--sf-px) * 7);
+  height: calc(var(--sf-px) * 7);
+  box-shadow: inset 0 0 0 var(--sf-px) var(--sf-border);
 }
 
 .swatches {
   display: grid;
   grid-template-columns: repeat(8, calc(var(--sf-px) * 14));
-  gap: calc(var(--sf-px) * 2);
+  gap: calc(var(--sf-px) * 3);
 }
 
 .swatch {
+  position: relative;
   width: calc(var(--sf-px) * 14);
   height: calc(var(--sf-px) * 14);
+  margin: 0;
   padding: 0;
-  border: var(--line) solid var(--sf-border);
+  border: 0;
+  border-radius: 0;
   cursor: pointer;
+  box-shadow: inset 0 0 0 var(--sf-px) var(--sf-border);
 }
 
-.swatch.is-selected {
-  outline: var(--line) solid var(--sf-selectionOutline);
-  outline-offset: var(--line);
+/* Selected: a white ring 1 pixel outside the swatch (like a selected fish). */
+.swatch.is-selected::after,
+.family.is-selected::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--sf-px) * -2);
+  box-shadow: inset 0 0 0 var(--sf-px) var(--sf-selectionOutline);
+  pointer-events: none;
 }
 
-/* Family picker */
+.swatch:focus-visible,
+.family:focus-visible {
+  outline: none;
+}
+
+.swatch:focus-visible::before,
+.family:focus-visible::before {
+  content: '';
+  position: absolute;
+  inset: calc(var(--sf-px) * -3);
+  box-shadow: inset 0 0 0 var(--sf-px) var(--sf-focus);
+  pointer-events: none;
+}
+
+/* Family picker: the six bodies, each with its name. */
 
 .families {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(calc(var(--sf-px) * 48), 1fr));
-  gap: calc(var(--sf-px) * 2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--sf-px) * 4);
+  line-height: 0;
 }
 
 .family {
-  font: inherit;
+  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: var(--sf-px);
-  padding: calc(var(--sf-px) * 2);
-  border: var(--line) solid var(--sf-border);
-  background: var(--sf-water);
-  color: var(--sf-text);
+  /* FamilyPicker centres the fish and name itself, on whole pixels. */
+  align-items: flex-start;
+  gap: calc(var(--sf-px) * 2);
+  margin: 0;
+  padding: calc(var(--sf-px) * 4) 0;
+  border: 0;
+  border-radius: 0;
   cursor: pointer;
+  font: inherit;
+  line-height: 0;
+  background: var(--sf-water);
+  box-shadow: inset 0 0 0 var(--sf-px) var(--sf-border);
 }
 
 .family.is-selected {
-  outline: var(--line) solid var(--sf-selectionOutline);
-  outline-offset: var(--line);
+  background: var(--sf-button);
+}
+
+.family > span {
+  display: block;
+  line-height: 0;
 }
 
 /*
@@ -694,4 +598,129 @@ fieldset {
   inset: calc(var(--sf-px) * -2);
   box-shadow: inset 0 0 0 var(--sf-px) var(--sf-focus);
   pointer-events: none;
+}
+
+/* Milestone 6: full screens in pixel UI (Holdings, Add, Edit, Settings). */
+
+.px-scroll-wrap {
+  position: relative;
+  height: 100%;
+}
+
+.px-scroll {
+  height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  /* The browser's scrollbar would scale with the root: PixelScroll draws its own. */
+  scrollbar-width: none;
+}
+
+.px-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* The pixel scrollbar: a 3-pixel thumb on the right edge. */
+.px-scrollbar {
+  position: absolute;
+  top: calc(var(--sf-px) * 2);
+  bottom: calc(var(--sf-px) * 2);
+  right: calc(var(--sf-px) * 2);
+  width: calc(var(--sf-px) * 3);
+  pointer-events: none;
+}
+
+.px-scrollbar-thumb {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background: var(--sf-panel);
+  box-shadow: inset 0 0 0 var(--sf-px) var(--sf-border);
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.px-scrollbar-thumb:hover {
+  background: var(--sf-textMuted);
+}
+
+/* The page column: whole UI pixels wide, left-aligned in the scroll area. */
+.px-page {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sf-px) * 6);
+  max-width: calc(var(--sf-px) * 300);
+  padding: calc(var(--sf-px) * 4);
+  line-height: 0;
+}
+
+.px-page-stack {
+  gap: calc(var(--sf-px) * 6);
+}
+
+/* Panels on a page span the column. */
+.px-wide {
+  align-self: stretch;
+  align-items: stretch;
+}
+
+.px-wide > .px-row,
+.px-wide > .px-field {
+  align-self: flex-start;
+}
+
+.px-heading,
+.px-para {
+  margin: 0;
+  line-height: 0;
+}
+
+.px-para {
+  display: block;
+  width: 100%;
+}
+
+.px-field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: calc(var(--sf-px) * 2);
+  line-height: 0;
+}
+
+.px-wide > .px-field {
+  align-self: stretch;
+}
+
+.px-input.is-fill {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+/* A fill-width field with a button beside it (e.g. Show for the API key). */
+.px-input-row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--sf-px) * 3);
+  line-height: 0;
+}
+
+/* Links: pixel text with a 1-pixel underline. */
+.px-link {
+  display: inline-block;
+  line-height: 0;
+  padding-bottom: calc(var(--sf-px) * 2);
+  box-shadow: inset 0 calc(var(--sf-px) * -1) 0 var(--sf-text);
+}
+
+.px-link:hover {
+  box-shadow: inset 0 calc(var(--sf-px) * -1) 0 var(--sf-button);
+}
+
+.px-link:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 calc(var(--sf-px) * -1) 0 var(--sf-text),
+    0 0 0 var(--sf-px) var(--sf-focus);
 }

@@ -336,7 +336,7 @@ export function Tank({
 
   return (
     <div className="tank-slot" aria-label={label} role="region">
-      <Rescale unit="device">
+      <Rescale>
         <div ref={hostRef} className="tank-host" />
       </Rescale>
       {children}

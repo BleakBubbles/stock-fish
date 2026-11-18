@@ -1,16 +1,20 @@
-import { useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { lookUpSymbol } from '../data/lookup';
 import { isValidCostBasis, isValidQuantity, isValidSymbol, normalizeSymbol } from '../data/model';
 import { providerFromSettings } from '../data/providers';
+import { type SectorSource, SOURCE_LABEL } from '../data/sectors';
 import { repo, usePens, useSettings } from '../data/store';
 import { type FishColours, defaultColours } from '../theme';
-import { type SectorSource, SOURCE_LABEL } from '../data/sectors';
 import { bodyForSector, familyLabel } from '../theme/bodies';
 import { ColourPicker } from './ColourPicker';
 import { FamilyPicker } from './FamilyPicker';
 import { FishSprite } from './FishSprite';
 import { NEW_PEN, PenField } from './PenField';
 import { parseNumberInput } from './files';
+import { PixelButton } from './pixel/PixelButton';
+import { PixelInput } from './pixel/PixelInput';
+import { PixelText } from './pixel/PixelText';
+import { PixelField, PixelHeading, PixelParagraph } from './pixel/blocks';
 
 interface Props {
   onDone: () => void;
@@ -54,7 +58,7 @@ function DetailsStep({ onNext, onCancel }: { onNext: (d: Draft) => void; onCance
   const provider = providerFromSettings(settings);
   const penId = penChoice ?? pens[0]?.id ?? NEW_PEN;
 
-  async function submit(e: React.FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
     const s = normalizeSymbol(symbol);
     const q = parseNumberInput(quantity);
@@ -86,62 +90,48 @@ function DetailsStep({ onNext, onCancel }: { onNext: (d: Draft) => void; onCance
   }
 
   return (
-    <form className="panel stack" onSubmit={submit} noValidate>
-      <h2>Add a holding</h2>
-      <div className="field">
-        <label htmlFor="symbol">Symbol</label>
-        <input
-          id="symbol"
-          value={symbol}
-          onChange={(e) => setSymbol(e.target.value)}
-          autoCapitalize="characters"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="AAPL"
-          maxLength={20}
-          autoFocus
+    <form className="px-stack px-page-stack" onSubmit={(e) => void submit(e)} noValidate>
+      <PixelHeading text="Add a holding" />
+      <div className="px-panel px-stack px-wide">
+        <PixelField label="Symbol">
+          <PixelInput
+            label="Symbol"
+            value={symbol}
+            onChange={setSymbol}
+            autoCapitalize="characters"
+            placeholder="AAPL"
+            maxLength={20}
+            autoFocus
+          />
+        </PixelField>
+        <PixelField label="Quantity">
+          <PixelInput
+            label="Quantity"
+            inputMode="decimal"
+            value={quantity}
+            onChange={setQuantity}
+          />
+        </PixelField>
+        <PixelField label="Average cost per share" hint="optional">
+          <PixelInput
+            label="Average cost per share (optional)"
+            inputMode="decimal"
+            value={costBasis}
+            onChange={setCostBasis}
+          />
+        </PixelField>
+        <PenField
+          pens={pens}
+          value={penId}
+          newName={newPenName}
+          onChange={setPenChoice}
+          onNewNameChange={setNewPenName}
         />
-      </div>
-      <div className="field">
-        <label htmlFor="quantity">Quantity</label>
-        <input
-          id="quantity"
-          inputMode="decimal"
-          value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
-          placeholder="10"
-        />
-      </div>
-      <div className="field">
-        <label htmlFor="cost">
-          Average cost per share <span className="muted">(optional)</span>
-        </label>
-        <input
-          id="cost"
-          inputMode="decimal"
-          value={costBasis}
-          onChange={(e) => setCostBasis(e.target.value)}
-        />
-      </div>
-      <PenField
-        pens={pens}
-        value={penId}
-        newName={newPenName}
-        onChange={setPenChoice}
-        onNewNameChange={setNewPenName}
-      />
-      {error && (
-        <p className="message is-warning" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="actions">
-        <button type="submit" className="button is-primary" disabled={busy}>
-          {busy ? 'Checking…' : 'Next'}
-        </button>
-        <button type="button" className="button" onClick={onCancel}>
-          Cancel
-        </button>
+        {error && <PixelParagraph text={error} tone="warning" role="alert" />}
+        <div className="px-row">
+          <PixelButton type="submit" label={busy ? 'Checking…' : 'Next'} primary disabled={busy} />
+          <PixelButton label="Cancel" onClick={onCancel} />
+        </div>
       </div>
     </form>
   );
@@ -164,6 +154,9 @@ function MeetYourFish({
   const [choosingFamily, setChoosingFamily] = useState(!known);
   const sector = chosenSector ?? draft.sector;
   const body = bodyForSector(sector);
+  const source = chosenSector
+    ? SOURCE_LABEL.user
+    : draft.sectorSource && SOURCE_LABEL[draft.sectorSource];
 
   async function save() {
     try {
@@ -188,63 +181,58 @@ function MeetYourFish({
   }
 
   return (
-    <section className="panel stack" aria-labelledby="meet-title">
-      <h2 id="meet-title">Meet your fish</h2>
-      <div className="meet">
-        <FishSprite
-          body={body}
-          mood="happy"
-          primary={colours.primary}
-          secondary={colours.secondary}
-          scale={4}
-          label={`${draft.symbol} fish`}
-        />
-        <p>
-          <strong>{draft.symbol}</strong>
-          {draft.name && <span className="muted"> · {draft.name}</span>}
-          <br />
-          <span className="muted">
-            Family: {familyLabel(sector)}
-            {chosenSector
-              ? ` (${SOURCE_LABEL.user})`
-              : draft.sectorSource && ` (${SOURCE_LABEL[draft.sectorSource]})`}
-          </span>
-        </p>
-      </div>
-      {choosingFamily ? (
-        <div className="stack">
-          <h3>{known ? 'Pick its family' : `Which family is ${draft.symbol}?`}</h3>
-          {!known && (
-            <p className="muted">
-              {draft.symbol} isn't in the built-in list, so pick the closest family. It sets the
-              fish's shape; funds and anything unsure can stay Consumer.
-            </p>
-          )}
-          <FamilyPicker sector={sector} colours={colours} onChange={setChosenSector} />
+    <section className="px-stack px-page-stack" aria-labelledby="meet-title">
+      <PixelHeading text="Meet your fish" id="meet-title" />
+      <div className="px-panel px-stack px-wide">
+        <div className="meet">
+          <FishSprite
+            body={body}
+            mood="happy"
+            primary={colours.primary}
+            secondary={colours.secondary}
+            scale={3}
+            label={`${draft.symbol} fish`}
+          />
+          <div className="px-stack meet-text">
+            <PixelText text={draft.symbol} />
+            {draft.name && <PixelParagraph text={draft.name} tone="textMuted" />}
+            <PixelParagraph
+              text={`Family: ${familyLabel(sector)}${source ? ` (${source})` : ''}`}
+              tone="textMuted"
+            />
+          </div>
         </div>
-      ) : (
-        <div className="actions">
-          <button type="button" className="button" onClick={() => setChoosingFamily(true)}>
-            Change family
-          </button>
+        {draft.notice && <PixelParagraph text={draft.notice} tone="warning" />}
+        <div className="px-row">
+          <PixelButton label="Add this fish" primary onClick={() => void save()} autoFocus />
+          <PixelButton label="Back" onClick={onBack} />
         </div>
-      )}
-      {draft.notice && <p className="message is-warning">{draft.notice}</p>}
-      <div className="actions">
-        <button type="button" className="button is-primary" onClick={save} autoFocus>
-          Add this fish
-        </button>
-        <button type="button" className="button" onClick={onBack}>
-          Back
-        </button>
+        {error && <PixelParagraph text={error} tone="warning" role="alert" />}
       </div>
-      <h3>Or pick its colours</h3>
-      <ColourPicker value={colours} onChange={setColours} />
-      {error && (
-        <p className="message is-warning" role="alert">
-          {error}
-        </p>
-      )}
+
+      <div className="px-panel px-stack px-wide">
+        <PixelHeading text="Colours" level={3} />
+        <ColourPicker value={colours} onChange={setColours} />
+      </div>
+
+      <div className="px-panel px-stack px-wide">
+        <PixelHeading text="Family" level={3} />
+        {choosingFamily ? (
+          <>
+            {!known && (
+              <PixelParagraph
+                text={`${draft.symbol} isn't in the built-in list. Pick the closest family: it sets the fish's shape. Funds and unsure ones can stay Consumer.`}
+                tone="textMuted"
+              />
+            )}
+            <FamilyPicker sector={sector} colours={colours} onChange={setChosenSector} />
+          </>
+        ) : (
+          <div className="px-row">
+            <PixelButton label="Change family" onClick={() => setChoosingFamily(true)} />
+          </div>
+        )}
+      </div>
     </section>
   );
 }
