@@ -28,7 +28,7 @@ Not investment advice. Stock Fish only displays prices and never executes trades
 
 ## Running it
 
-Needs Node 22 or later.
+Uses Node 24 (`.nvmrc`; CI and the hosted build use it too). Node 22 still works.
 
 ```sh
 npm install
