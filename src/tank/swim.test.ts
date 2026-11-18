@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { type Bounds, type SwimState, clampTo, hasLeft, leave, spawn, step } from './swim';
+import {
+  type Bounds,
+  type SwimState,
+  clampTo,
+  hasLeft,
+  leave,
+  regroup,
+  resume,
+  spawn,
+  step,
+} from './swim';
 
 /** Deterministic PRNG (mulberry32) so runs are repeatable. */
 function seeded(seed: number) {
@@ -83,5 +93,57 @@ describe('swim', () => {
       { minX: 0, minY: 10, maxX: 100, maxY: 60 },
     );
     expect(s).toMatchObject({ x: 100, targetX: 100, y: 60 });
+  });
+});
+
+describe('regroup', () => {
+  const LEFT: Bounds = { minX: 0, minY: 6, maxX: 100, maxY: 150 };
+  const RIGHT: Bounds = { minX: 200, minY: 6, maxX: 288, maxY: 150 };
+
+  it('a fish outside its new region hurries there, then calms down', () => {
+    const rand = seeded(7);
+    let s = regroup({ ...spawn(rand, LEFT), x: 50, y: 50 }, RIGHT, rand);
+    expect(s.hurry).toBe(true);
+    expect(s.pause).toBe(0);
+    expect(s.targetX).toBeGreaterThanOrEqual(200);
+    let t = 0;
+    while (s.hurry && t < 30) {
+      s = step(s, 0.1, rand, RIGHT);
+      t += 0.1;
+    }
+    expect(s.hurry).toBe(false);
+    expect(s.x).toBeGreaterThanOrEqual(200);
+    // Well under the ~15 s a cruising fish would take.
+    expect(t).toBeLessThan(8);
+  });
+
+  it('a fish already inside stays calm', () => {
+    const rand = seeded(3);
+    const s = { ...spawn(rand, LEFT), x: 50, y: 50, targetX: 60, targetY: 60 };
+    expect(regroup(s, LEFT, rand)).toBe(s);
+  });
+});
+
+describe('resume', () => {
+  const B: Bounds = { minX: 0, minY: 6, maxX: 288, maxY: 150 };
+
+  it('a fish shown again picks up exactly where it was', () => {
+    const rand = seeded(11);
+    const parked = {
+      ...spawn(rand, B),
+      x: 123,
+      y: 45,
+      targetX: 130,
+      targetY: 50,
+      facing: -1 as const,
+    };
+    expect(resume(parked, B, rand)).toEqual({ ...parked, hurry: false });
+  });
+
+  it('if its patch moved while hidden, it swims to the new one', () => {
+    const rand = seeded(12);
+    const parked = { ...spawn(rand, B), x: 10, y: 45 };
+    const s = resume(parked, { minX: 200, minY: 6, maxX: 288, maxY: 150 }, rand);
+    expect(s).toMatchObject({ x: 10, y: 45, hurry: true });
   });
 });

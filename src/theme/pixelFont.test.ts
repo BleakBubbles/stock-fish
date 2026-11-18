@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { measureText, normalizeText, parseFont, uiFont, wrapText } from './pixelFont';
+import {
+  caretIndexAt,
+  caretOffsets,
+  measureText,
+  normalizeText,
+  parseFont,
+  uiFont,
+  wrapText,
+} from './pixelFont';
 
 describe('parseFont', () => {
   it('reads the Silkscreen grid', () => {
@@ -44,5 +52,22 @@ describe('text', () => {
     for (const line of narrow)
       expect(measureText(uiFont, line)).toBeLessThanOrEqual(measureText(uiFont, 'ABC'));
     expect(wrapText(uiFont, 'a\nb', 100)).toEqual(['a', 'b']);
+  });
+});
+
+describe('caret offsets', () => {
+  it('maps caret positions to font pixels and back', () => {
+    const offsets = caretOffsets(uiFont, 'AB');
+    const a = measureText(uiFont, 'A');
+    expect(offsets).toEqual([0, a, a + measureText(uiFont, 'B')]);
+    expect(caretIndexAt(offsets, a - 1)).toBe(1);
+    expect(caretIndexAt(offsets, -5)).toBe(0);
+    expect(caretIndexAt(offsets, 999)).toBe(2);
+  });
+
+  it('gives a surrogate pair one glyph of width', () => {
+    const offsets = caretOffsets(uiFont, 'A\u{1F41F}');
+    expect(offsets).toHaveLength(4);
+    expect(offsets[2]).toBe(offsets[3]);
   });
 });

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { CSV_TEMPLATE, type CsvError, parseHoldingsCsv } from '../data/csv';
+import { CSV_TEMPLATE } from '../data/csv';
+import { type ImportReport, SAMPLE_TANK_CSV, importHoldingsCsv } from '../data/importCsv';
 import { repo, useHoldings, usePens, useProfiles } from '../data/store';
 import { fishColours } from '../theme';
 import { resolveSector } from '../data/sectors';
@@ -13,12 +14,6 @@ interface Props {
   onColours: (id: string) => void;
 }
 
-interface ImportReport {
-  added: number;
-  updated: number;
-  errors: CsvError[];
-}
-
 export function HoldingsScreen({ onAdd, onEdit, onColours }: Props) {
   const holdings = useHoldings();
   const pens = usePens();
@@ -29,16 +24,7 @@ export function HoldingsScreen({ onAdd, onEdit, onColours }: Props) {
   if (!holdings || !pens || !profiles) return null;
 
   async function importCsv(file: File) {
-    const { rows, errors } = parseHoldingsCsv(await file.text());
-    let added = 0;
-    let updated = 0;
-    for (const row of rows) {
-      const pen = await repo.findOrCreatePen(row.pen);
-      const result = await repo.upsertHolding(row.symbol, row.quantity, pen.id);
-      if (result === 'added') added++;
-      else updated++;
-    }
-    setReport({ added, updated, errors });
+    setReport(await importHoldingsCsv(repo, await file.text()));
   }
 
   return (
@@ -59,6 +45,13 @@ export function HoldingsScreen({ onAdd, onEdit, onColours }: Props) {
           >
             Download CSV template
           </button>
+          <button
+            type="button"
+            className="button"
+            onClick={() => void importHoldingsCsv(repo, SAMPLE_TANK_CSV).then(setReport)}
+          >
+            Load sample tank
+          </button>
           <input
             ref={fileRef}
             type="file"
@@ -73,7 +66,8 @@ export function HoldingsScreen({ onAdd, onEdit, onColours }: Props) {
         </div>
         <p className="muted">
           CSV columns: <code>symbol,quantity,pen</code>. Re-importing replaces the quantity of a
-          symbol already in that pen. Imported fish get default colours; change them below.
+          symbol already in that pen. Imported fish get default colours; change them below. The
+          sample tank adds made-up holdings in three "Sample" pens, to try the app.
         </p>
         {report && (
           <div role="status" className="stack">

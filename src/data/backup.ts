@@ -70,7 +70,9 @@ export function validateBackup(
   const pens: Pen[] = [];
   data.pens.forEach((p: unknown, i) => {
     if (isObject(p) && isString(p.id) && p.id && isString(p.name) && isNumber(p.createdAt)) {
-      pens.push({ id: p.id, name: p.name, createdAt: p.createdAt });
+      const layout =
+        Array.isArray(p.layout) && p.layout.every(isString) ? (p.layout as string[]) : undefined;
+      pens.push({ id: p.id, name: p.name, createdAt: p.createdAt, ...(layout && { layout }) });
     } else {
       errors.push(`Pen ${i + 1} is malformed.`);
     }

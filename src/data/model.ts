@@ -7,7 +7,35 @@ export interface Pen {
   id: string;
   name: string;
   createdAt: number;
+  /**
+   * The user's territory order in this pen: holding ids, first patch first.
+   * Holdings missing from it follow in the order they were added.
+   */
+  layout?: string[];
 }
+
+/** How an overview of several pens arranges the fish (docs/SPEC.md, "Organizing fish"). */
+export type ArrangeMode = 'mood' | 'species' | 'family' | 'weight' | 'pen' | 'free';
+
+export const ARRANGE_MODES: readonly ArrangeMode[] = [
+  'mood',
+  'species',
+  'family',
+  'weight',
+  'pen',
+  'free',
+];
+
+/** What the tank screen shows: which pens, and how an overview is arranged. */
+export interface TankView {
+  /** 'all', or the ids of the pens shown. One id is a single pen's home. */
+  pens: 'all' | string[];
+  arrange: ArrangeMode;
+}
+
+export const DEFAULT_TANK_VIEW: TankView = { pens: 'all', arrange: 'mood' };
+
+export const MAX_PEN_NAME = 24;
 
 /**
  * One fish: a position in one ticker, living in one pen. The same symbol can
@@ -70,6 +98,8 @@ export interface Settings {
    * stop spending requests on it. Cleared when that provider's key changes.
    */
   profileUnavailable?: Partial<Record<ProviderId, true>>;
+  /** Last tank view, restored on the next visit. */
+  tankView?: TankView;
 }
 
 export const DEFAULT_SETTINGS: Settings = { provider: 'twelvedata', apiKeys: {} };
@@ -95,6 +125,21 @@ export function isValidCostBasis(costBasis: number | undefined): boolean {
   return costBasis === undefined || (Number.isFinite(costBasis) && costBasis >= 0);
 }
 
+/** Quantities after splitting, without float dust (10 − 3.3 = 6.699999…). */
+export function tidyQuantity(quantity: number): number {
+  return Math.round(quantity * 1e8) / 1e8;
+}
+
+/**
+ * A random v4 UUID. crypto.randomUUID only exists in secure contexts (HTTPS or
+ * localhost), so a phone testing the dev server over http://192.168.… lacks
+ * it; getRandomValues works everywhere.
+ */
 export function newId(): string {
-  return crypto.randomUUID();
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = ((b[6] ?? 0) & 0x0f) | 0x40; // version 4
+  b[8] = ((b[8] ?? 0) & 0x3f) | 0x80; // RFC 4122 variant
+  const hex = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }

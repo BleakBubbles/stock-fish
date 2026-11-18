@@ -14,11 +14,11 @@ import { uiFont } from '../../theme/pixelFont';
 export const MIN_CAP_CSS = 9;
 
 /**
- * UI pixels of chrome stacked above the tank when the top bar fits on one
- * line: top bar 22 (padding 3 + button 15 + padding 3 + border 1) + weather
- * bar 16 (padding 3 + text 9 + padding 3 + border 1).
+ * UI pixels of chrome stacked above the tank when each bar fits on one line:
+ * top bar 22 (padding 3 + button 15 + padding 3 + line 1) + pen bar 22 (the
+ * same) + weather bar 16 (padding 3 + text 9 + padding 3 + line 1).
  */
-export const CHROME_UI_ROWS = 38;
+export const CHROME_UI_ROWS = 60;
 
 export interface PixelScale {
   dpr: number;

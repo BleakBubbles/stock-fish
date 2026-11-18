@@ -142,6 +142,14 @@ canvas {
   margin-inline: auto;
 }
 
+.tank-page {
+  height: 100%;
+}
+
+.tank-page[hidden] {
+  display: none;
+}
+
 .tank-screen {
   position: relative;
   height: 100%;
@@ -167,7 +175,8 @@ canvas {
 
 .tank-canvas {
   display: block;
-  touch-action: manipulation;
+  /* No browser panning or zooming from the tank: presses there drag fish. */
+  touch-action: none;
 }
 
 .tank-bar.px-bar {
@@ -186,8 +195,9 @@ canvas {
 .fish-details {
   position: absolute;
   /* Anchored to the top-left in whole UI pixels so it stays on the grid. */
-  top: calc(var(--sf-px) * 22);
+  top: calc(var(--sf-px) * 4);
   left: calc(var(--sf-px) * 4);
+  z-index: 5;
 }
 
 .stack {
@@ -556,4 +566,132 @@ fieldset {
     sans-serif;
   background: var(--sf-night);
   color: var(--sf-warning);
+}
+
+/* Milestone 5: pens, arrangement, dialogs, text input. */
+
+.pen-bar.px-bar {
+  flex: none;
+  justify-content: space-between;
+  padding: calc(var(--sf-px) * 3) calc(var(--sf-px) * 3) calc(var(--sf-px) * 4);
+  box-shadow: inset 0 calc(var(--sf-px) * -1) 0 var(--sf-border);
+}
+
+/* A pen tab a dragged fish is over: a focus-coloured ring. */
+.px-button.is-drop::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--sf-px) * -2);
+  box-shadow: inset 0 0 0 var(--sf-px) var(--sf-focus);
+  pointer-events: none;
+}
+
+.arrange {
+  position: relative;
+  line-height: 0;
+}
+
+.arrange-menu {
+  position: absolute;
+  z-index: 10;
+  right: 0;
+  top: calc(var(--sf-px) * 18);
+  gap: calc(var(--sf-px) * 2);
+}
+
+.tank-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Group names over an overview: tap to select the group, like a fish. */
+.tank-label {
+  position: absolute;
+  font: inherit;
+  /* After `font`, which resets it: only the bitmap text sets the height. */
+  line-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  padding: var(--sf-px) calc(var(--sf-px) * 2);
+  background: var(--sf-night);
+}
+
+.tank-label:hover {
+  background: var(--sf-panel);
+}
+
+.tank-label.is-selected {
+  background: var(--sf-groupSelected);
+}
+
+.tank-label:focus-visible {
+  outline: none;
+}
+
+.tank-label:focus-visible::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--sf-px) * -2);
+  box-shadow: inset 0 0 0 var(--sf-px) var(--sf-focus);
+  pointer-events: none;
+}
+
+.px-backdrop {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+}
+
+.px-dialog {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+}
+
+.px-dialog form {
+  margin: 0;
+}
+
+.px-input {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  cursor: text;
+  /* 2 + the 1-pixel line */
+  padding: calc(var(--sf-px) * 3);
+  background: var(--sf-water);
+  box-shadow: inset 0 0 0 var(--sf-px) var(--sf-border);
+}
+
+.px-input canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* The real input: invisible, on top, so clicks, typing and IME reach it. */
+.px-input input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  /* 16px keeps iOS from zooming in on focus. */
+  font-size: 16px;
+  cursor: text;
+}
+
+.px-input:focus-within::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--sf-px) * -2);
+  box-shadow: inset 0 0 0 var(--sf-px) var(--sf-focus);
+  pointer-events: none;
 }

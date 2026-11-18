@@ -37,6 +37,10 @@ export const ui = {
   success: palette.ui.success,
   /** Tank overlay when the market is closed (the light is off). */
   night: palette.ui.night,
+  /** Outline of a selected fish's territory in the tank. */
+  territory: palette.ui.territory,
+  /** Background of a selected group name over the tank (white text on it: 5.5:1). */
+  groupSelected: palette.ui.groupSelected,
 } as const;
 
 /** '#rrggbb' form for CSS and PixiJS. */

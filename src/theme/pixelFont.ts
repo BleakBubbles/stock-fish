@@ -171,3 +171,32 @@ export function drawText(
   }
   return cx - x;
 }
+
+/**
+ * Caret positions for raw (un-normalised) text, as typed in an input: entry i
+ * is the x, in font pixels, of a caret before UTF-16 index i. The second half
+ * of a surrogate pair takes no width.
+ */
+export function caretOffsets(font: PixelFont, text: string): number[] {
+  const out = [0];
+  let x = 0;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    const low = code >= 0xdc00 && code <= 0xdfff && i > 0;
+    if (!low) {
+      const ch = String.fromCodePoint(text.codePointAt(i) ?? code);
+      x += measureText(font, normalizeText(font, ch));
+    }
+    out.push(x);
+  }
+  return out;
+}
+
+/** The caret index nearest to x (font pixels) for offsets from caretOffsets. */
+export function caretIndexAt(offsets: readonly number[], x: number): number {
+  let best = 0;
+  offsets.forEach((o, i) => {
+    if (Math.abs(o - x) < Math.abs((offsets[best] ?? 0) - x)) best = i;
+  });
+  return best;
+}

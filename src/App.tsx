@@ -60,8 +60,13 @@ export function App() {
           </nav>
         </header>
         <main className="main">
-          {view.name === 'tank' ? (
+          {/*
+            The tank stays mounted (hidden and paused) on other tabs, so fish
+            keep their places and the WebGL tank isn't rebuilt on every visit.
+          */}
+          <div className="tank-page" hidden={view.name !== 'tank'}>
             <TankScreen
+              active={view.name === 'tank'}
               market={market}
               onAdd={() => setView({ name: 'add' })}
               onChangeColours={(id) =>
@@ -69,7 +74,8 @@ export function App() {
               }
               onSettings={() => setView({ name: 'settings' })}
             />
-          ) : (
+          </div>
+          {view.name !== 'tank' && (
             // Not converted to pixel UI yet (milestone 6): normal CSS pixels.
             <Rescale unit="css">
               <div className="main-scroll">

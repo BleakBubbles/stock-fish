@@ -102,3 +102,78 @@ describe('profiles', () => {
     });
   });
 });
+
+describe('pen management', () => {
+  const add = (penId: string, symbol: string, quantity: number, costBasis?: number) =>
+    repo.addHolding({ symbol, quantity, penId, costBasis, primary: 'e43b44' });
+
+  it('creates and renames pens, refusing blank and duplicate names', async () => {
+    const tfsa = await repo.createPen(' TFSA ');
+    expect(tfsa.name).toBe('TFSA');
+    await expect(repo.createPen('tfsa')).rejects.toThrow(/already/);
+    await expect(repo.createPen('  ')).rejects.toThrow(/name/);
+    await repo.renamePen(tfsa.id, 'RRSP');
+    expect((await db.pens.get(tfsa.id))?.name).toBe('RRSP');
+    await repo.renamePen(tfsa.id, 'rrsp'); // its own name in another case is fine
+  });
+
+  it('moves a whole holding, keeping its id and leaving the old layout', async () => {
+    const a = await repo.ensureDefaultPen();
+    const b = await repo.createPen('B');
+    const h = await add(a.id, 'AAPL', 5);
+    await repo.setPenLayout(a.id, [h.id]);
+    expect(await repo.moveHolding(h.id, b.id)).toBe(h.id);
+    expect((await db.holdings.get(h.id))?.penId).toBe(b.id);
+    expect((await db.pens.get(a.id))?.layout).toEqual([]);
+  });
+
+  it('splits part of a holding into a new fish with the same colours', async () => {
+    const a = await repo.ensureDefaultPen();
+    const b = await repo.createPen('B');
+    const h = await add(a.id, 'AAPL', 10, 100);
+    const id = await repo.moveHolding(h.id, b.id, 3.3);
+    expect(id).not.toBe(h.id);
+    expect((await db.holdings.get(h.id))?.quantity).toBe(6.7);
+    expect(await db.holdings.get(id)).toMatchObject({
+      symbol: 'AAPL',
+      quantity: 3.3,
+      penId: b.id,
+      primary: 'e43b44',
+      costBasis: 100,
+    });
+  });
+
+  it('merges into the same symbol in the target pen', async () => {
+    const a = await repo.ensureDefaultPen();
+    const b = await repo.createPen('B');
+    const h = await add(a.id, 'AAPL', 2, 100);
+    const t = await add(b.id, 'AAPL', 2, 200);
+    expect(await repo.moveHolding(h.id, b.id)).toBe(t.id);
+    expect(await db.holdings.get(h.id)).toBeUndefined();
+    expect(await db.holdings.get(t.id)).toMatchObject({ quantity: 4, costBasis: 150 });
+  });
+
+  it('refuses to move more than the holding has', async () => {
+    const a = await repo.ensureDefaultPen();
+    const b = await repo.createPen('B');
+    const h = await add(a.id, 'AAPL', 2);
+    await expect(repo.moveHolding(h.id, b.id, 3)).rejects.toThrow();
+    await expect(repo.moveHolding(h.id, b.id, 0)).rejects.toThrow();
+  });
+
+  it('deleting a pen moves its fish; the last pen stays', async () => {
+    const a = await repo.ensureDefaultPen();
+    const b = await repo.createPen('B');
+    await add(b.id, 'AAPL', 1);
+    await add(b.id, 'MSFT', 1);
+    await add(a.id, 'AAPL', 1);
+    await repo.deletePen(b.id, a.id);
+    expect(await db.pens.count()).toBe(1);
+    const left = await db.holdings.toArray();
+    expect(left.map((h) => [h.symbol, h.quantity, h.penId]).sort()).toEqual([
+      ['AAPL', 2, a.id],
+      ['MSFT', 1, a.id],
+    ]);
+    await expect(repo.deletePen(a.id, b.id)).rejects.toThrow();
+  });
+});

@@ -25,6 +25,8 @@ export interface SwimState {
   pause: number;
   /** Swimming out of the tank to be removed (a sold holding). */
   leaving: boolean;
+  /** Heading to a new region (a rearrangement): swims faster, no pause, until it arrives. */
+  hurry?: boolean;
 }
 
 export type Rand = () => number;
@@ -41,6 +43,8 @@ export const PAUSE_MAX = 3;
 const TURN_THRESHOLD = 2;
 /** A leaving fish speeds up by this much. */
 const LEAVE_SPEEDUP = 2.5;
+/** A fish swimming into a new formation speeds up by this much. */
+export const HURRY_SPEEDUP = 4;
 
 const between = (rand: Rand, a: number, b: number) => a + (b - a) * rand();
 
@@ -86,7 +90,7 @@ export function step(state: SwimState, dt: number, rand: Rand, bounds: Bounds): 
   const dx = state.targetX - state.x;
   const dy = (state.targetY - state.y) / VERTICAL_FACTOR;
   const distance = Math.hypot(dx, dy);
-  const speed = state.speed * (state.leaving ? LEAVE_SPEEDUP : 1);
+  const speed = state.speed * (state.leaving ? LEAVE_SPEEDUP : state.hurry ? HURRY_SPEEDUP : 1);
   const facing: 1 | -1 = Math.abs(dx) >= TURN_THRESHOLD ? (dx > 0 ? 1 : -1) : state.facing;
 
   if (distance <= speed * dt) {
@@ -99,7 +103,8 @@ export function step(state: SwimState, dt: number, rand: Rand, bounds: Bounds): 
       y: state.targetY,
       facing,
       ...pickTarget(rand, bounds),
-      pause: between(rand, PAUSE_MIN, PAUSE_MAX),
+      pause: state.hurry ? between(rand, 0, PAUSE_MIN) : between(rand, PAUSE_MIN, PAUSE_MAX),
+      hurry: false,
     };
   }
 
@@ -123,4 +128,29 @@ export function clampTo(state: SwimState, bounds: Bounds): SwimState {
     targetX: clamp(state.targetX, bounds.minX, bounds.maxX),
     targetY: clamp(state.targetY, bounds.minY, bounds.maxY),
   };
+}
+
+const inside = (x: number, y: number, b: Bounds) =>
+  x >= b.minX - 0.5 && x <= b.maxX + 0.5 && y >= b.minY - 0.5 && y <= b.maxY + 0.5;
+
+/**
+ * A fish coming back into view (its pen shown again) at the spot it was
+ * hidden. If its region moved meanwhile, it swims over like any regroup.
+ */
+export function resume(state: SwimState, bounds: Bounds, rand: Rand): SwimState {
+  return regroup({ ...state, leaving: false, hurry: false }, bounds, rand);
+}
+
+/**
+ * The fish's region changed (new territory, another arrangement). A fish
+ * already inside just keeps its target in bounds; one outside hurries to a
+ * random spot in the new region, swimming there rather than jumping.
+ */
+export function regroup(state: SwimState, bounds: Bounds, rand: Rand): SwimState {
+  if (state.leaving) return state;
+  if (inside(state.x, state.y, bounds)) {
+    if (inside(state.targetX, state.targetY, bounds)) return state;
+    return { ...state, ...pickTarget(rand, bounds) };
+  }
+  return { ...state, ...pickTarget(rand, bounds), pause: 0, hurry: true };
 }

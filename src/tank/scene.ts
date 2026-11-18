@@ -17,13 +17,16 @@ import {
   TANK_WIDTH,
   TAP_SLOP,
 } from './constants';
+import { type Region, boundsFor } from './arrange';
+import type { Rect } from './territory';
 import {
   type Bounds,
   type Rand,
   type SwimState,
-  clampTo,
   hasLeft,
   leave,
+  regroup,
+  resume,
   spawn,
   step,
 } from './swim';
@@ -46,7 +49,7 @@ interface FishNode {
 const FISH_W = atlasFrames.frameWidth;
 const FISH_H = atlasFrames.frameHeight;
 
-/** The whole tank is open water for now; pens and territories arrive in milestone 5. */
+/** The whole water, for fish without a region (and for leaving). */
 export const TANK_BOUNDS: Bounds = {
   minX: 0,
   minY: TANK_MARGIN_TOP,
@@ -63,6 +66,16 @@ export class TankScene {
   private readonly frames = new Map<string, Texture>();
   private selected?: string;
   private hovered?: string;
+  private regions: Region[] = [];
+  private regionOf = new Map<string, Region>();
+  private readonly patchOutline = new Graphics();
+  private drag?: { id: string; dx: number; dy: number };
+  private groupOutline?: Rect;
+  /**
+   * Where fish were when their pen was hidden, so they come back to the same
+   * spot. Kept for the visit only; a sold fish's entry just goes unused.
+   */
+  private readonly parked = new Map<string, SwimState>();
 
   constructor(
     private readonly atlas: Texture,
@@ -73,7 +86,7 @@ export class TankScene {
       .rect(0, 0, TANK_WIDTH, TANK_HEIGHT)
       .fill({ color: css(ui.night), alpha: NIGHT_ALPHA });
     this.night.visible = false;
-    this.root.addChild(water, this.fishLayer, this.night);
+    this.root.addChild(water, this.patchOutline, this.fishLayer, this.night);
   }
 
   private frame(body: Body, mood: Mood, layer: AtlasLayer): Texture {
@@ -90,11 +103,21 @@ export class TankScene {
     return texture;
   }
 
-  /** Add, update and remove fish to match `list`. Removed fish swim away first. */
-  setFish(list: readonly SceneFish[]): void {
+  /**
+   * Add, update and remove fish to match `list`. Removed fish swim away first,
+   * unless `instant` (the user switched to another view of the pens).
+   */
+  setFish(list: readonly SceneFish[], instant = false): void {
     const wanted = new Set(list.map((f) => f.id));
     for (const [id, node] of this.fish) {
-      if (!wanted.has(id) && !node.swim.leaving) node.swim = leave(node.swim, TANK_BOUNDS, FISH_W);
+      if (wanted.has(id)) continue;
+      if (instant) {
+        if (!node.swim.leaving) this.parked.set(id, node.swim);
+        node.container.destroy({ children: true });
+        this.fish.delete(id);
+      } else if (!node.swim.leaving) {
+        node.swim = leave(node.swim, TANK_BOUNDS, FISH_W);
+      }
     }
     for (const spec of list) {
       const node = this.fish.get(spec.id);
@@ -115,7 +138,16 @@ export class TankScene {
     }
     layers.highlight.tint = css(ui.selectionOutline);
     layers.highlight.visible = false;
-    const node: FishNode = { spec, swim: spawn(this.rand, TANK_BOUNDS), container, layers };
+    const parked = this.parked.get(spec.id);
+    this.parked.delete(spec.id);
+    const node: FishNode = {
+      spec,
+      swim: parked
+        ? resume(parked, this.boundsOf(spec.id), this.rand)
+        : spawn(this.rand, this.boundsOf(spec.id)),
+      container,
+      layers,
+    };
     this.applySpec(node, spec, true);
     this.fish.set(spec.id, node);
     this.fishLayer.addChild(container);
@@ -134,8 +166,82 @@ export class TankScene {
     node.spec = spec;
     if (node.swim.leaving && !force) {
       // Re-added before it finished leaving (e.g. an undo): come back.
-      node.swim = clampTo({ ...node.swim, leaving: false }, TANK_BOUNDS);
+      node.swim = regroup({ ...node.swim, leaving: false }, this.boundsOf(spec.id), this.rand);
     }
+  }
+
+  /**
+   * Where each fish may swim. Fish outside their new region swim there
+   * (quickly); the rest carry on.
+   */
+  setRegions(regions: readonly Region[]): void {
+    this.regions = [...regions];
+    this.regionOf = new Map(regions.flatMap((r) => r.fishIds.map((id) => [id, r] as const)));
+    for (const [id, node] of this.fish) {
+      if (id !== this.drag?.id) node.swim = regroup(node.swim, this.boundsOf(id), this.rand);
+    }
+    this.drawPatch();
+  }
+
+  private boundsOf(id: string): Bounds {
+    const region = this.regionOf.get(id);
+    return region ? boundsFor(region.rect) : TANK_BOUNDS;
+  }
+
+  /** Outline the selected fish's territory (1 art pixel, inside its edges). */
+  /** Outline a whole group's area (a selected group label), instead of a fish's patch. */
+  setGroupOutline(rect: Rect | undefined): void {
+    this.groupOutline = rect;
+    this.drawPatch();
+  }
+
+  private drawPatch(): void {
+    const g = this.patchOutline.clear();
+    const region = this.selected ? this.regionOf.get(this.selected) : undefined;
+    const rect =
+      this.groupOutline ?? (region?.patch && this.regions.length >= 2 ? region.rect : undefined);
+    if (!rect) return;
+    const { x, y, w, h } = rect;
+    const colour = css(ui.territory);
+    g.rect(x, y, w, 1)
+      .rect(x, y + h - 1, w, 1)
+      .rect(x, y, 1, h)
+      .rect(x + w - 1, y, 1, h)
+      .fill(colour);
+  }
+
+  /** The region under an art-pixel point. */
+  regionAt(x: number, y: number): Region | undefined {
+    return this.regions.find(
+      ({ rect: r }) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h,
+    );
+  }
+
+  /** Pick a fish up; (x, y) is the art pixel under the pointer. */
+  startDrag(id: string, x: number, y: number): void {
+    const node = this.fish.get(id);
+    if (!node || node.swim.leaving) return;
+    this.drag = { id, dx: x - node.swim.x, dy: y - node.swim.y };
+    this.fishLayer.setChildIndex(node.container, this.fishLayer.children.length - 1);
+  }
+
+  dragTo(x: number, y: number): void {
+    const node = this.drag ? this.fish.get(this.drag.id) : undefined;
+    if (!node || !this.drag) return;
+    const nx = Math.min(TANK_BOUNDS.maxX, Math.max(TANK_BOUNDS.minX, x - this.drag.dx));
+    const ny = Math.min(TANK_BOUNDS.maxY, Math.max(TANK_BOUNDS.minY, y - this.drag.dy));
+    if (Math.abs(nx - node.swim.x) >= 1) node.swim.facing = nx > node.swim.x ? 1 : -1;
+    node.swim = { ...node.swim, x: nx, y: ny, targetX: nx, targetY: ny, pause: 0.3 };
+    this.place(node);
+  }
+
+  /** Let go: the fish swims into whatever region it now belongs to. */
+  endDrag(): void {
+    const id = this.drag?.id;
+    this.drag = undefined;
+    const node = id ? this.fish.get(id) : undefined;
+    if (id && node) node.swim = regroup(node.swim, this.boundsOf(id), this.rand);
+    this.refreshHighlights();
   }
 
   setNight(on: boolean): void {
@@ -145,6 +251,7 @@ export class TankScene {
   setSelected(id: string | undefined): void {
     this.selected = id;
     this.refreshHighlights();
+    this.drawPatch();
   }
 
   setHovered(id: string | undefined): void {
@@ -154,17 +261,20 @@ export class TankScene {
 
   private refreshHighlights(): void {
     for (const [id, node] of this.fish) {
-      node.layers.highlight.visible = id === this.selected || id === this.hovered;
+      node.layers.highlight.visible =
+        id === this.selected || id === this.hovered || id === this.drag?.id;
     }
     // Draw the selected fish on top so its outline is never hidden.
-    const top = this.selected ? this.fish.get(this.selected) : undefined;
+    const topId = this.drag?.id ?? this.selected;
+    const top = topId ? this.fish.get(topId) : undefined;
     if (top) this.fishLayer.setChildIndex(top.container, this.fishLayer.children.length - 1);
   }
 
   /** Advance every fish by `dt` seconds. */
   update(dt: number): void {
     for (const [id, node] of this.fish) {
-      node.swim = step(node.swim, dt, this.rand, TANK_BOUNDS);
+      if (id === this.drag?.id) continue;
+      node.swim = step(node.swim, dt, this.rand, this.boundsOf(id));
       if (hasLeft(node.swim, TANK_BOUNDS, FISH_W)) {
         node.container.destroy({ children: true });
         this.fish.delete(id);

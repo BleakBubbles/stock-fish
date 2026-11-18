@@ -3,6 +3,7 @@ import {
   DEFAULT_PEN_NAME,
   DEFAULT_SETTINGS,
   type Holding,
+  MAX_PEN_NAME,
   type Pen,
   type ProviderId,
   type Settings,
@@ -12,6 +13,7 @@ import {
   isValidSymbol,
   newId,
   normalizeSymbol,
+  tidyQuantity,
 } from './model';
 
 export interface NewHolding {
@@ -27,6 +29,15 @@ function checkHolding(h: Pick<Holding, 'symbol' | 'quantity' | 'costBasis'>): vo
   if (!isValidSymbol(h.symbol)) throw new Error(`Invalid symbol: ${h.symbol}`);
   if (!isValidQuantity(h.quantity)) throw new Error(`Invalid quantity: ${h.quantity}`);
   if (!isValidCostBasis(h.costBasis)) throw new Error(`Invalid cost basis: ${h.costBasis}`);
+}
+
+/**
+ * Average cost after merging `amount` shares of `from` into `into`. Only known
+ * when both sides have one: a guessed cost basis is worse than none.
+ */
+function mergedCostBasis(into: Holding, from: Holding, amount: number): number | undefined {
+  if (into.costBasis === undefined || from.costBasis === undefined) return undefined;
+  return (into.costBasis * into.quantity + from.costBasis * amount) / (into.quantity + amount);
 }
 
 /** Storage operations. Every write validates, so bad data never reaches IndexedDB. */
@@ -99,6 +110,99 @@ export function createRepo(db: StockFishDb) {
     await db.holdings.delete(id);
   }
 
+  /** A trimmed, unused pen name; throws a message for the user otherwise. */
+  async function checkPenName(name: string, exceptId?: string): Promise<string> {
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error('Give the pen a name.');
+    if (trimmed.length > MAX_PEN_NAME) {
+      throw new Error(`Pen names can be up to ${MAX_PEN_NAME} characters.`);
+    }
+    const all = await db.pens.toArray();
+    const clash = all.find(
+      (p) => p.id !== exceptId && p.name.toLowerCase() === trimmed.toLowerCase(),
+    );
+    if (clash) throw new Error(`There's already a pen called ${clash.name}.`);
+    return trimmed;
+  }
+
+  async function createPen(name: string): Promise<Pen> {
+    return db.transaction('rw', db.pens, async () => {
+      const pen: Pen = { id: newId(), name: await checkPenName(name), createdAt: Date.now() };
+      await db.pens.add(pen);
+      return pen;
+    });
+  }
+
+  async function renamePen(id: string, name: string): Promise<void> {
+    await db.transaction('rw', db.pens, async () => {
+      const trimmed = await checkPenName(name, id);
+      const n = await db.pens.update(id, { name: trimmed });
+      if (!n) throw new Error(`No pen ${id}`);
+    });
+  }
+
+  async function setPenLayout(id: string, layout: string[]): Promise<void> {
+    await db.pens.update(id, { layout });
+  }
+
+  /**
+   * Move `quantity` of a holding (all of it if omitted) to another pen. If that
+   * pen already has this symbol, the two merge into one fish; otherwise a part
+   * move creates a new fish with the same colours. Returns the id of the fish
+   * in the target pen.
+   */
+  async function moveHolding(id: string, penId: string, quantity?: number): Promise<string> {
+    return db.transaction('rw', db.holdings, db.pens, async () => {
+      const source = await db.holdings.get(id);
+      if (!source) throw new Error(`No holding ${id}`);
+      if (!(await db.pens.get(penId))) throw new Error(`No pen ${penId}`);
+      if (source.penId === penId) return id;
+      const amount = quantity === undefined ? source.quantity : tidyQuantity(quantity);
+      if (!isValidQuantity(amount) || amount > source.quantity) {
+        throw new Error(`Can't move ${quantity} of ${source.quantity}.`);
+      }
+      const whole = amount === source.quantity;
+      const target = await db.holdings.where({ symbol: source.symbol, penId }).first();
+
+      if (whole) {
+        await db.holdings.delete(id);
+        const pen = await db.pens.get(source.penId);
+        if (pen?.layout) {
+          await db.pens.update(pen.id, { layout: pen.layout.filter((x) => x !== id) });
+        }
+      } else {
+        await db.holdings.update(id, { quantity: tidyQuantity(source.quantity - amount) });
+      }
+
+      if (target) {
+        await db.holdings.put({
+          ...target,
+          quantity: tidyQuantity(target.quantity + amount),
+          costBasis: mergedCostBasis(target, source, amount),
+        });
+        return target.id;
+      }
+      // A whole move keeps the fish (and its id); a part move adds a sibling.
+      const moved: Holding = whole
+        ? { ...source, penId }
+        : { ...source, id: newId(), penId, quantity: amount, createdAt: Date.now() };
+      await db.holdings.put(moved);
+      return moved.id;
+    });
+  }
+
+  /** Delete a pen, moving its fish into `intoPenId`. The last pen can't go. */
+  async function deletePen(id: string, intoPenId: string): Promise<void> {
+    if (id === intoPenId) throw new Error('Pick another pen for its fish.');
+    await db.transaction('rw', db.holdings, db.pens, async () => {
+      if ((await db.pens.count()) <= 1) throw new Error("The last pen can't be deleted.");
+      for (const h of await db.holdings.where({ penId: id }).toArray()) {
+        await moveHolding(h.id, intoPenId);
+      }
+      await db.pens.delete(id);
+    });
+  }
+
   async function getSettings(): Promise<Settings> {
     const row = await db.settings.get('settings');
     return { ...DEFAULT_SETTINGS, ...(row?.value as Partial<Settings> | undefined) };
@@ -141,6 +245,11 @@ export function createRepo(db: StockFishDb) {
   return {
     ensureDefaultPen,
     findOrCreatePen,
+    createPen,
+    renamePen,
+    setPenLayout,
+    moveHolding,
+    deletePen,
     addHolding,
     updateHolding,
     upsertHolding,

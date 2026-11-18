@@ -23,12 +23,15 @@ const MAX_WIDTH = 200;
 
 interface Props {
   fish: FishView;
+  /** The pen it lives in, shown in an overview of several pens. */
+  penName?: string;
   onChangeColours: () => void;
+  onMove: () => void;
   onClose: () => void;
 }
 
 /** The numbers behind one fish: what a price board would show. */
-export function FishDetails({ fish, onChangeColours, onClose }: Props) {
+export function FishDetails({ fish, penName, onChangeColours, onMove, onClose }: Props) {
   const scale = usePixelScale();
   const quote = fish.quote;
   const result = fish.moodResult;
@@ -64,6 +67,7 @@ export function FishDetails({ fish, onChangeColours, onClose }: Props) {
         text={fish.name ? `${fish.symbol} · ${fish.name}` : fish.symbol}
         wrap={textWidth}
       />
+      {penName && <PixelText text={`In ${penName}`} tone="textMuted" wrap={textWidth} />}
       {quote && result ? (
         <div className="px-dl" aria-live="polite">
           {row(
@@ -92,6 +96,7 @@ export function FishDetails({ fish, onChangeColours, onClose }: Props) {
       )}
       <div className="px-row">
         <PixelButton label="Change colours" onClick={onChangeColours} />
+        <PixelButton label="Move…" onClick={onMove} />
         <PixelButton label="Close" onClick={onClose} />
       </div>
     </section>

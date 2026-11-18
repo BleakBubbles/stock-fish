@@ -11,7 +11,7 @@ describe('pixel scale', () => {
   });
 
   it('1080p monitor: limited by height once the chrome is counted', () => {
-    // 6× would need 1080 + 38 × 6 rows; 5× needs 900 + 190 = 1090 > 1080.
+    // 5× needs 900 + 60 × 5 = 1200 > 1080 rows; 4× needs 720 + 240 = 960.
     expect(computePixelScale(1920, 1080, 1)).toEqual({ dpr: 1, tank: 4, ui: 4 });
   });
 
