@@ -186,7 +186,7 @@ account and the app is just a client.
 | Tank rendering | PixiJS (WebGL 2D) |
 | Storage | IndexedDB via Dexie |
 | Tests | Vitest |
-| Hosting | Cloudflare Pages |
+| Hosting | Cloudflare Workers (static assets) |
 | Relay (only if needed) | Cloudflare Workers |
 | Licence | MIT |
 

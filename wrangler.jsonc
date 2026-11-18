@@ -1,0 +1,10 @@
+// Cloudflare Workers hosting: a static-assets-only Worker serving the Vite build. No server code.
+// Build: `npm run build`; deploy: `npx wrangler deploy` (Workers Builds runs both on each push).
+{
+  "name": "stock-fish",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application",
+  },
+}

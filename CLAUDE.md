@@ -12,7 +12,7 @@ Read before working:
 ## Stack
 
 TypeScript (strict) + Vite, React for UI outside the tank, PixiJS for the tank, Dexie (IndexedDB)
-for storage, Vitest for tests, Cloudflare Pages for hosting. A Cloudflare Worker relay only if a
+for storage, Vitest for tests, Cloudflare Workers static assets for hosting (`wrangler.jsonc`). A Cloudflare Worker relay only if a
 market data provider blocks browser requests (CORS).
 
 ## Firm rules
