@@ -76,8 +76,7 @@ export function GroupDetails({ summary, onOpen, onEdit, onClose }: Props) {
             )}
             {row('Weather', WEATHER_LABEL[weather.weather])}
             {row('Value', formatMoney(summary.value, currency))}
-            {summary.share !== undefined &&
-              row('Share', `${(summary.share * 100).toFixed(1)}% of what's shown`)}
+            {summary.share !== undefined && row('Share', `${(summary.share * 100).toFixed(1)}%`)}
           </>
         ) : (
           row('Today', 'Waiting for prices…')
