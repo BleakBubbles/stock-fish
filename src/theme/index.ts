@@ -52,6 +52,9 @@ export const ui = {
   panelHover: palette.ui.panelHover,
   panelHoverLight: palette.ui.panelHoverLight,
   buttonHover: palette.ui.buttonHover,
+  /** Tank weather: light shafts on good days, raindrop ripples on bad ones (the water darkens with night). */
+  sunlight: palette.ui.sunlight,
+  ripple: palette.ui.ripple,
 } as const;
 
 /** The ramp the title-bar logo fish is drawn in (the app icon's colours). */

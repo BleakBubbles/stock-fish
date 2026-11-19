@@ -15,7 +15,7 @@ import {
   useHomeCurrency,
   useMarketEntries,
 } from '../data/useMarket';
-import { type Weather, temperFor } from '../mood';
+import { WEATHERS, type Weather, temperFor } from '../mood';
 import { type DropTarget, Tank, type TankPlacement } from '../tank/Tank';
 import {
   type ArrangeFish,
@@ -37,6 +37,12 @@ import { PixelButton } from './pixel/PixelButton';
 import { PixelText } from './pixel/PixelText';
 import { usePixelScale } from './pixel/context';
 import { useSnap } from './pixel/useSnap';
+
+/** `?weather=stormy` (or any weather) in the URL previews that weather in the tank. */
+const PREVIEW_WEATHER = ((w) =>
+  (WEATHERS as readonly string[]).includes(w ?? '') ? (w as Weather) : undefined)(
+  new URLSearchParams(window.location.search).get('weather'),
+);
 
 const WEATHER_LABEL: Record<Weather, string> = {
   sunny: 'Sunny',
@@ -337,6 +343,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
         labels={labels}
         regions={regions}
         night={!open}
+        weather={PREVIEW_WEATHER ?? (priced ? weather.weather : 'calm')}
         selectedId={selected?.id}
         groupOutline={groupRegion?.group?.rect}
         alignTop={stacked}

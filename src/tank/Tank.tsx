@@ -7,6 +7,7 @@ import { atlasUrl } from '../theme/atlas';
 import { decorUrl } from '../theme/decor';
 import { Rescale } from '../ui/pixel/PixelRoot';
 import { usePixelScale } from '../ui/pixel/context';
+import type { Weather } from '../mood';
 import type { Region } from './arrange';
 import type { Rect } from './territory';
 import { TANK_HEIGHT, TANK_WIDTH, integerScale } from './constants';
@@ -48,6 +49,8 @@ interface Props {
   regions: readonly Region[];
   /** Market closed: the tank light is off. */
   night: boolean;
+  /** Portfolio weather shown in the water (calm draws nothing). */
+  weather: Weather;
   selectedId?: string;
   /** A fish was tapped. */
   onSelect: (id: string) => void;
@@ -93,6 +96,7 @@ export function Tank({
   labels,
   regions,
   night,
+  weather,
   selectedId,
   onSelect,
   onTapWater,
@@ -117,6 +121,7 @@ export function Tank({
     alignTop,
     regions,
     night,
+    weather,
     selectedId,
     onSelect,
     onTapWater,
@@ -133,6 +138,7 @@ export function Tank({
       alignTop,
       regions,
       night,
+      weather,
       selectedId,
       onSelect,
       onTapWater,
@@ -170,6 +176,7 @@ export function Tank({
       scene.setRegions(latest.current.regions);
       scene.setFish(latest.current.fish);
       scene.setNight(latest.current.night);
+      scene.setWeather(latest.current.weather);
       scene.setSelected(latest.current.selectedId);
       scene.setGroupOutline(latest.current.groupOutline);
 
@@ -378,6 +385,7 @@ export function Tank({
     shownView.current = view;
   }, [fish, view]);
   useEffect(() => sceneRef.current?.setNight(night), [night]);
+  useEffect(() => sceneRef.current?.setWeather(weather), [weather]);
   useEffect(() => {
     labelsRef.current = labels;
     sceneRef.current?.setLabels(labels);

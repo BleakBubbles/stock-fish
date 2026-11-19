@@ -26,7 +26,10 @@ A sad fish always means "unusual for this one," not just "red."
   and pink or red down; the tint only repeats what the face says.
 - **Territory = portfolio weight:** each fish claims a patch of the tank sized by its share, so one
   sad fish owning half the tank reads as a bad day.
-- **Portfolio weather:** a tank-level summary (sunny → stormy) of total daily change.
+- **Portfolio weather:** a tank-level summary (sunny → stormy) of total daily change, also drawn in
+  the water: light shafts on sunny and fair days (faint moonlight when the market is closed), nothing
+  when calm, rain streaks and darker water when rainy, heavier slanting rain when stormy. No
+  lightning or flashes. `?weather=stormy` (or any weather) in the URL previews one.
 - **Tap for numbers:** ticker, % change and $ change, so the app fully replaces a price board.
 - **Market closed:** fish sleep after hours and on weekends. This also signals stale data.
 

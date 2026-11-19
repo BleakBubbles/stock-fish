@@ -70,6 +70,8 @@
     "panelHover": "5a6988",
     "panelHoverLight": "8b9bb4",
     "buttonHover": "ffffff",
-    "logo": "orange"
+    "logo": "orange",
+    "sunlight": "ffffff",
+    "ripple": "c0cbdc"
   }
 }

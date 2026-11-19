@@ -13,5 +13,7 @@
   too small for a patch share a communal one, and no patch is cut thinner than a fish can swim in.
 - `arrange.ts`: pure regions for each fish: a single pen's home (the user's saved order) or an
   overview of several pens (mood, species, family, weight, pen, free roam).
+- `weather.ts`: pure shapes for the portfolio weather in the water: light shafts, rain streaks and
+  surface ripples, and how much the water darkens. Preview any weather with `?weather=<name>`.
 
 Sprites come from the atlas baked by `scripts/build-sprites.ts`; colours come from `src/theme`.

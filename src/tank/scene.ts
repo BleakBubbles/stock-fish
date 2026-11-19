@@ -4,7 +4,7 @@
  * which is then upscaled by a whole number (CLAUDE.md, firm rule 4).
  */
 import { Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
-import type { Mood } from '../mood/types';
+import type { Mood, Weather } from '../mood';
 import { css, ui } from '../theme';
 import { drawText, measureText, normalizeText, uiFont } from '../theme/pixelFont';
 import { atlasFrames, frameRect } from '../theme/atlas';
@@ -14,6 +14,17 @@ import type { Body, Face } from '../theme/sprites';
 import { NIGHT_ALPHA, TANK_HEIGHT, TANK_WIDTH, TAP_SLOP } from './constants';
 import { INNER_WATER, type Region, SAND_TOP, WATER, boundsFor } from './arrange';
 import { SWAY_PERIOD, decorLayout } from './decor';
+import {
+  type Drop,
+  type Ripple,
+  type Shaft,
+  WEATHER_LOOK,
+  dropPixels,
+  makeShafts,
+  ripplePixels,
+  shaftRows,
+  stepRain,
+} from './weather';
 import { type Box, type LabelHome, type Nudge, placeLabels } from './labels';
 import { STILL_TAIL, type TailMotion, type TailState, stepTail, tailPose } from './tail';
 import type { Rect } from './territory';
@@ -118,6 +129,8 @@ interface Swayer {
   frames: [Texture, Texture];
   phase: number;
 }
+/** Rain streaks are see-through, so they don't hide the fish. */
+const RAIN_ALPHA = 0.5;
 /** At night the water is calm: plants sway at this fraction of their usual pace. */
 const NIGHT_SWAY = 0.5;
 
@@ -126,6 +139,16 @@ export class TankScene {
   readonly root = new Container();
   private readonly fishLayer = new Container();
   private readonly night = new Graphics();
+  /** Weather (./weather.ts): light shafts and gloom over the fish, raindrop ripples at the surface. */
+  private readonly shaftLayer = new Graphics();
+  private readonly gloom = new Graphics();
+  private readonly rippleLayer = new Graphics();
+  private weather: Weather = 'calm';
+  private shafts: Shaft[] = [];
+  private shaftKey = '';
+  private ripples: Ripple[] = [];
+  private drops: Drop[] = [];
+  private weatherClock = 0;
   private readonly fish = new Map<string, FishNode>();
   private readonly frames = new Map<string, Texture>();
   private selected?: string;
@@ -180,6 +203,9 @@ export class TankScene {
       this.decorFront,
       this.patchOutline,
       this.fishLayer,
+      this.shaftLayer,
+      this.gloom,
+      this.rippleLayer,
       this.night,
       this.labelLayer,
       frame,
@@ -563,6 +589,60 @@ export class TankScene {
     this.layoutLabels();
     this.updateZeds(dt);
     this.updateSway(dt);
+    this.updateWeather(dt);
+  }
+
+  /** The portfolio weather to show in the water. */
+  setWeather(weather: Weather): void {
+    if (weather === this.weather) return;
+    this.weather = weather;
+    const look = WEATHER_LOOK[weather];
+    this.shafts = makeShafts(look.shafts, WATER, this.rand);
+    this.shaftKey = '';
+    if (!look.rain) {
+      this.ripples = [];
+      this.drops = [];
+    }
+    const { x, y, w, h } = INNER_WATER;
+    this.gloom.clear();
+    if (look.gloom > 0)
+      this.gloom.rect(x, y, w, h).fill({ color: css(ui.night), alpha: look.gloom });
+    this.updateWeather(0);
+  }
+
+  /** Drift the light shafts (redrawn only when a whole pixel changes) and the ripples. */
+  private updateWeather(dt: number): void {
+    const look = WEATHER_LOOK[this.weather];
+    this.weatherClock += dt;
+    // At night the shafts sit under the dimmed water: faint moonlight, still showing the day.
+    const rows = shaftRows(this.shafts, WATER, this.weatherClock);
+    const key = rows.map((r) => `${r.x},${r.w}`).join(';');
+    if (key !== this.shaftKey) {
+      this.shaftKey = key;
+      const g = this.shaftLayer.clear();
+      const fade = [1, 0.6, 0.3] as const;
+      for (const band of [0, 1, 2] as const) {
+        const inBand = rows.filter((r) => r.band === band);
+        for (const r of inBand) g.rect(r.x, r.y, r.w, 1);
+        if (inBand.length) {
+          g.fill({ color: css(ui.sunlight), alpha: look.shaftAlpha * fade[band] });
+        }
+      }
+    }
+    ({ drops: this.drops, ripples: this.ripples } = stepRain(
+      this.drops,
+      this.ripples,
+      dt,
+      look,
+      WATER,
+      this.rand,
+    ));
+    const g = this.rippleLayer.clear();
+    for (const r of this.ripples) for (const p of ripplePixels(r, WATER)) g.rect(p.x, p.y, 1, 1);
+    if (this.ripples.length) g.fill(css(ui.ripple));
+    for (const d of this.drops)
+      for (const p of dropPixels(d, look.wind, WATER)) g.rect(p.x, p.y, 1, 1);
+    if (this.drops.length) g.fill({ color: css(ui.ripple), alpha: RAIN_ALPHA });
   }
 
   /** What the tail should be doing, from what the fish is doing. */
