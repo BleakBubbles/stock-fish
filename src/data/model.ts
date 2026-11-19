@@ -128,7 +128,11 @@ export interface Settings {
   tankLabels?: TankLabels;
   /** Currency totals are shown in (ISO 4217). Unset: automatic, the one most value is in. */
   homeCurrency?: string;
+  /** Colour of rising prices: green (default) or red, as in China, Japan, Korea and Taiwan. */
+  upColour?: UpColour;
 }
+
+export type UpColour = 'green' | 'red';
 
 export const DEFAULT_SETTINGS: Settings = { provider: 'twelvedata', apiKeys: {} };
 

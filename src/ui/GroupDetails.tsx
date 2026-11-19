@@ -1,3 +1,4 @@
+import { ChangeHeadline } from './ChangeTicker';
 import type { Weather, WeatherResult } from '../mood';
 import { measureText, uiFont } from '../theme/pixelFont';
 import { formatChangeRatio, formatMoney } from './format';
@@ -16,7 +17,7 @@ const WEATHER_LABEL: Record<Weather, string> = {
 /** UI pixels of padding, line and gaps around the panel's text (as FishDetails). */
 const PANEL_CHROME = 2 * (4 + 1 + 3);
 const LABEL_GAP = 4;
-const LABELS = ['Today', 'Weather', 'Value', 'Share', 'Fish'];
+const LABELS = ['Today', 'Value', 'Share', 'Fish'];
 const MAX_WIDTH = 200;
 
 export interface GroupSummary {
@@ -67,14 +68,17 @@ export function GroupDetails({ summary, onOpen, onEdit, onClose }: Props) {
   return (
     <section className="fish-details px-panel px-stack" aria-label={`${summary.name} summary`}>
       <PixelText text={`${summary.kind}: ${summary.name}`} wrap={textWidth} />
+      {weather && summary.value !== undefined && (
+        <ChangeHeadline
+          change={weather.changeRatio}
+          percent={formatChangeRatio(weather.changeRatio)}
+          money={formatMoney(weather.change, currency, true)}
+          aside={<PixelText text={WEATHER_LABEL[weather.weather]} size={2} />}
+        />
+      )}
       <div className="px-dl" aria-live="polite">
         {weather && summary.value !== undefined ? (
           <>
-            {row(
-              'Today',
-              `${formatChangeRatio(weather.changeRatio)} (${formatMoney(weather.change, currency, true)})`,
-            )}
-            {row('Weather', WEATHER_LABEL[weather.weather])}
             {row('Value', formatMoney(summary.value, currency))}
             {summary.share !== undefined && row('Share', `${(summary.share * 100).toFixed(1)}%`)}
           </>

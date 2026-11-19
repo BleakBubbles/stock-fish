@@ -33,6 +33,22 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rolldownOptions: {
+      output: {
+        // React and Dexie in their own chunks: they change far less often than
+        // the app, so browsers and the service worker keep them across deploys.
+        // PixiJS stays with the app: grouping it would also pull in the parts
+        // it loads only when needed.
+        codeSplitting: {
+          groups: [
+            { name: 'react', test: /node_modules\/(react|react-dom|scheduler)\// },
+            { name: 'dexie', test: /node_modules\/(dexie|dexie-react-hooks)\// },
+          ],
+        },
+      },
+    },
+  },
   test: {
     include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'],
     environment: 'node',

@@ -72,6 +72,9 @@
     "buttonHover": "ffffff",
     "logo": "orange",
     "sunlight": "ffffff",
-    "ripple": "c0cbdc"
+    "ripple": "c0cbdc",
+    "changeGreen": "63c74d",
+    "changeRed": "f6757a",
+    "ticker": "181425"
   }
 }

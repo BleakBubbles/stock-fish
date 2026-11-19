@@ -31,6 +31,7 @@ export function SettingsScreen() {
       <PixelHeading text="Settings" id="settings-title" />
       <MarketDataSettings settings={settings} />
       <CurrencySettings settings={settings} />
+      <ChangeColourSettings settings={settings} />
       <BackupSettings />
       <InstallSettings />
       <div className="px-panel px-stack px-wide">
@@ -166,6 +167,28 @@ function CurrencySettings({ settings }: { settings: Settings }) {
       <PixelParagraph
         text="Automatic uses the currency most of your holdings are in. Rates update twice a day."
         tone="textMuted"
+      />
+    </div>
+  );
+}
+
+/** How today's change is coloured in fish and group details. */
+function ChangeColourSettings({ settings }: { settings: Settings }) {
+  return (
+    <div className="px-panel px-stack px-wide">
+      <PixelHeading text="Price colours" level={3} />
+      <PixelParagraph
+        text="Today's change is shown on a dark strip with an arrow, coloured like a price board."
+        tone="textMuted"
+      />
+      <PixelChoice
+        label="Rising prices are"
+        options={[
+          { value: 'green', label: 'Green up, red down' },
+          { value: 'red', label: 'Red up, green down' },
+        ]}
+        value={settings.upColour ?? 'green'}
+        onChange={(v) => void repo.saveSettings({ upColour: v === 'red' ? 'red' : undefined })}
       />
     </div>
   );

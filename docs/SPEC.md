@@ -31,6 +31,12 @@ A sad fish always means "unusual for this one," not just "red."
   when calm, rain streaks and darker water when rainy, heavier slanting rain when stormy. No
   lightning or flashes. `?weather=stormy` (or any weather) in the URL previews one.
 - **Tap for numbers:** ticker, % change and $ change, so the app fully replaces a price board.
+  A range bar under the mood shows why: a band for a calm day, ticks where strong moves begin, and
+  a marker for today, with the typical day's size (±σ) written under it.
+  Each details panel leads with today's % change at double size on a dark strip like a price
+  board's, with an arrow (▲/▼) and green or red repeating its sign, the mood's face (or a group's
+  weather) beside it, and the money change under it. Which colour means up is a setting (red is up
+  in China, Japan, Korea and Taiwan).
 - **Market closed:** fish sleep after hours and on weekends. This also signals stale data.
 
 | Tier | Move vs. typical (σ) |

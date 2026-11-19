@@ -1,7 +1,15 @@
 import { ui } from '../../theme';
 
 /** Text colours for bitmap text and icons. */
-export type Tone = 'text' | 'textMuted' | 'buttonText' | 'warning' | 'success' | 'heading';
+export type Tone =
+  | 'text'
+  | 'textMuted'
+  | 'buttonText'
+  | 'warning'
+  | 'success'
+  | 'heading'
+  | 'changeGreen'
+  | 'changeRed';
 
 export const TONE_COLOUR: Record<Tone, string> = {
   text: ui.text,
@@ -10,4 +18,6 @@ export const TONE_COLOUR: Record<Tone, string> = {
   warning: ui.warning,
   success: ui.success,
   heading: ui.heading,
+  changeGreen: ui.changeGreen,
+  changeRed: ui.changeRed,
 };

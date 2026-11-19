@@ -20,7 +20,9 @@ export type IconName =
   | 'settings'
   | 'show'
   | 'tank'
-  | 'test';
+  | 'test'
+  | 'up'
+  | 'down';
 
 const SIZE = 7;
 /** The font's line is 9 pixels tall with capitals on rows 3 to 7: two rows down centres a 7-pixel icon on them. */
@@ -28,7 +30,16 @@ const LINE_HEIGHT = 9;
 const TOP = 2;
 
 /** A 7 × 7 pixel icon on a text line, in a text tone. Decorative: the button carries the words. */
-export function PixelIcon({ name, tone = 'text' }: { name: IconName; tone?: Tone }) {
+export function PixelIcon({
+  name,
+  tone = 'text',
+  size = 1,
+}: {
+  name: IconName;
+  tone?: Tone;
+  /** UI pixels per icon pixel, to sit on a line of PixelText at the same size. */
+  size?: 1 | 2;
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
   useLayoutEffect(() => {
     const ctx = ref.current?.getContext('2d');
@@ -48,8 +59,8 @@ export function PixelIcon({ name, tone = 'text' }: { name: IconName; tone?: Tone
         height={LINE_HEIGHT}
         aria-hidden
         style={{
-          width: `calc(var(--sf-px) * ${SIZE})`,
-          height: `calc(var(--sf-px) * ${LINE_HEIGHT})`,
+          width: `calc(var(--sf-px) * ${SIZE * size})`,
+          height: `calc(var(--sf-px) * ${LINE_HEIGHT * size})`,
         }}
       />
     </span>

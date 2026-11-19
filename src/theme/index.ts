@@ -55,6 +55,13 @@ export const ui = {
   /** Tank weather: light shafts on good days, raindrop ripples on bad ones (the water darkens with night). */
   sunlight: palette.ui.sunlight,
   ripple: palette.ui.ripple,
+  /**
+   * Today's change, as on a price board: green and red numbers on the dark
+   * ticker strip (at least 6.6:1). Which one means up is a setting.
+   */
+  changeGreen: palette.ui.changeGreen,
+  changeRed: palette.ui.changeRed,
+  ticker: palette.ui.ticker,
 } as const;
 
 /** The ramp the title-bar logo fish is drawn in (the app icon's colours). */

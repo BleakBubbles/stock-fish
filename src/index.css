@@ -173,6 +173,23 @@ canvas {
   pointer-events: none;
 }
 
+/* The keys, shown only while the fish list has keyboard focus. */
+.fish-list-hint {
+  display: none;
+  position: absolute;
+  z-index: 4;
+  left: calc(var(--sf-px) * 4);
+  bottom: calc(var(--sf-px) * 4);
+  padding: calc(var(--sf-px) * 3) calc(var(--sf-px) * 4);
+  background: var(--sf-panel);
+  line-height: 0;
+  pointer-events: none;
+}
+
+.tank-slot:has(.fish-list :focus-visible) .fish-list-hint {
+  display: block;
+}
+
 .details-anchor {
   position: absolute;
   z-index: 5;
@@ -509,6 +526,47 @@ canvas {
 .px-dt,
 .px-dd {
   display: block;
+}
+
+/*
+ * Today's change on a dark strip, like a price board. It bleeds a pixel above
+ * and below so its text stays on the row's line.
+ */
+.change-ticker {
+  display: inline-flex;
+  gap: calc(var(--sf-px) * 2);
+  margin: calc(var(--sf-px) * -1) 0;
+  padding: var(--sf-px) calc(var(--sf-px) * 2);
+  background: var(--sf-ticker);
+  line-height: 0;
+}
+
+/* The big one, heading a details panel. */
+.change-ticker.is-big {
+  gap: calc(var(--sf-px) * 4);
+  margin: 0;
+  padding: calc(var(--sf-px) * 2) calc(var(--sf-px) * 4);
+}
+
+.change-headline {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sf-px) * 3);
+  line-height: 0;
+}
+
+.change-headline-top {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--sf-px) * 6);
+  line-height: 0;
+}
+
+/* Fish details: the typical-day range bar with its caption under it. */
+.px-dd.range-cell {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sf-px) * 3);
 }
 
 /* ?pixels debug overlay (PixelCheck). Deliberately plain text. */

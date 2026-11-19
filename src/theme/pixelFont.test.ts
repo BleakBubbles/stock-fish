@@ -14,8 +14,8 @@ describe('parseFont', () => {
     expect(uiFont.height).toBe(9);
     expect(uiFont.baseline).toBe(8);
     expect(uiFont.capHeight).toBe(5);
-    expect(uiFont.glyphs.size).toBe(101);
-    for (const ch of 'AZaz09 %$+-.,()') expect(uiFont.glyphs.has(ch), ch).toBe(true);
+    expect(uiFont.glyphs.size).toBe(102);
+    for (const ch of 'AZaz09 %$+-.,()±×·≈') expect(uiFont.glyphs.has(ch), ch).toBe(true);
     for (const [ch, g] of uiFont.glyphs) {
       expect(g.rows, ch).toHaveLength(9);
       expect(g.advance, ch).toBeGreaterThan(0);

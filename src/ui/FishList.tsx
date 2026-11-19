@@ -1,6 +1,7 @@
 import { type KeyboardEvent, useId, useRef, useState } from 'react';
 import type { FishView } from '../tank/model';
 import { describeFish } from './describeFish';
+import { PixelText } from './pixel/PixelText';
 
 interface Props {
   /** The fish on screen, in the order they're arranged. */
@@ -19,7 +20,8 @@ interface Props {
  * The tank for keyboards and screen readers: one tab stop that holds every
  * fish on screen. Arrow keys move between fish and select each one (it lights
  * up in the tank and its details open); Alt + arrows reorder patches in a
- * single pen; Escape clears. Visually hidden: the tank's highlight shows focus.
+ * single pen; Escape clears. Visually hidden: the tank's highlight shows focus,
+ * and a key hint appears in the tank's corner while the list has keyboard focus.
  */
 export function FishList({ fish, penName, selectedId, onSelect, onReorder }: Props) {
   const listRef = useRef<HTMLUListElement>(null);
@@ -66,33 +68,42 @@ export function FishList({ fish, penName, selectedId, onSelect, onReorder }: Pro
 
   if (fish.length === 0) return null;
   return (
-    <div className="sr-only">
-      <p id={hintId}>
-        Arrow keys choose a fish and show its details.
-        {onReorder ? ' Alt and arrow keys move its patch earlier or later.' : ''}
-      </p>
-      <ul
-        ref={listRef}
-        aria-label="Fish"
-        aria-describedby={hintId}
-        onKeyDown={(e) => void onKeyDown(e)}
-      >
-        {fish.map((f, i) => (
-          <li key={f.id}>
-            <button
-              type="button"
-              data-fish={f.id}
-              tabIndex={i === index ? 0 : -1}
-              aria-pressed={f.id === selectedId}
-              onFocus={() => f.id !== selectedId && onSelect(f.id)}
-              onClick={() => onSelect(f.id)}
-            >
-              {describeFish(f, penName(f.penId))}
-            </button>
-          </li>
-        ))}
-      </ul>
-      <p role="status">{announce}</p>
-    </div>
+    <>
+      {/* For sighted keyboard users; screen readers hear the hint below instead. */}
+      <div className="fish-list-hint px-panel" aria-hidden="true">
+        <PixelText
+          text={`Arrows: choose fish${onReorder ? ' · Alt+arrows: move patch' : ''} · Esc: close`}
+          tone="textMuted"
+        />
+      </div>
+      <div className="sr-only">
+        <p id={hintId}>
+          Arrow keys choose a fish and show its details.
+          {onReorder ? ' Alt and arrow keys move its patch earlier or later.' : ''}
+        </p>
+        <ul
+          ref={listRef}
+          aria-label="Fish"
+          aria-describedby={hintId}
+          onKeyDown={(e) => void onKeyDown(e)}
+        >
+          {fish.map((f, i) => (
+            <li key={f.id}>
+              <button
+                type="button"
+                data-fish={f.id}
+                tabIndex={i === index ? 0 : -1}
+                aria-pressed={f.id === selectedId}
+                onFocus={() => f.id !== selectedId && onSelect(f.id)}
+                onClick={() => onSelect(f.id)}
+              >
+                {describeFish(f, penName(f.penId))}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <p role="status">{announce}</p>
+      </div>
+    </>
   );
 }

@@ -5,6 +5,9 @@ import { normalizeCurrency } from '../data/currency';
 import { formatChangeRatio, formatMoney } from './format';
 import { PixelButton } from './pixel/PixelButton';
 import { PixelText } from './pixel/PixelText';
+import { RangeBar } from './RangeBar';
+import { ChangeHeadline } from './ChangeTicker';
+import { MoodFace } from './MoodFace';
 import { usePixelScale } from './pixel/context';
 
 const MOOD_LABEL: Record<Mood, string> = {
@@ -18,9 +21,11 @@ const MOOD_LABEL: Record<Mood, string> = {
 /** UI pixels of padding, border and gaps around the panel's text (see .fish-details). */
 const PANEL_CHROME = 2 * (4 + 1 + 3);
 const LABEL_GAP = 4;
-const LABELS = ['Today', 'Price', 'Holding', 'Mood'];
+const LABELS = ['Price', 'Holding', 'Mood'];
 /** Never wider than this many UI pixels, even on big screens. */
 const MAX_WIDTH = 200;
+/** The typical-day range bar is at most this wide. */
+const BAR_MAX = 101;
 
 interface Props {
   fish: FishView;
@@ -69,12 +74,12 @@ export function FishDetails({
     </div>
   );
 
-  const moodNote =
-    result?.sigma !== undefined && result.reason === 'ok'
-      ? `(typical day ±${(result.sigma * 100).toFixed(2)}%)`
-      : result?.reason === 'short-history'
-        ? '(not enough history yet)'
-        : undefined;
+  const moodNote = result?.reason === 'short-history' ? '(not enough history yet)' : undefined;
+  // Today against a typical day, as a bar with the numbers under it.
+  const range =
+    result?.reason === 'ok' && result.sigma !== undefined && result.z !== undefined
+      ? { z: result.z, sigma: result.sigma }
+      : undefined;
 
   return (
     <section className="fish-details px-panel px-stack" aria-label={`${fish.symbol} details`}>
@@ -84,18 +89,34 @@ export function FishDetails({
       />
       {penName && <PixelText text={`In ${penName}`} tone="textMuted" wrap={textWidth} />}
       {quote && result ? (
-        <div className="px-dl" aria-live="polite">
-          {row(
-            'Today',
-            formatChangeRatio(result.todayReturn),
-            `(${formatMoney(fish.change ?? NaN, currency, true)})`,
-          )}
-          {row('Price', formatMoney(quote.price, currency))}
-          {row(
-            'Holding',
-            `${fish.quantity.toLocaleString()} × ${formatMoney(quote.price, currency)} = ${formatMoney(fish.quantity * quote.price, currency)}${converted}`,
-          )}
-          {row('Mood', MOOD_LABEL[fish.mood], moodNote)}
+        <div className="px-stack" aria-live="polite">
+          <ChangeHeadline
+            change={result.todayReturn}
+            percent={formatChangeRatio(result.todayReturn)}
+            money={formatMoney(fish.change ?? NaN, currency, true)}
+            aside={range && <MoodFace mood={fish.mood} size={2} />}
+          />
+          <div className="px-dl">
+            {row('Price', formatMoney(quote.price, currency))}
+            {row(
+              'Holding',
+              `${fish.quantity.toLocaleString()} × ${formatMoney(quote.price, currency)} = ${formatMoney(fish.quantity * quote.price, currency)}${converted}`,
+            )}
+            {row('Mood', MOOD_LABEL[fish.mood], moodNote)}
+            {range && (
+              <div className="px-dl-row">
+                <span className="px-dt" style={{ width: `calc(var(--sf-px) * ${labelWidth})` }} />
+                <span className="px-dd range-cell">
+                  <RangeBar z={range.z} width={Math.min(BAR_MAX, valueWidth)} />
+                  <PixelText
+                    text={`Typical day ±${(range.sigma * 100).toFixed(2)}%`}
+                    tone="textMuted"
+                    wrap={valueWidth}
+                  />
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <PixelText

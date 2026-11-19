@@ -302,7 +302,7 @@ function ViewMenu({
   onChange: (labels: TankLabels) => void;
 }) {
   return (
-    <Popover label="Labels" icon="show" iconOnly className="view" menuLabel="Labels">
+    <Popover label="View" icon="show" className="view" menuLabel="Labels">
       {() =>
         VIEW_OPTIONS.map(({ key, label }) => {
           const on = value[key];
