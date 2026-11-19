@@ -38,8 +38,9 @@ market data provider blocks browser requests (CORS).
    320 × 180 tank fits, then raised (zoomed in) while every fish keeps enough water, and the native
    size grows in whole art pixels to fill the space (`tankZoom` in `src/tank/arrange.ts`). Never
    scale fish apart from the rest of the tank. Fish labels (text and mood badges) grow with the
-   fish but are never smaller than the app's text: their pixel is the larger of an art pixel and
-   a UI pixel. Round sprite positions
+   fish but are never smaller than the app's text: each label pixel is a whole number of art pixels, at
+   least one UI pixel. Labels are drawn with their fish, so a fish in front covers the fish behind
+   and its labels. Round sprite positions
    to whole art pixels. Never rotate or fractionally scale sprites (mirroring is fine). Scales are
    whole numbers of *device* pixels (`src/ui/pixel/scale.ts`). The UI pixel is the tank pixel ×
    the smallest whole number that keeps capitals at least 9 CSS px tall (1 on laptops, 2 on

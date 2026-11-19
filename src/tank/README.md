@@ -4,8 +4,10 @@
   shows it upscaled by a whole number, measured in device pixels. The scale fits a 320 × 180 tank;
   with only a few fish it zooms in (`tankZoom`), and the native size grows to fill the slot. The
   scene is resized to match (`scene.setSize`: frame, water, sand and plants, weather, swimming
-  bounds). Fish labels live in `scene.overlay`, drawn over the upscaled tank at the larger of an
-  art pixel and a UI pixel.
+  bounds). Each fish's labels are drawn just in front of it in the fish layer (a fish in front
+  covers the fish behind and its labels), each label pixel a whole number of art pixels and at
+  least one UI pixel. At night the overlay dims the water and the fish dim by a tint, so labels
+  stay bright.
 - `scene.ts`: the scene in art pixels (water, fish, night overlay, hit testing, regions, the
   selected fish's territory outline, dragging). No React.
 - `decor.ts`: pure, seeded layout of a tank's floor (sand surface, specks, plants and rocks), so

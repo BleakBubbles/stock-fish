@@ -194,9 +194,7 @@ export function Tank({
         RenderTexture.create({ width, height, resolution: 1, scaleMode: 'nearest' });
       let target = makeTarget(TANK_WIDTH, TANK_HEIGHT);
       const display = new Sprite(target);
-      // Fish labels go over the upscaled tank, in label pixels (scaled below), so
-      // they can be drawn bigger than the tank's art pixels (phones).
-      app.stage.addChild(display, scene.overlay);
+      app.stage.addChild(display);
       /** The tank's current native size, art pixels. */
       const size = { w: TANK_WIDTH, h: TANK_HEIGHT };
 
@@ -237,12 +235,10 @@ export function Tank({
           scene.setSize(width, height);
         }
         // Labels (text and mood badges) grow with the fish when zoomed in, but are
-        // never smaller than the app's text: a label pixel is the larger of an art
-        // pixel and a UI pixel, both whole device pixels. Fish swim as slowly in
-        // art pixels as the tank is zoomed in, so they cross it in the same time.
-        const labelPx = Math.max(scale, ui);
-        scene.setZoom({ labels: scale / labelPx, pace: base / scale });
-        scene.overlay.scale.set(labelPx);
+        // never smaller than the app's text: each label pixel is a whole number
+        // of art pixels, at least one UI pixel. Fish swim as slowly in art
+        // pixels as the tank is zoomed in, so they cross it in the same time.
+        scene.setZoom({ labels: Math.max(1, Math.ceil(ui / scale)), pace: base / scale });
         app.renderer.resize(width * scale, height * scale);
         canvas.style.width = `${width * scale}px`;
         canvas.style.height = `${height * scale}px`;

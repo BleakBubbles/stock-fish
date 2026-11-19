@@ -39,7 +39,8 @@ A sad fish always means "unusual for this one," not just "red."
 - **Zoom:** with only a few fish the whole tank zooms in (a bigger whole-number scale, up to twice
   the normal one) as far as every fish keeps a few patches' worth of water, so a small pen looks
   close up; adding fish zooms out. Fish swim proportionally slower in art pixels when zoomed. Labels
-  and mood badges grow with the fish, but never below the UI's text size. On phones held upright, details sit over the tank's bottom.
+  and mood badges grow with the fish, but never below the UI's text size, and stack with their fish:
+  a fish in front covers the fish behind and its labels. On phones held upright, details sit over the tank's bottom.
 - **Tap for numbers:** ticker, % change and $ change, so the app fully replaces a price board.
   A range bar under the mood shows why: a band for a calm day, ticks where strong moves begin, and
   a marker for today, with the typical day's size (±σ) written under it.

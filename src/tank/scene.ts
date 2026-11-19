@@ -31,7 +31,6 @@ import {
   shaftRows,
   stepRain,
 } from './weather';
-import { type Box, type LabelHome, type Nudge, placeLabels } from './labels';
 import { STILL_TAIL, type TailMotion, type TailState, stepTail, tailPose } from './tail';
 import type { Rect } from './territory';
 import {
@@ -95,8 +94,6 @@ interface FishNode {
   labelGroup: Container;
   text: Sprite;
   badge: Sprite;
-  /** Where crowding last pushed the labels, so they don't hop about. */
-  nudges: readonly Nudge[];
   /** What the text sprite shows, to skip redrawing it. */
   textKey: string;
 }
@@ -169,6 +166,18 @@ interface Swayer {
   frames: [Texture, Texture];
   phase: number;
 }
+/**
+ * Fish at night: about what the night overlay does to the water (blending
+ * NIGHT_ALPHA of the night colour over it), as a tint, so their labels can
+ * stay bright in front of the overlay.
+ */
+const NIGHT_TINT = (() => {
+  const n = Number.parseInt(ui.night, 16);
+  const mix = (shift: number) =>
+    Math.round(255 * (1 - NIGHT_ALPHA) + ((n >> shift) & 0xff) * NIGHT_ALPHA);
+  return (mix(16) << 16) | (mix(8) << 8) | mix(0);
+})();
+
 /** Rain streaks are see-through, so they don't hide the fish. */
 const RAIN_ALPHA = 0.5;
 /** At night the water is calm: plants sway at this fraction of their usual pace. */
@@ -178,13 +187,11 @@ export class TankScene {
   /** Everything drawn in the tank, in art pixels. Render this into the low-res texture. */
   readonly root = new Container();
   /**
-   * Drawn over the upscaled tank: fish labels (text and mood badges), in label
-   * pixels, so on phones they can be bigger than the tank's art pixels. Tank.tsx
-   * scales it to device pixels.
+   * Art pixels per label pixel, a whole number: 1, or more where the UI's
+   * pixels are bigger than the tank's (phones), so labels are never smaller
+   * than the app's text and stay crisp.
    */
-  readonly overlay = new Container();
-  /** Label pixels per art pixel: 1, or less where UI pixels are bigger than art pixels (phones). */
-  private labelZoom = 1;
+  private labelScale = 1;
   /**
    * Swimming pace: zoomed in, art pixels are bigger on screen, so fish swim
    * that much slower in art pixels and cross the tank in about the same time.
@@ -235,8 +242,6 @@ export class TankScene {
   private decorSeed?: string;
   private swayers: Swayer[] = [];
   private swayClock = 0;
-  /** Tickers, changes and mood badges, above the fish (and the night overlay, to stay readable). */
-  private readonly labelLayer = new Container();
   private labels: SceneLabels = { ticker: false, change: false, mood: false };
   /** Label textures by their text, shared by fish that say the same thing. */
   private readonly labelTextures = new Map<string, Texture>();
@@ -248,24 +253,26 @@ export class TankScene {
   ) {
     this.night.visible = false;
     this.drawTank();
-    // Fish swim behind the frame, so leaving fish slip out of sight past the glass.
-    // Z's float above the dimmed tank, so they're readable at night.
+    // The water, its floor and the weather, then the night overlay over them.
+    // Each fish and its labels in front: fish dim at night by a tint instead,
+    // so labels stay readable, and a fish in front covers both the fish behind
+    // and its labels. Fish swim behind the frame, so leaving fish slip out of
+    // sight past the glass. Z's float above everything, readable at night.
     this.root.addChild(
       this.room,
       this.waterFill,
       this.decorBack,
       this.sandLayer,
       this.decorFront,
-      this.patchOutline,
-      this.fishLayer,
       this.shaftLayer,
       this.gloom,
       this.rippleLayer,
+      this.patchOutline,
       this.night,
+      this.fishLayer,
       this.frameSprite,
       this.zedLayer,
     );
-    this.overlay.addChild(this.labelLayer);
   }
 
   /**
@@ -295,14 +302,15 @@ export class TankScene {
   }
 
   /**
-   * How the tank is drawn: `labels` is label pixels per art pixel (see
-   * labelZoom); `pace` slows swimming in art pixels as the tank zooms in (1 at
-   * normal zoom).
+   * How the tank is drawn: `labels` is art pixels per label pixel (a whole
+   * number, see labelScale); `pace` slows swimming in art pixels as the tank
+   * zooms in (1 at normal zoom).
    */
   setZoom({ labels, pace }: { labels: number; pace: number }): void {
     this.swimPace = pace;
-    if (labels === this.labelZoom) return;
-    this.labelZoom = labels;
+    const scale = Math.max(1, Math.round(labels));
+    if (scale === this.labelScale) return;
+    this.labelScale = scale;
     this.layoutLabels();
   }
 
@@ -495,7 +503,6 @@ export class TankScene {
     badge.visible = false;
     const labelGroup = new Container();
     labelGroup.addChild(text, badge);
-    this.labelLayer.addChild(labelGroup);
     const node: FishNode = {
       spec,
       tail: STILL_TAIL,
@@ -503,7 +510,6 @@ export class TankScene {
       labelGroup,
       text,
       badge,
-      nudges: [],
       textKey: '',
       swim: parked
         ? resume(parked, this.boundsOf(spec.id), this.rand)
@@ -513,7 +519,8 @@ export class TankScene {
     };
     this.applySpec(node, spec, true);
     this.fish.set(spec.id, node);
-    this.fishLayer.addChild(container);
+    this.fishLayer.addChild(container, labelGroup);
+    container.tint = this.asleep ? NIGHT_TINT : 0xffffff;
     this.place(node);
     this.layoutLabels();
   }
@@ -635,6 +642,8 @@ export class TankScene {
 
   setNight(on: boolean): void {
     this.night.visible = on;
+    // The overlay dims the water; fish (not their labels) dim by a tint.
+    for (const node of this.fish.values()) node.container.tint = on ? NIGHT_TINT : 0xffffff;
     if (on === this.asleep) return;
     this.asleep = on;
     // Settle down to rest at the bottom of each patch (or wake and spread out).
@@ -803,67 +812,47 @@ export class TankScene {
 
   /**
    * Put every label by its fish. Labels never mirror: text centred under the
-   * fish, the badge over it, kept inside the glass. Labels stack like the fish
-   * (the fish in front has its labels in front, at home); where fish crowd, the
-   * labels of fish further back move to the nearest free spot, or hide when
-   * there is none. A fish swimming away takes no labels with it.
+   * fish, the badge over it, kept inside the glass. Each fish's labels sit
+   * just in front of it in the fish layer, so where fish crowd, a fish in
+   * front covers the fish behind and its labels too. A fish swimming away
+   * takes no labels with it.
    */
   private layoutLabels(): void {
     const byContainer = new Map([...this.fish.values()].map((n) => [n.container as unknown, n]));
     const backToFront = this.fishLayer.children.flatMap((c) => byContainer.get(c) ?? []);
-    backToFront.forEach((node, i) => {
-      if (this.labelLayer.children[i] !== node.labelGroup) {
-        this.labelLayer.setChildIndex(node.labelGroup, i);
+    // Fish and labels in pairs: fish, its labels, next fish, its labels, ...
+    let i = 0;
+    for (const node of backToFront) {
+      for (const child of [node.container, node.labelGroup]) {
+        if (this.fishLayer.children[i] !== child) this.fishLayer.setChildIndex(child, i);
+        i++;
       }
-    });
-    const homes: LabelHome[] = [];
-    const sprites = new Map<string, Sprite[]>();
-    for (const node of [...backToFront].reverse()) {
+    }
+    // Labels in art pixels, each label pixel `m` art pixels square.
+    const m = this.labelScale;
+    const inner = this.geo.inner;
+    const keepIn = (sprite: Sprite, x: number, y: number, w: number, h: number) => {
+      sprite.scale.set(m);
+      sprite.position.set(
+        Math.max(inner.x, Math.min(inner.x + inner.w - w, x)),
+        Math.max(inner.y, Math.min(inner.y + inner.h - h, y)),
+      );
+    };
+    for (const node of backToFront) {
       node.labelGroup.visible = !node.swim.leaving;
       if (node.swim.leaving) continue;
-      // The fish in label pixels (whole ones, from its whole art pixels).
-      const k = this.labelZoom;
       const x = Math.round(node.swim.x);
       const y = Math.round(node.swim.y);
-      const centre = Math.round((x + FISH_W / 2) * k);
-      const boxes: { box: Box; away: 1 | -1 }[] = [];
-      const shown: Sprite[] = [];
+      const centre = x + Math.floor(FISH_W / 2);
       if (node.text.visible) {
-        const { width: w, height: h } = node.text.texture;
-        const box = { x: centre - Math.floor(w / 2), y: Math.round((y + LABEL_BELOW) * k), w, h };
-        boxes.push({ box, away: 1 });
-        shown.push(node.text);
+        const w = node.text.texture.width * m;
+        const h = node.text.texture.height * m;
+        keepIn(node.text, centre - Math.floor(w / 2), y + LABEL_BELOW, w, h);
       }
       if (node.badge.visible) {
-        const box: Box = {
-          x: centre - Math.floor(BADGE_SIZE / 2),
-          y: Math.round((y + BADGE_BOTTOM) * k) - BADGE_SIZE,
-          w: BADGE_SIZE,
-          h: BADGE_SIZE,
-        };
-        boxes.push({ box, away: -1 });
-        shown.push(node.badge);
+        const size = BADGE_SIZE * m;
+        keepIn(node.badge, centre - Math.floor(size / 2), y + BADGE_BOTTOM - size, size, size);
       }
-      homes.push({ id: node.spec.id, boxes });
-      sprites.set(node.spec.id, shown);
-    }
-    const previous = new Map([...this.fish.values()].map((n) => [n.spec.id, n.nudges]));
-    const { x, y, w, h } = this.geo.inner;
-    const k = this.labelZoom;
-    const area = {
-      x: Math.ceil(x * k),
-      y: Math.ceil(y * k),
-      w: Math.floor((x + w) * k) - Math.ceil(x * k),
-      h: Math.floor((y + h) * k) - Math.ceil(y * k),
-    };
-    for (const [id, { boxes, nudges }] of placeLabels(homes, area, previous)) {
-      const node = this.fish.get(id);
-      if (node) node.nudges = nudges;
-      sprites.get(id)?.forEach((sprite, i) => {
-        const box = boxes[i];
-        sprite.renderable = box !== undefined;
-        if (box) sprite.position.set(box.x, box.y);
-      });
     }
   }
 
