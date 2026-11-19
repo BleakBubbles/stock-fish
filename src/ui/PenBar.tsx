@@ -4,6 +4,12 @@ import { measureText, normalizeText, uiFont } from '../theme/pixelFont';
 import { PixelButton } from './pixel/PixelButton';
 import type { IconName } from './pixel/PixelIcon';
 import { usePixelScale } from './pixel/context';
+import { PixelIcon } from './pixel/PixelIcon';
+import { PixelText } from './pixel/PixelText';
+import type { WeatherResult } from '../mood';
+import { direction, directionTone } from './change';
+import { formatChangeRatio } from './format';
+import { useSettings } from '../data/store';
 
 const ARRANGE_LABEL: Record<ArrangeMode, string> = {
   mood: 'Mood',
@@ -47,6 +53,10 @@ interface Props {
   onLabels: (labels: TankLabels) => void;
   onNewPen: () => void;
   onEditPen: () => void;
+  /** Each pen's weather today, when any of its fish is priced. */
+  penWeather?: ReadonlyMap<string, WeatherResult>;
+  /** The weather of all pens together. */
+  allWeather?: WeatherResult;
 }
 
 /**
@@ -70,13 +80,19 @@ export function PenBar(props: Props) {
     </div>
   );
   const rightWidth =
-    ICON_BUTTON +
+    buttonWidth('View', true) +
     TAB_GAP +
     buttonWidth(overview ? `Arrange: ${ARRANGE_LABEL[arrange]}` : 'Edit pen', true);
-  // The pen tabs, then the icon-only "new pen" button.
-  const tabLabels = [...(pens.length > 1 ? ['All'] : []), ...pens.map((p) => p.name)];
+  // The pen tabs (each with its weather icon once priced), then the icon-only "new pen" button.
+  const { penWeather, allWeather } = props;
+  const tabs = [
+    ...(pens.length > 1 ? [{ label: 'All', weather: allWeather }] : []),
+    ...pens.map((p) => ({ label: p.name, weather: penWeather?.get(p.id) })),
+  ];
   const tabsWidth =
-    tabLabels.reduce((a, l) => a + buttonWidth(l), 0) + ICON_BUTTON + TAB_GAP * tabLabels.length;
+    tabs.reduce((a, t) => a + buttonWidth(t.label, t.weather !== undefined), 0) +
+    ICON_BUTTON +
+    TAB_GAP * tabs.length;
   // The root can be one column wider than the window; leave it out.
   const room = cols - 1 - 2 * BAR_PADDING - SIDE_GAP - rightWidth;
 
@@ -94,7 +110,14 @@ export function PenBar(props: Props) {
     <div className="pen-bar px-bar">
       <nav aria-label="Pens" className="px-row">
         {pens.length > 1 && (
-          <PixelButton label="All" active={all} aria-pressed={all} onClick={onShowAll} />
+          <PixelButton
+            label="All"
+            icon={allWeather?.weather}
+            active={all}
+            aria-pressed={all}
+            aria-label={withWeather('All pens', allWeather)}
+            onClick={onShowAll}
+          />
         )}
         {pens.map((p) => {
           const on = shown.includes(p.id) && !(all && pens.length > 1);
@@ -102,6 +125,8 @@ export function PenBar(props: Props) {
             <PixelButton
               key={p.id}
               label={p.name}
+              icon={penWeather?.get(p.id)?.weather}
+              aria-label={withWeather(p.name, penWeather?.get(p.id))}
               active={on}
               aria-pressed={on}
               data-pen-id={p.id}
@@ -115,6 +140,29 @@ export function PenBar(props: Props) {
       </nav>
       {right}
     </div>
+  );
+}
+
+/** A pen's name for screen readers, with its weather when known. */
+function withWeather(name: string, w: WeatherResult | undefined): string {
+  return w ? `${name}, ${w.weather}, ${formatChangeRatio(w.changeRatio)} today` : name;
+}
+
+/**
+ * A pen's weather in the pens menu: its icon and today's %, right-aligned in
+ * a column `width` UI pixels wide so the pens' numbers line up like a board.
+ */
+function WeatherFigure({ weather, width }: { weather?: WeatherResult; width: number }) {
+  const settings = useSettings();
+  if (!weather) return <span className="pen-weather" />;
+  const tone = directionTone(direction(weather.changeRatio), settings?.upColour);
+  return (
+    <span className="pen-weather" aria-hidden="true">
+      <PixelIcon name={weather.weather} />
+      <span className="pen-weather-figure" style={{ width: `calc(var(--sf-px) * ${width})` }}>
+        <PixelText text={formatChangeRatio(weather.changeRatio)} tone={tone} />
+      </span>
+    </span>
   );
 }
 
@@ -135,8 +183,15 @@ function PensMenu({
   onPen,
   onNewPen,
   maxLabel,
+  penWeather,
+  allWeather,
 }: Props & { maxLabel: number }) {
   const all = shown.length === pens.length;
+  // One column for every pen's %, as wide as the widest.
+  const figures = [allWeather, ...pens.map((p) => penWeather?.get(p.id))].flatMap((w) =>
+    w ? [formatChangeRatio(w.changeRatio)] : [],
+  );
+  const figureWidth = Math.max(0, ...figures.map(textWidth));
   const only = shown.length === 1 ? pens.find((p) => p.id === shown[0]) : undefined;
   const summary = all && pens.length > 1 ? 'All pens' : only ? only.name : `${shown.length} pens`;
 
@@ -150,15 +205,19 @@ function PensMenu({
       {(close) => (
         <>
           {pens.length > 1 && (
-            <PixelButton
-              label="All pens"
-              active={all}
-              aria-pressed={all}
-              onClick={() => {
-                onShowAll();
-                close();
-              }}
-            />
+            <div className="px-input-row">
+              <PixelButton
+                label="All pens"
+                active={all}
+                aria-pressed={all}
+                aria-label={withWeather('All pens', allWeather)}
+                onClick={() => {
+                  onShowAll();
+                  close();
+                }}
+              />
+              <WeatherFigure weather={allWeather} width={figureWidth} />
+            </div>
           )}
           {pens.map((p) => {
             const on = shown.includes(p.id);
@@ -175,12 +234,13 @@ function PensMenu({
                 <PixelButton
                   label={p.name}
                   active={on && !all && shown.length === 1}
-                  aria-label={`Show only ${p.name}`}
+                  aria-label={`Show only ${withWeather(p.name, penWeather?.get(p.id))}`}
                   onClick={() => {
                     onPen(p.id, false);
                     close();
                   }}
                 />
+                <WeatherFigure weather={penWeather?.get(p.id)} width={figureWidth} />
               </div>
             );
           })}

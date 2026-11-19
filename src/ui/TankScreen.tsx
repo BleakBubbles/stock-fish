@@ -15,7 +15,7 @@ import {
   useHomeCurrency,
   useMarketEntries,
 } from '../data/useMarket';
-import { WEATHERS, type Weather, temperFor } from '../mood';
+import { WEATHERS, type Weather, type WeatherResult, temperFor } from '../mood';
 import { type DropTarget, Tank, type TankPlacement } from '../tank/Tank';
 import {
   type ArrangeFish,
@@ -35,6 +35,10 @@ import { PenBar } from './PenBar';
 import { MoveDialog, PenDialog } from './PenDialogs';
 import { PixelButton } from './pixel/PixelButton';
 import { PixelText } from './pixel/PixelText';
+import { PixelIcon } from './pixel/PixelIcon';
+import { TONE_COLOUR } from './pixel/tones';
+import { ChangeTicker } from './ChangeTicker';
+import { direction, directionTone } from './change';
 import { usePixelScale } from './pixel/context';
 import { useSnap } from './pixel/useSnap';
 
@@ -141,6 +145,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
   /** A single pen is a home with the user's layout; several are an overview. */
   const home = shown.length === 1 ? shown[0] : undefined;
 
+  const upColour = settings?.upColour;
   const sceneFish = useMemo(
     () =>
       visible.map(({ id, body, mood, primary, secondary, symbol, moodResult }) => ({
@@ -154,10 +159,13 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
           moodResult && Number.isFinite(moodResult.todayReturn)
             ? formatChangeRatio(moodResult.todayReturn)
             : undefined,
+        changeColour: moodResult
+          ? TONE_COLOUR[directionTone(direction(moodResult.todayReturn), upColour)]
+          : undefined,
         moodKnown: moodResult !== undefined && moodResult.reason !== 'bad-quote',
         temper: temperFor(moodResult?.sigma),
       })),
-    [visible],
+    [visible, upColour],
   );
   const regions = useMemo(() => {
     // Oldest first, so a new fish's patch is added at the end (no reshuffle).
@@ -175,6 +183,32 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
   }, [visible, holdings, home, view.arrange, shown]);
 
   const weather = useMemo(() => weatherFor(visible, entries ?? new Map()), [visible, entries]);
+  // Each pen's weather, and all pens', for the pens bar (only where some fish is priced).
+  const penWeather = useMemo(() => {
+    const out = new Map<string, WeatherResult>();
+    for (const p of pens ?? []) {
+      const members = fish.filter((f) => f.penId === p.id);
+      if (members.some((f) => f.home)) out.set(p.id, weatherFor(members, entries ?? new Map()));
+    }
+    return out;
+  }, [pens, fish, entries]);
+  const allWeather = useMemo(
+    () => (fish.some((f) => f.home) ? weatherFor(fish, entries ?? new Map()) : undefined),
+    [fish, entries],
+  );
+  // Each group's weather over an overview, for its label.
+  const groupWeather = useMemo(() => {
+    const out = new Map<string, Weather>();
+    for (const r of regions) {
+      if (!r.group) continue;
+      const ids = new Set(r.group.fishIds);
+      const members = visible.filter((f) => ids.has(f.id));
+      if (members.some((f) => f.home)) {
+        out.set(r.key, weatherFor(members, entries ?? new Map()).weather);
+      }
+    }
+    return out;
+  }, [regions, visible, entries]);
   const open = useMemo(() => {
     const recent = [...(entries?.values() ?? [])].flatMap((e) =>
       e.quote && e.quoteAt !== undefined
@@ -317,18 +351,23 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
           onLabels={setLabels}
           onNewPen={() => setDialog({ kind: 'new-pen' })}
           onEditPen={() => home && setDialog({ kind: 'edit-pen', pen: home })}
+          penWeather={penWeather}
+          allWeather={allWeather}
         />
       )}
 
       <div className="tank-bar px-bar" role="status">
         {priced && (
           <>
-            <PixelText text={WEATHER_LABEL[weather.weather]} />
-            <PixelText text={formatChangeRatio(weather.changeRatio)} />
-            <PixelText
-              text={`(${formatMoney(weather.change, currency, true)}) today`}
-              tone="textMuted"
+            <span className="tank-bar-weather">
+              <PixelIcon name={weather.weather} />
+              <PixelText text={WEATHER_LABEL[weather.weather]} />
+            </span>
+            <ChangeTicker
+              change={weather.changeRatio}
+              text={`${formatChangeRatio(weather.changeRatio)} (${formatMoney(weather.change, currency, true)})`}
             />
+            <PixelText text="today" tone="textMuted" />
           </>
         )}
         {!open && <PixelText text="Market closed" tone="textMuted" />}
@@ -375,6 +414,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
             regions={regions}
             placement={placement}
             selectedKey={groupRegion?.key}
+            weatherOf={(key) => groupWeather.get(key)}
             onSelect={(key) => selectGroup(key === selectedGroup ? undefined : key)}
           />
         )}
@@ -457,11 +497,14 @@ function RegionLabels({
   regions,
   placement,
   selectedKey,
+  weatherOf,
   onSelect,
 }: {
   regions: readonly Region[];
   placement: TankPlacement;
   selectedKey?: string;
+  /** A group's weather today, when any of its fish is priced. */
+  weatherOf: (key: string) => Weather | undefined;
   onSelect: (key: string) => void;
 }) {
   const { ui } = usePixelScale();
@@ -471,8 +514,14 @@ function RegionLabels({
   return (
     <div className="tank-labels">
       {regions.map((r) => {
-        const text = r.label ? fitLabel(r.label, toUi(r.rect.w) - chrome) : '';
-        if (!text || !r.group) return null;
+        if (!r.group) return null;
+        const weather = weatherOf(r.key);
+        // The label may run across the whole group (a pen spans several
+        // patches), less the weather icon: 7 pixels and a 3-pixel gap.
+        const groupRight = r.group.rect.x + r.group.rect.w;
+        const room = toUi(groupRight - r.rect.x) - chrome - (weather ? ICON_ROOM : 0);
+        const text = r.label ? fitLabel(r.label, room) : '';
+        if (!text) return null;
         const on = r.key === selectedKey;
         return (
           <button
@@ -483,17 +532,27 @@ function RegionLabels({
               left: `calc(var(--sf-px) * ${placement.left + toUi(r.rect.x) + 1})`,
               top: `calc(var(--sf-px) * ${placement.top + toUi(r.rect.y) + 1})`,
             }}
-            aria-label={`${r.label ?? ''} summary`}
+            aria-label={`${r.label ?? ''}${weather ? `, ${weather}` : ''} summary`}
             aria-pressed={on}
             onClick={() => onSelect(r.key)}
           >
-            <PixelText text={text} />
+            {weather ? (
+              <span className="tank-label-content">
+                <PixelIcon name={weather} outline />
+                <PixelText text={text} outline />
+              </span>
+            ) : (
+              <PixelText text={text} outline />
+            )}
           </button>
         );
       })}
     </div>
   );
 }
+
+/** UI pixels a group label's weather icon takes: the 7-pixel icon and a 3-pixel gap. */
+const ICON_ROOM = 10;
 
 /** The label, cut short with an ellipsis if it's wider than `width` UI pixels. */
 function fitLabel(label: string, width: number): string {

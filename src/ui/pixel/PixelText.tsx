@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
-import { css } from '../../theme';
+import { css, ui } from '../../theme';
 import { TONE_COLOUR, type Tone } from './tones';
 import { drawText, measureText, normalizeText, uiFont, wrapText } from '../../theme/pixelFont';
 
@@ -13,6 +13,11 @@ interface Props {
   wrap?: number;
   /** UI pixels per font pixel: 1, or 2 for headings. Always a whole number. */
   size?: 1 | 2;
+  /**
+   * A one-pixel dark outline around every letter (as on fish labels), for text
+   * over the tank without a box. Adds a pixel on every side.
+   */
+  outline?: boolean;
 }
 
 /**
@@ -21,24 +26,31 @@ interface Props {
  * text stays in the DOM (visually hidden) for screen readers, find-in-page and
  * translation.
  */
-export function PixelText({ text, tone = 'text', wrap, size = 1 }: Props) {
+export function PixelText({ text, tone = 'text', wrap, size = 1, outline = false }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   const layout = useMemo(() => {
     const normal = normalizeText(uiFont, text);
     const lines = wrap ? wrapText(uiFont, normal, Math.floor(wrap / size)) : [normal];
-    const width = Math.max(1, ...lines.map((l) => measureText(uiFont, l)));
-    const height = lines.length * uiFont.height + (lines.length - 1) * LINE_GAP;
-    return { lines, width, height };
-  }, [text, wrap, size]);
+    const pad = outline ? 1 : 0;
+    const width = Math.max(1, ...lines.map((l) => measureText(uiFont, l))) + 2 * pad;
+    const height = lines.length * uiFont.height + (lines.length - 1) * LINE_GAP + 2 * pad;
+    return { lines, width, height, pad };
+  }, [text, wrap, size, outline]);
 
   useLayoutEffect(() => {
     const ctx = ref.current?.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, layout.width, layout.height);
-    layout.lines.forEach((line, i) => {
-      drawText(ctx, uiFont, line, 0, i * (uiFont.height + LINE_GAP), css(TONE_COLOUR[tone]));
-    });
+    const { pad } = layout;
+    const draw = (dx: number, dy: number, colour: string) =>
+      layout.lines.forEach((line, i) => {
+        drawText(ctx, uiFont, line, pad + dx, pad + dy + i * (uiFont.height + LINE_GAP), colour);
+      });
+    if (pad) {
+      for (const dy of [-1, 0, 1]) for (const dx of [-1, 0, 1]) draw(dx, dy, css(ui.night));
+    }
+    draw(0, 0, css(TONE_COLOUR[tone]));
   }, [layout, tone]);
 
   return (

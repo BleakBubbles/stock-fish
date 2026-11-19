@@ -50,11 +50,22 @@ export interface SceneFish {
   symbol: string;
   /** Today's change, formatted (e.g. "+1.2%"), once there's a price. */
   change?: string;
+  /** Its colour (hex), repeating its sign as on a price board; white when unset. */
+  changeColour?: string;
   /** Whether the mood is known (a badge would otherwise claim "calm" without data). */
   moodKnown: boolean;
   /** Temperament, 0 (calm) to 1 (jittery), from typical volatility (src/mood/temperament.ts). */
   temper: number;
 }
+
+/** One line of a fish's label, in its colour (hex; white when unset). */
+interface LabelLine {
+  text: string;
+  colour?: string;
+}
+
+const labelKey = (lines: readonly LabelLine[]) =>
+  lines.map((l) => `${l.colour ?? ''}:${l.text}`).join('\n');
 
 /** Labels drawn with every fish. */
 export interface SceneLabels {
@@ -220,12 +231,12 @@ export class TankScene {
     this.layoutLabels();
   }
 
-  /** A label's texture: its lines in white, outlined in the night colour, drawn once per text. */
-  private labelTexture(lines: readonly string[]): Texture {
-    const key = lines.join('\n');
+  /** A label's texture: its lines in their colours, outlined in the night colour, drawn once per text. */
+  private labelTexture(lines: readonly LabelLine[]): Texture {
+    const key = labelKey(lines);
     let texture = this.labelTextures.get(key);
     if (!texture) {
-      const texts = lines.map((l) => normalizeText(uiFont, l));
+      const texts = lines.map((l) => normalizeText(uiFont, l.text));
       const width = Math.max(...texts.map((t) => measureText(uiFont, t))) + 2 * LABEL_PAD;
       const height = texts.length * LABEL_LINE;
       const canvas = document.createElement('canvas');
@@ -233,16 +244,17 @@ export class TankScene {
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        // White letters with a one-pixel dark outline (all 8 neighbours): readable on
+        // Letters with a one-pixel dark outline (all 8 neighbours): readable on
         // water, sand and plants without hiding them behind a box.
-        const draw = (dx: number, dy: number, colour: string) =>
+        const draw = (dx: number, dy: number, colour?: string) =>
           texts.forEach((t, i) => {
             // Centre each line on whole pixels (an odd remainder goes to the right).
             const x = Math.floor((width - measureText(uiFont, t)) / 2);
-            drawText(ctx, uiFont, t, x + dx, i * LABEL_LINE + LABEL_FONT_TOP + dy, colour);
+            const fill = colour ?? css(lines[i]?.colour ?? ui.text);
+            drawText(ctx, uiFont, t, x + dx, i * LABEL_LINE + LABEL_FONT_TOP + dy, fill);
           });
         for (const dy of [-1, 0, 1]) for (const dx of [-1, 0, 1]) draw(dx, dy, css(ui.night));
-        draw(0, 0, css(ui.text));
+        draw(0, 0);
       }
       texture = Texture.from(canvas);
       texture.source.scaleMode = 'nearest';
@@ -254,11 +266,13 @@ export class TankScene {
   /** Show the labels this fish should have now. */
   private updateLabel(node: FishNode): void {
     const { spec } = node;
-    const lines = [
-      ...(this.labels.ticker ? [spec.symbol] : []),
-      ...(this.labels.change && spec.change ? [spec.change] : []),
+    const lines: LabelLine[] = [
+      ...(this.labels.ticker ? [{ text: spec.symbol }] : []),
+      ...(this.labels.change && spec.change
+        ? [{ text: spec.change, colour: spec.changeColour }]
+        : []),
     ];
-    const key = lines.join('\n');
+    const key = labelKey(lines);
     if (key !== node.textKey) {
       node.textKey = key;
       node.text.visible = lines.length > 0;

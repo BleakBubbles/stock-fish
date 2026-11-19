@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
-import { css } from '../../theme';
+import { css, ui } from '../../theme';
 import { ICONS } from '../../theme/sprites';
 import { TONE_COLOUR, type Tone } from './tones';
 
@@ -22,7 +22,12 @@ export type IconName =
   | 'tank'
   | 'test'
   | 'up'
-  | 'down';
+  | 'down'
+  | 'sunny'
+  | 'fair'
+  | 'calm'
+  | 'rainy'
+  | 'stormy';
 
 const SIZE = 7;
 /** The font's line is 9 pixels tall with capitals on rows 3 to 7: two rows down centres a 7-pixel icon on them. */
@@ -34,33 +39,45 @@ export function PixelIcon({
   name,
   tone = 'text',
   size = 1,
+  outline = false,
 }: {
   name: IconName;
   tone?: Tone;
   /** UI pixels per icon pixel, to sit on a line of PixelText at the same size. */
   size?: 1 | 2;
+  /** A one-pixel dark outline, matching outlined PixelText (adds a pixel on every side). */
+  outline?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const pad = outline ? 1 : 0;
+  const width = SIZE + 2 * pad;
+  const height = LINE_HEIGHT + 2 * pad;
   useLayoutEffect(() => {
     const ctx = ref.current?.getContext('2d');
     const rows = ICONS[name];
     if (!ctx || !rows) return;
-    ctx.clearRect(0, 0, SIZE, LINE_HEIGHT);
-    ctx.fillStyle = css(TONE_COLOUR[tone]);
-    rows.forEach((row, y) => {
-      for (let x = 0; x < row.length; x++) if (row[x] === 'x') ctx.fillRect(x, TOP + y, 1, 1);
-    });
-  }, [name, tone]);
+    ctx.clearRect(0, 0, width, height);
+    const draw = (dx: number, dy: number, colour: string) => {
+      ctx.fillStyle = colour;
+      rows.forEach((row, y) => {
+        for (let x = 0; x < row.length; x++) {
+          if (row[x] === 'x') ctx.fillRect(pad + dx + x, pad + dy + TOP + y, 1, 1);
+        }
+      });
+    };
+    if (pad) for (const dy of [-1, 0, 1]) for (const dx of [-1, 0, 1]) draw(dx, dy, css(ui.night));
+    draw(0, 0, css(TONE_COLOUR[tone]));
+  }, [name, tone, pad, width, height]);
   return (
     <span className="px-text">
       <canvas
         ref={ref}
-        width={SIZE}
-        height={LINE_HEIGHT}
+        width={width}
+        height={height}
         aria-hidden
         style={{
-          width: `calc(var(--sf-px) * ${SIZE * size})`,
-          height: `calc(var(--sf-px) * ${LINE_HEIGHT * size})`,
+          width: `calc(var(--sf-px) * ${width * size})`,
+          height: `calc(var(--sf-px) * ${height * size})`,
         }}
       />
     </span>

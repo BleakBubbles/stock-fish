@@ -30,6 +30,11 @@ A sad fish always means "unusual for this one," not just "red."
   the water: light shafts on sunny and fair days (faint moonlight when the market is closed), nothing
   when calm, rain streaks and darker water when rainy, heavier slanting rain when stormy. No
   lightning or flashes. `?weather=stormy` (or any weather) in the URL previews one.
+  Pens compare at a glance: each pen's weather icon (sun, sun and cloud, cloud, rain, heavy rain)
+  sits on its tab and on group labels over an overview, and the pens menu lists every pen's icon
+  and today's % in one column on the dark ticker strip.
+  The same green and red repeat the sign of today's change on fish labels in the tank (the ticker
+  stays white) and on the total in the status bar.
 - **Tap for numbers:** ticker, % change and $ change, so the app fully replaces a price board.
   A range bar under the mood shows why: a band for a calm day, ticks where strong moves begin, and
   a marker for today, with the typical day's size (±σ) written under it.

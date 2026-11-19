@@ -8,6 +8,7 @@ import { PixelText } from './pixel/PixelText';
 import { RangeBar } from './RangeBar';
 import { ChangeHeadline } from './ChangeTicker';
 import { MoodFace } from './MoodFace';
+import { PanelTitle } from './PanelTitle';
 import { usePixelScale } from './pixel/context';
 
 const MOOD_LABEL: Record<Mood, string> = {
@@ -83,9 +84,10 @@ export function FishDetails({
 
   return (
     <section className="fish-details px-panel px-stack" aria-label={`${fish.symbol} details`}>
-      <PixelText
+      <PanelTitle
         text={fish.name ? `${fish.symbol} · ${fish.name}` : fish.symbol}
-        wrap={textWidth}
+        width={textWidth}
+        onClose={onClose}
       />
       {penName && <PixelText text={`In ${penName}`} tone="textMuted" wrap={textWidth} />}
       {quote && result ? (
@@ -133,7 +135,6 @@ export function FishDetails({
       <div className="px-row">
         <PixelButton label="Change colours" icon="colours" onClick={onChangeColours} />
         <PixelButton label="Move…" icon="forward" onClick={onMove} />
-        <PixelButton label="Close" icon="close" iconOnly onClick={onClose} />
       </div>
     </section>
   );

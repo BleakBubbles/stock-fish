@@ -1,4 +1,5 @@
 import { ChangeHeadline } from './ChangeTicker';
+import { PanelTitle } from './PanelTitle';
 import type { Weather, WeatherResult } from '../mood';
 import { measureText, uiFont } from '../theme/pixelFont';
 import { formatChangeRatio, formatMoney } from './format';
@@ -67,7 +68,7 @@ export function GroupDetails({ summary, onOpen, onEdit, onClose }: Props) {
 
   return (
     <section className="fish-details px-panel px-stack" aria-label={`${summary.name} summary`}>
-      <PixelText text={`${summary.kind}: ${summary.name}`} wrap={textWidth} />
+      <PanelTitle text={`${summary.kind}: ${summary.name}`} width={textWidth} onClose={onClose} />
       {weather && summary.value !== undefined && (
         <ChangeHeadline
           change={weather.changeRatio}
@@ -92,11 +93,12 @@ export function GroupDetails({ summary, onOpen, onEdit, onClose }: Props) {
             : String(summary.fishCount),
         )}
       </div>
-      <div className="px-row">
-        {onOpen && <PixelButton label="Open pen" icon="forward" primary onClick={onOpen} />}
-        {onEdit && <PixelButton label="Edit pen…" icon="edit" onClick={onEdit} />}
-        <PixelButton label="Close" icon="close" iconOnly onClick={onClose} />
-      </div>
+      {(onOpen || onEdit) && (
+        <div className="px-row">
+          {onOpen && <PixelButton label="Open pen" icon="forward" primary onClick={onOpen} />}
+          {onEdit && <PixelButton label="Edit pen…" icon="edit" onClick={onEdit} />}
+        </div>
+      )}
     </section>
   );
 }
