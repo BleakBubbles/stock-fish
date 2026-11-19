@@ -1,5 +1,12 @@
 import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from 'react';
-import { ARRANGE_MODES, type ArrangeMode, type Pen, type TankLabels } from '../data/model';
+import {
+  GROUP_MODES,
+  type GroupMode,
+  type Pen,
+  SORT_MODES,
+  type SortMode,
+  type TankLabels,
+} from '../data/model';
 import { measureText, normalizeText, uiFont } from '../theme/pixelFont';
 import { PixelButton } from './pixel/PixelButton';
 import type { IconName } from './pixel/PixelIcon';
@@ -11,14 +18,25 @@ import { direction, directionTone } from './change';
 import { formatChangeRatio } from './format';
 import { useSettings } from '../data/store';
 
-const ARRANGE_LABEL: Record<ArrangeMode, string> = {
+const GROUP_LABEL: Record<GroupMode, string> = {
   mood: 'Mood',
-  species: 'Species',
-  family: 'Family',
-  weight: 'Weight',
   pen: 'Pen',
+  family: 'Family',
+  species: 'Species',
+  none: 'None',
   free: 'Free roam',
 };
+
+const SORT_LABEL: Record<SortMode, string> = {
+  weight: 'Weight',
+  change: "Today's change",
+  mood: 'Mood',
+  name: 'Name',
+  custom: 'Custom',
+};
+
+/** Shorter names on the bar's buttons. */
+const SORT_SHORT: Record<SortMode, string> = { ...SORT_LABEL, change: 'Change' };
 
 /** UI pixels a PixelButton adds around its text: padding 3 + line 1 each side. */
 const BUTTON_CHROME = 8;
@@ -30,6 +48,8 @@ const ICON_BUTTON = 7 + BUTTON_CHROME;
 const TAB_GAP = 3;
 const BAR_PADDING = 3;
 const SIDE_GAP = 4;
+/** Narrower than this beside the right-hand buttons, the pens menu wraps onto its own row. */
+const MENU_MIN = 60;
 
 const textWidth = (s: string) => measureText(uiFont, normalizeText(uiFont, s));
 const buttonWidth = (s: string, icon = false) =>
@@ -39,7 +59,10 @@ interface Props {
   pens: readonly Pen[];
   /** Ids of the pens shown. */
   shown: readonly string[];
-  arrange: ArrangeMode;
+  /** How an overview groups the fish. */
+  group: GroupMode;
+  /** The patch order in force (an overview's, or the single pen's). */
+  sort: SortMode;
   /** True when several pens are shown (an overview). */
   overview: boolean;
   /** The pen tab a dragged fish is over. */
@@ -47,7 +70,8 @@ interface Props {
   onShowAll: () => void;
   /** Show only this pen, or add or remove it from what's shown. */
   onPen: (penId: string, toggle: boolean) => void;
-  onArrange: (mode: ArrangeMode) => void;
+  onGroup: (mode: GroupMode) => void;
+  onSort: (mode: SortMode) => void;
   /** Labels drawn with the fish (the View menu). */
   labels: TankLabels;
   onLabels: (labels: TankLabels) => void;
@@ -65,24 +89,49 @@ interface Props {
  * phones, a menu where each pen can be shown alone or ticked to show several.
  */
 export function PenBar(props: Props) {
-  const { pens, shown, arrange, overview, dropTarget, onShowAll, onPen, onArrange } = props;
+  const { pens, shown, group, sort, overview, dropTarget, onShowAll, onPen } = props;
   const { cols } = usePixelScale();
   const all = shown.length === pens.length;
 
   const right = (
     <div className="px-row">
       <ViewMenu value={props.labels} onChange={props.onLabels} />
-      {overview ? (
-        <ArrangeMenu value={arrange} onChange={onArrange} />
-      ) : (
-        <PixelButton label="Edit pen" icon="edit" onClick={props.onEditPen} />
+      {overview && (
+        <ChoiceMenu
+          title="Group"
+          icon="group"
+          className="arrange"
+          modes={GROUP_MODES}
+          labels={GROUP_LABEL}
+          value={group}
+          onChange={props.onGroup}
+        />
       )}
+      {/* Free roam has no patches, so no order. */}
+      {!(overview && group === 'free') && (
+        <ChoiceMenu
+          title="Sort"
+          icon="sort"
+          className="arrange"
+          modes={SORT_MODES}
+          labels={SORT_LABEL}
+          short={SORT_SHORT}
+          value={sort}
+          onChange={props.onSort}
+        />
+      )}
+      {!overview && <PixelButton label="Edit pen" icon="edit" onClick={props.onEditPen} />}
     </div>
   );
+  const rightButtons = [
+    'View',
+    ...(overview ? [`Group: ${GROUP_LABEL[group]}`] : []),
+    ...(overview && group === 'free' ? [] : [`Sort: ${SORT_SHORT[sort]}`]),
+    ...(overview ? [] : ['Edit pen']),
+  ];
   const rightWidth =
-    buttonWidth('View', true) +
-    TAB_GAP +
-    buttonWidth(overview ? `Arrange: ${ARRANGE_LABEL[arrange]}` : 'Edit pen', true);
+    rightButtons.reduce((a, l) => a + buttonWidth(l, true), 0) +
+    TAB_GAP * (rightButtons.length - 1);
   // The pen tabs (each with its weather icon once priced), then the icon-only "new pen" button.
   const { penWeather, allWeather } = props;
   const tabs = [
@@ -99,7 +148,11 @@ export function PenBar(props: Props) {
   if (tabsWidth > room) {
     return (
       <div className="pen-bar px-bar">
-        <PensMenu {...props} maxLabel={room - BUTTON_CHROME} />
+        <PensMenu
+          {...props}
+          // Beside the right-hand buttons when there's room, else alone on its row (phones).
+          maxLabel={(room >= MENU_MIN ? room : cols - 1 - 2 * BAR_PADDING) - BUTTON_CHROME}
+        />
         {right}
       </div>
     );
@@ -315,25 +368,40 @@ function Popover({
   );
 }
 
-function ArrangeMenu({
+/** A bar button that opens a list of modes to pick one from (Group, Sort). */
+function ChoiceMenu<T extends string>({
+  title,
+  icon,
+  className,
+  modes,
+  labels,
+  short = labels,
   value,
   onChange,
 }: {
-  value: ArrangeMode;
-  onChange: (mode: ArrangeMode) => void;
+  title: string;
+  icon: IconName;
+  className: string;
+  modes: readonly T[];
+  labels: Record<T, string>;
+  /** Names for the bar's button, when shorter than the menu's. */
+  short?: Record<T, string>;
+  value: T;
+  onChange: (mode: T) => void;
 }) {
   return (
     <Popover
-      label={`Arrange: ${ARRANGE_LABEL[value]}`}
-      icon="arrange"
-      className="arrange"
-      menuLabel="Arrange by"
+      label={`${title}: ${short[value]}`}
+      buttonLabel={`${title} by: ${labels[value]}`}
+      icon={icon}
+      className={className}
+      menuLabel={`${title} by`}
     >
       {(close) =>
-        ARRANGE_MODES.map((m) => (
+        modes.map((m) => (
           <PixelButton
             key={m}
-            label={ARRANGE_LABEL[m]}
+            label={labels[m]}
             active={m === value}
             aria-pressed={m === value}
             onClick={() => {

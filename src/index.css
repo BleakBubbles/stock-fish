@@ -193,7 +193,6 @@ canvas {
 .details-anchor {
   position: absolute;
   z-index: 5;
-  left: calc(var(--sf-px) * 4);
   line-height: 0;
 }
 

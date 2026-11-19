@@ -3,38 +3,92 @@
  * arrangement of several pens (docs/SPEC.md, "Organizing fish"). Pure; the
  * scene turns regions into swim bounds and the screen labels them.
  */
-import type { ArrangeMode, Pen } from '../data/model';
+import type { GroupMode, Pen, SortMode } from '../data/model';
 import { MOODS, type Mood } from '../mood/types';
 import { atlasFrames } from '../theme/atlas';
 import { FAMILIES } from '../theme/bodies';
 import type { Body } from '../theme/sprites';
-import { FRAME, SAND_DEPTH, SAND_OVERLAP, TANK_HEIGHT, TANK_WIDTH } from './constants';
+import {
+  FRAME,
+  MAX_ZOOM,
+  MIN_ZOOMED_TANK,
+  SAND_DEPTH,
+  SAND_OVERLAP,
+  TANK_HEIGHT,
+  TANK_WIDTH,
+  tankSize,
+} from './constants';
 import { type Patch, type Rect, applyLayout, layoutTerritory, orderedTreemap } from './territory';
 
 export const FISH_SIZE = { w: atlasFrames.frameWidth, h: atlasFrames.frameHeight };
 
-/** All the water inside the tank frame, sand included. */
-export const INNER_WATER: Rect = {
-  x: FRAME.side,
-  y: FRAME.lid,
-  w: TANK_WIDTH - 2 * FRAME.side,
-  h: TANK_HEIGHT - FRAME.lid - FRAME.bottom,
-};
+/** A tank of some size: its frame's inside, sand line and swimming water, in art pixels. */
+export interface TankGeometry {
+  width: number;
+  height: number;
+  /** All the water inside the tank frame, sand included. */
+  inner: Rect;
+  /** The average sand line: the first art row of sand. */
+  sandTop: number;
+  /** The water fish can use: inside the frame, below the lid, down to the sand. */
+  water: Rect;
+}
 
-/** The average sand line: the first art row of sand. */
-export const SAND_TOP = INNER_WATER.y + INNER_WATER.h - SAND_DEPTH;
+export function tankGeometry(width: number, height: number): TankGeometry {
+  const inner = {
+    x: FRAME.side,
+    y: FRAME.lid,
+    w: width - 2 * FRAME.side,
+    h: height - FRAME.lid - FRAME.bottom,
+  };
+  const sandTop = inner.y + inner.h - SAND_DEPTH;
+  const water = {
+    x: inner.x,
+    y: inner.y + 1,
+    w: inner.w,
+    h: sandTop + SAND_OVERLAP - (inner.y + 1),
+  };
+  return { width, height, inner, sandTop, water };
+}
 
-/** The water fish can use: inside the frame, below the lid, down to the sand. */
-export const WATER: Rect = {
-  x: INNER_WATER.x,
-  y: INNER_WATER.y + 1,
-  w: INNER_WATER.w,
-  h: SAND_TOP + SAND_OVERLAP - (INNER_WATER.y + 1),
-};
+/** The reference tank (320 × 180): the default for layouts until the real size is known. */
+export const DEFAULT_GEOMETRY = tankGeometry(TANK_WIDTH, TANK_HEIGHT);
+export const INNER_WATER: Rect = DEFAULT_GEOMETRY.inner;
+export const SAND_TOP = DEFAULT_GEOMETRY.sandTop;
+export const WATER: Rect = DEFAULT_GEOMETRY.water;
 
 /** Smallest patch: a fish plus a little room to swim. */
 export const MIN_PATCH: Rect = { x: 0, y: 0, w: FISH_SIZE.w + 8, h: FISH_SIZE.h + 7 };
 const MIN_AREA = MIN_PATCH.w * MIN_PATCH.h;
+
+/**
+ * Water each fish should have before the tank zooms in: a few smallest
+ * patches' worth, so uneven holdings still each get a patch of their own.
+ */
+export const ROOM_PER_FISH = 4 * MIN_AREA;
+
+/**
+ * The tank's size and scale for a box of device pixels holding `fishCount`
+ * fish: zoomed in (a bigger whole-number scale, so fewer, bigger art pixels)
+ * as far as every fish keeps ROOM_PER_FISH of water, up to MAX_ZOOM times the
+ * normal scale. A full tank stays at the normal scale.
+ */
+export function tankZoom(
+  boxWidth: number,
+  boxHeight: number,
+  baseScale: number,
+  fishCount: number,
+): { scale: number; width: number; height: number } {
+  const base = tankSize(boxWidth, boxHeight, baseScale);
+  const n = Math.max(1, fishCount);
+  for (let scale = Math.floor(base.scale * MAX_ZOOM); scale > base.scale; scale--) {
+    const size = tankSize(boxWidth, boxHeight, scale, MIN_ZOOMED_TANK);
+    if (size.scale !== scale) continue;
+    const { water } = tankGeometry(size.width, size.height);
+    if ((water.w * water.h) / n >= ROOM_PER_FISH) return size;
+  }
+  return base;
+}
 
 export interface ArrangeFish {
   id: string;
@@ -44,6 +98,10 @@ export interface ArrangeFish {
   body: Body;
   /** Market value, if known. */
   value?: number;
+  /** Today's return, if known (for sorting). */
+  change?: number;
+  /** Today's move in typical days (σ), if known (for sorting by mood). */
+  z?: number;
 }
 
 export interface Region {
@@ -118,26 +176,34 @@ interface Group {
   weight: number;
 }
 
-/** Lay groups out as labelled regions; groups too small for a patch share an "Other" region. */
-function groupRegions(groups: Group[]): Region[] {
+/**
+ * Lay groups out as labelled areas filled with their fish's patches; groups
+ * too small for a patch share an "Other" area.
+ */
+function groupRegions(
+  groups: Group[],
+  fish: readonly ArrangeFish[],
+  sort: SortMode,
+  custom: readonly string[],
+  water: Rect,
+): Region[] {
   const patches = layoutTerritory(
     groups.map((g) => ({ id: g.key, weight: g.weight })),
-    WATER,
+    water,
     MIN_AREA,
     FISH_SIZE,
     MIN_PATCH,
   );
   const byKey = new Map(groups.map((g) => [g.key, g]));
-  return patches.map((p) => {
+  return patches.flatMap((p) => {
     const members = p.ids.map((k) => byKey.get(k)).filter((g): g is Group => !!g);
-    return {
+    const g: Group = {
       key: p.communal ? 'other' : (p.ids[0] ?? ''),
-      rect: p.rect,
-      fishIds: members.flatMap((g) => g.fishIds),
-      label: p.communal ? 'Other' : members[0]?.label,
-      group: { rect: p.rect, fishIds: members.flatMap((g) => g.fishIds) },
-      patch: false,
+      label: p.communal ? 'Other' : (members[0]?.label ?? ''),
+      fishIds: members.flatMap((m) => m.fishIds),
+      weight: members.reduce((a, m) => a + m.weight, 0),
     };
+    return groupWithPatches(g, p.rect, fish, sort, custom);
   });
 }
 
@@ -180,19 +246,121 @@ const FAMILY_LABEL: Record<Body, string> = {
   6: 'Health',
 };
 
-/** Regions for an overview of several pens. */
+/** Fish in `sort` order. Unknown values go last; ties keep the custom order. */
+export function sortFish(
+  fish: readonly ArrangeFish[],
+  sort: SortMode,
+  custom: readonly string[] = [],
+): ArrangeFish[] {
+  const rank = new Map(
+    applyLayout(
+      fish.map((f) => f.id),
+      custom,
+    ).map((id, i) => [id, i]),
+  );
+  const byCustom = (a: ArrangeFish, b: ArrangeFish) =>
+    (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0);
+  const w = weights(fish);
+  // Highest first; missing or unusable numbers sink to the end.
+  const desc = (of: (f: ArrangeFish) => number | undefined) => (a: ArrangeFish, b: ArrangeFish) => {
+    const x = of(a);
+    const y = of(b);
+    const okX = x !== undefined && Number.isFinite(x);
+    const okY = y !== undefined && Number.isFinite(y);
+    if (okX && okY && x !== y) return y - x;
+    if (okX !== okY) return okX ? -1 : 1;
+    return byCustom(a, b);
+  };
+  const compare: Record<SortMode, (a: ArrangeFish, b: ArrangeFish) => number> = {
+    custom: byCustom,
+    weight: desc((f) => w.get(f.id)),
+    change: desc((f) => f.change),
+    mood: desc((f) => f.z),
+    name: (a, b) => a.symbol.localeCompare(b.symbol) || byCustom(a, b),
+  };
+  return [...fish].sort(compare[sort]);
+}
+
+/** Order groups by the same measure as their fish (custom keeps their natural order). */
+function sortGroups(groups: Group[], sort: SortMode, fish: readonly ArrangeFish[]): Group[] {
+  if (sort === 'custom') return groups;
+  if (sort === 'name') return [...groups].sort((a, b) => a.label.localeCompare(b.label));
+  const byId = new Map(fish.map((f) => [f.id, f]));
+  const w = weights(fish);
+  const pick = (f: ArrangeFish) => (sort === 'change' ? f.change : f.z);
+  const score = (g: Group): number | undefined => {
+    if (sort === 'weight') return g.weight;
+    // Value-weighted change, or mean z, over the members that have one.
+    const known = g.fishIds.flatMap((id) => {
+      const f = byId.get(id);
+      return f && Number.isFinite(pick(f)) ? [f] : [];
+    });
+    if (!known.length) return undefined;
+    if (sort === 'mood') return known.reduce((a, f) => a + (pick(f) ?? 0), 0) / known.length;
+    const total = known.reduce((a, f) => a + (w.get(f.id) ?? 0), 0);
+    return known.reduce((a, f) => a + (pick(f) ?? 0) * (w.get(f.id) ?? 0), 0) / (total || 1);
+  };
+  return groups
+    .map((g, i) => ({ g, s: score(g), i }))
+    .sort((a, b) => {
+      const okA = a.s !== undefined;
+      const okB = b.s !== undefined;
+      if (okA && okB && a.s !== b.s) return (b.s ?? 0) - (a.s ?? 0);
+      if (okA !== okB) return okA ? -1 : 1;
+      return a.i - b.i;
+    })
+    .map((x) => x.g);
+}
+
+/**
+ * A group's area filled with its fish's patches in sort order; the group's
+ * label rides on its first patch.
+ */
+function groupWithPatches(
+  g: Group,
+  rect: Rect,
+  fish: readonly ArrangeFish[],
+  sort: SortMode,
+  custom: readonly string[],
+  extra: Partial<Region> = {},
+): Region[] {
+  const ids = new Set(g.fishIds);
+  const members = fish.filter((f) => ids.has(f.id));
+  const order = sortFish(members, sort, custom).map((f) => f.id);
+  const inner = homeRegions(members, order, rect, `${g.key}/`);
+  const group = { rect, fishIds: g.fishIds };
+  return inner.map((r, j) => (j === 0 ? { ...r, label: g.label, group, ...extra } : r));
+}
+
+/**
+ * Regions for an overview of several pens: fish grouped by `group` (or not),
+ * each group's area sized by its weight, and every fish's patch placed in
+ * `sort` order. `custom` is the user's own order (the pens' layouts, pen by pen).
+ */
 export function overviewRegions(
-  mode: ArrangeMode,
+  group: GroupMode,
+  sort: SortMode,
   fish: readonly ArrangeFish[],
   pens: readonly Pen[],
+  custom: readonly string[] = [],
+  water: Rect = WATER,
 ): Region[] {
   if (fish.length === 0) return [];
   const w = weights(fish);
   const value = (members: ArrangeFish[]) => members.reduce((a, f) => a + (w.get(f.id) ?? 0), 0);
 
-  switch (mode) {
+  switch (group) {
     case 'free':
-      return [{ key: 'all', rect: WATER, fishIds: fish.map((f) => f.id), patch: false }];
+      return [{ key: 'all', rect: water, fishIds: fish.map((f) => f.id), patch: false }];
+
+    case 'none': {
+      const order = sortFish(fish, sort, custom);
+      return homeRegions(
+        order,
+        order.map((f) => f.id),
+        water,
+      );
+    }
 
     case 'mood': {
       // Columns left to right, happiest first, sized by how many fish are in each.
@@ -205,77 +373,55 @@ export function overviewRegions(
       );
       const rects = columns(
         groups.map((g) => g.weight),
-        WATER,
+        water,
         MIN_PATCH.w,
       );
-      return groups.map((g, i) => ({
-        key: g.key,
-        rect: rects[i] ?? WATER,
-        fishIds: g.fishIds,
-        label: g.label,
-        group: { rect: rects[i] ?? WATER, fishIds: g.fishIds },
-        patch: false,
-      }));
+      return groups.flatMap((g, i) => groupWithPatches(g, rects[i] ?? water, fish, sort, custom));
     }
 
-    case 'species': {
-      const symbols = [...new Set(fish.map((f) => f.symbol))].sort();
-      return groupRegions(
-        groupBy(
-          fish,
-          (f) => f.symbol,
-          symbols,
-          (s) => s,
-          value,
-        ),
-      );
-    }
-
+    case 'species':
     case 'family': {
-      const bodies = FAMILIES.map((f) => f.body);
-      return groupRegions(
-        groupBy(
-          fish,
-          (f) => f.body,
-          bodies,
-          (b) => FAMILY_LABEL[b],
-          value,
-        ),
-      );
-    }
-
-    case 'weight': {
-      const sorted = [...fish].sort((a, b) => (w.get(b.id) ?? 0) - (w.get(a.id) ?? 0));
-      return homeRegions(
-        sorted,
-        sorted.map((f) => f.id),
-      );
+      const groups =
+        group === 'species'
+          ? groupBy(
+              fish,
+              (f) => f.symbol,
+              [...new Set(fish.map((f) => f.symbol))].sort(),
+              (s) => s,
+              value,
+            )
+          : groupBy(
+              fish,
+              (f) => f.body,
+              FAMILIES.map((f) => f.body),
+              (b) => FAMILY_LABEL[b],
+              value,
+            );
+      return groupRegions(sortGroups(groups, sort, fish), fish, sort, custom, water);
     }
 
     case 'pen': {
-      // Each pen's area is sized by its value, with its own home layout inside.
-      const groups = groupBy(
+      // Each pen's area is sized by its value, with its fish's patches inside.
+      const groups = sortGroups(
+        groupBy(
+          fish,
+          (f) => f.penId,
+          pens.map((p) => p.id),
+          (id) => pens.find((p) => p.id === id)?.name ?? '',
+          value,
+        ),
+        sort,
         fish,
-        (f) => f.penId,
-        pens.map((p) => p.id),
-        (id) => pens.find((p) => p.id === id)?.name ?? '',
-        value,
       );
       const rects = orderedTreemap(
         groups.map((g) => g.weight),
-        WATER,
+        water,
         FISH_SIZE,
         MIN_PATCH,
       );
-      return groups.flatMap((g, i) => {
-        const rect = rects[i] ?? WATER;
-        const members = fish.filter((f) => f.penId === g.key);
-        const pen = pens.find((p) => p.id === g.key);
-        const inner = homeRegions(members, pen?.layout, rect, `${g.key}/`);
-        // The label rides on the pen's first region.
-        const group = { rect, fishIds: members.map((f) => f.id) };
-        return inner.map((r, j) => (j === 0 ? { ...r, label: g.label, penId: g.key, group } : r));
-      });
+      return groups.flatMap((g, i) =>
+        groupWithPatches(g, rects[i] ?? water, fish, sort, custom, { penId: g.key }),
+      );
     }
   }
 }
@@ -302,7 +448,10 @@ export function columns(weights: readonly number[], rect: Rect, minWidth = 0): R
 }
 
 /** Swim bounds (a fish's top-left corner) for a region; centred if the region is smaller than a fish. */
-export function boundsFor(rect: Rect): { minX: number; minY: number; maxX: number; maxY: number } {
+export function boundsFor(
+  rect: Rect,
+  water: Rect = WATER,
+): { minX: number; minY: number; maxX: number; maxY: number } {
   const span = (start: number, size: number, fish: number, lo: number, hi: number) => {
     if (size >= fish) return [start, start + size - fish];
     const c = Math.min(hi, Math.max(lo, start + (size - fish) / 2));
@@ -312,15 +461,15 @@ export function boundsFor(rect: Rect): { minX: number; minY: number; maxX: numbe
     rect.x,
     rect.w,
     FISH_SIZE.w,
-    WATER.x,
-    WATER.x + WATER.w - FISH_SIZE.w,
+    water.x,
+    water.x + water.w - FISH_SIZE.w,
   );
   const [minY = 0, maxY = 0] = span(
     rect.y,
     rect.h,
     FISH_SIZE.h,
-    WATER.y,
-    WATER.y + WATER.h - FISH_SIZE.h,
+    water.y,
+    water.y + water.h - FISH_SIZE.h,
   );
   return { minX, minY, maxX, maxY };
 }

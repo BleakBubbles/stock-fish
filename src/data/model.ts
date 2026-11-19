@@ -14,26 +14,65 @@ export interface Pen {
   layout?: string[];
 }
 
-/** How an overview of several pens arranges the fish (docs/SPEC.md, "Organizing fish"). */
-export type ArrangeMode = 'mood' | 'species' | 'family' | 'weight' | 'pen' | 'free';
+/**
+ * How an overview of several pens groups the fish (docs/SPEC.md, "Organizing
+ * fish"): into labelled areas, or none (every fish its own patch), or free
+ * roam (no patches at all).
+ */
+export type GroupMode = 'none' | 'pen' | 'family' | 'mood' | 'species' | 'free';
 
-export const ARRANGE_MODES: readonly ArrangeMode[] = [
+export const GROUP_MODES: readonly GroupMode[] = [
   'mood',
-  'species',
-  'family',
-  'weight',
   'pen',
+  'family',
+  'species',
+  'none',
   'free',
 ];
 
-/** What the tank screen shows: which pens, and how an overview is arranged. */
+/**
+ * The order of patches (and of groups): biggest first, best day first, most
+ * unusual day up first, by name, or the user's own (dragged) order.
+ */
+export type SortMode = 'weight' | 'change' | 'mood' | 'name' | 'custom';
+
+export const SORT_MODES: readonly SortMode[] = ['weight', 'change', 'mood', 'name', 'custom'];
+
+/** What the tank screen shows: which pens, how an overview groups them, and the order. */
 export interface TankView {
   /** 'all', or the ids of the pens shown. One id is a single pen's home. */
   pens: 'all' | string[];
-  arrange: ArrangeMode;
+  /** How an overview groups the fish. */
+  group: GroupMode;
+  /** Patch order in an overview. */
+  sort: SortMode;
+  /** Patch order in a single pen (custom: the pen's own layout). */
+  homeSort: SortMode;
 }
 
-export const DEFAULT_TANK_VIEW: TankView = { pens: 'all', arrange: 'mood' };
+export const DEFAULT_TANK_VIEW: TankView = {
+  pens: 'all',
+  group: 'mood',
+  sort: 'weight',
+  homeSort: 'custom',
+};
+
+/**
+ * A saved view, including ones from before grouping and sorting were split
+ * (`arrange`: 'weight' meant no groups, biggest first).
+ */
+export function normalizeTankView(saved: unknown): TankView {
+  const v = (saved ?? {}) as Partial<TankView> & { arrange?: string };
+  const isGroup = (x: unknown): x is GroupMode => GROUP_MODES.includes(x as GroupMode);
+  const isSort = (x: unknown): x is SortMode => SORT_MODES.includes(x as SortMode);
+  const legacy = v.arrange === 'weight' ? 'none' : v.arrange;
+  return {
+    pens: v.pens === 'all' || Array.isArray(v.pens) ? v.pens : DEFAULT_TANK_VIEW.pens,
+    group: isGroup(v.group) ? v.group : isGroup(legacy) ? legacy : DEFAULT_TANK_VIEW.group,
+    sort: isSort(v.sort) ? v.sort : DEFAULT_TANK_VIEW.sort,
+    homeSort: isSort(v.homeSort) ? v.homeSort : DEFAULT_TANK_VIEW.homeSort,
+  };
+}
 
 /** What's drawn with each fish in the tank, besides the fish itself. */
 export interface TankLabels {

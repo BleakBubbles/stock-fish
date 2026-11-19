@@ -14,10 +14,8 @@ import {
   buildAtlas,
   buildDecorAtlas,
   parseGrid,
-  stretchFrame,
   withTail,
 } from '../src/theme/grid.ts';
-import { TANK_HEIGHT, TANK_WIDTH } from '../src/tank/constants.ts';
 import { encodePng } from './png.ts';
 
 const root = new URL('../', import.meta.url);
@@ -71,14 +69,14 @@ console.log(
     `(${image.width} × ${image.height})`,
 );
 
-// Decor: every grid in art/decor at its own size; the frame stretched to the tank.
+// Decor: every grid in art/decor at its own size. The frame is left out: the app
+// stretches it to the tank's size when it knows it (src/theme/decor.ts frameRows).
 const decorDir = new URL('art/decor/', root);
 const decorGrids: Record<string, string[]> = {};
 for (const file of readdirSync(decorDir)) {
-  if (!file.endsWith('.grid')) continue;
+  if (!file.endsWith('.grid') || file === 'frame.grid') continue;
   const name = file.slice(0, -'.grid'.length);
-  const rows = parseGrid(readFileSync(new URL(file, decorDir), 'utf8'));
-  decorGrids[name] = name === 'frame' ? stretchFrame(rows, TANK_WIDTH, TANK_HEIGHT) : rows;
+  decorGrids[name] = parseGrid(readFileSync(new URL(file, decorDir), 'utf8'));
 }
 const legend: Record<string, string> = Object.fromEntries(
   Object.entries(palette.decor).filter(([ch]) => !ch.startsWith('_')),

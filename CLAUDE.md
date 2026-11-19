@@ -33,8 +33,13 @@ market data provider blocks browser requests (CORS).
    operates a server that serves price data.
 3. **Theme layer.** No colours, sprites or pixel sizes hard-coded in components. Everything visual
    comes from `art/` (palette, ramps, sprite atlas) through one theme module.
-4. **Pixel integrity.** Render the tank at native resolution (320 × 180) into a low-res render
-   texture, then upscale by a whole number with nearest-neighbour filtering. Round sprite positions
+4. **Pixel integrity.** Render the tank at its native resolution into a low-res render texture,
+   then upscale by a whole number with nearest-neighbour filtering. The scale is chosen so a
+   320 × 180 tank fits, then raised (zoomed in) while every fish keeps enough water, and the native
+   size grows in whole art pixels to fill the space (`tankZoom` in `src/tank/arrange.ts`). Never
+   scale fish apart from the rest of the tank. Fish labels (text and mood badges) grow with the
+   fish but are never smaller than the app's text: their pixel is the larger of an art pixel and
+   a UI pixel. Round sprite positions
    to whole art pixels. Never rotate or fractionally scale sprites (mirroring is fine). Scales are
    whole numbers of *device* pixels (`src/ui/pixel/scale.ts`). The UI pixel is the tank pixel ×
    the smallest whole number that keeps capitals at least 9 CSS px tall (1 on laptops, 2 on

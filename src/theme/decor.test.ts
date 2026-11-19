@@ -3,7 +3,7 @@ import palette from '../../art/palette.json';
 import { INNER_WATER } from '../tank/arrange';
 import { TANK_HEIGHT, TANK_WIDTH } from '../tank/constants';
 import { MOODS } from '../mood/types';
-import { decorColour, decorFrames, decorItems } from './decor';
+import { decorColour, decorFrames, decorItems, frameRows } from './decor';
 import { parseGrid, stretchFrame } from './grid';
 
 const files = import.meta.glob('../../art/decor/*.grid', {
@@ -71,10 +71,25 @@ describe('decor art', () => {
     }
   });
 
-  it('bakes every grid into the atlas, the frame at full tank size', () => {
+  it('bakes every grid but the frame into the atlas', () => {
     const baked = Object.keys(decorFrames).filter((n) => !n.startsWith('badge-'));
-    expect(baked.sort()).toEqual(Object.keys(grids).sort());
-    expect(decorFrames.frame).toMatchObject({ w: TANK_WIDTH, h: TANK_HEIGHT });
+    expect(baked.sort()).toEqual(
+      Object.keys(grids)
+        .filter((n) => n !== 'frame')
+        .sort(),
+    );
+  });
+
+  it('stretches the frame to any tank size', () => {
+    for (const [w, h] of [
+      [TANK_WIDTH, TANK_HEIGHT],
+      [377, 151],
+      [240, 135],
+    ] as const) {
+      const rows = frameRows(w, h);
+      expect(rows).toHaveLength(h);
+      expect(rows.every((r) => r.length === w)).toBe(true);
+    }
     expect(decorItems().some((i) => i.name === 'frame' || i.name.startsWith('badge-'))).toBe(false);
   });
 });

@@ -3,6 +3,7 @@ import { marketOpenNow } from '../data/market';
 import {
   DEFAULT_TANK_LABELS,
   DEFAULT_TANK_VIEW,
+  normalizeTankView,
   type Pen,
   type TankLabels,
   type TankView,
@@ -22,7 +23,9 @@ import {
   type Region,
   WATER,
   homeRegions,
+  tankGeometry,
   overviewRegions,
+  sortFish,
 } from '../tank/arrange';
 import { buildFish, weatherFor } from '../tank/model';
 import { measureText, normalizeText, uiFont } from '../theme/pixelFont';
@@ -74,9 +77,8 @@ function shownPens(pens: readonly Pen[], view: TankView): Pen[] {
   return shown.length ? shown : [...pens];
 }
 
-/** UI pixels needed below the tank, and missing beside it, to put details underneath. */
-const STACK_BELOW = 100;
-const STACK_BESIDE = 210;
+/** Narrower than this (UI pixels: phones held upright), details sit over the tank's bottom. */
+const NARROW_SLOT = 300;
 
 type Dialog =
   { kind: 'new-pen' } | { kind: 'edit-pen'; pen: Pen } | { kind: 'move'; holdingId: string };
@@ -113,7 +115,10 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
   const [placement, setPlacement] = useState<TankPlacement>();
   // Shown immediately on change, before the settings write comes back.
   const [localView, setLocalView] = useState<TankView>();
-  const view = localView ?? settings?.tankView ?? DEFAULT_TANK_VIEW;
+  const view = useMemo(
+    () => normalizeTankView(localView ?? settings?.tankView ?? DEFAULT_TANK_VIEW),
+    [localView, settings?.tankView],
+  );
 
   const [localLabels, setLocalLabels] = useState<TankLabels>();
   const labels = localLabels ?? settings?.tankLabels ?? DEFAULT_TANK_LABELS;
@@ -167,6 +172,13 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
       })),
     [visible, upColour],
   );
+  // The water the tank has now (it grows to fill its space); the reference size until placed.
+  const artWidth = placement?.artWidth;
+  const artHeight = placement?.artHeight;
+  const water = useMemo(
+    () => (artWidth && artHeight ? tankGeometry(artWidth, artHeight).water : WATER),
+    [artWidth, artHeight],
+  );
   const regions = useMemo(() => {
     // Oldest first, so a new fish's patch is added at the end (no reshuffle).
     const added = new Map(holdings?.map((h) => [h.id, h.createdAt]));
@@ -178,9 +190,22 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
       mood: f.mood,
       body: f.body,
       value: f.home?.value,
+      change: f.moodResult?.todayReturn,
+      z: f.moodResult?.z,
     }));
-    return home ? homeRegions(items, home.layout) : overviewRegions(view.arrange, items, shown);
-  }, [visible, holdings, home, view.arrange, shown]);
+    // The user's own order: each shown pen's layout, pen by pen.
+    const custom = shown.flatMap((p) =>
+      applyLayout(
+        byAge.filter((f) => f.penId === p.id).map((f) => f.id),
+        p.layout,
+      ),
+    );
+    if (home) {
+      const order = sortFish(items, view.homeSort, custom).map((f) => f.id);
+      return homeRegions(items, order, water);
+    }
+    return overviewRegions(view.group, view.sort, items, shown, custom, water);
+  }, [visible, holdings, home, view.group, view.sort, view.homeSort, shown, water]);
 
   const weather = useMemo(() => weatherFor(visible, entries ?? new Map()), [visible, entries]);
   // Each pen's weather, and all pens', for the pens bar (only where some fish is priced).
@@ -238,7 +263,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
         groupRegion.key === 'other'
           ? 'Group'
           : ({ pen: 'Pen', family: 'Family', mood: 'Mood', species: 'Species' }[
-              view.arrange as 'pen' | 'family' | 'mood' | 'species'
+              view.group as 'pen' | 'family' | 'mood' | 'species'
             ] ?? 'Group'),
       name: groupRegion.label ?? '',
       fishCount: members.length,
@@ -248,24 +273,26 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
       unpriced: members.length - pricedMembers.length,
       currency: homeCurrency,
     };
-  }, [groupRegion, visible, entries, view.arrange, homeCurrency]);
+  }, [groupRegion, visible, entries, view.group, homeCurrency]);
   const groupPen = groupRegion?.penId ? pens?.find((p) => p.id === groupRegion.penId) : undefined;
 
   /**
-   * Phones held upright: no room beside the tank, plenty below. The tank sits
-   * at the top and a fish's or group's details go underneath it, so both show.
-   * Elsewhere details sit in the tank area's top-left corner.
+   * Where a fish's or group's details go: over the tank's top-left corner, or
+   * on phones held upright (where the tank fills the screen) over its bottom,
+   * closer to the thumb, leaving the top of the tank in view.
    */
-  const stacked =
-    !!placement &&
-    placement.slotHeight - placement.height >= STACK_BELOW &&
-    placement.slotWidth - placement.width < STACK_BESIDE;
-  const detailsTop = stacked && placement ? placement.top + placement.height + 4 : 4;
+  const detailsAt =
+    placement && placement.slotWidth < NARROW_SLOT
+      ? {
+          left: `calc(var(--sf-px) * ${placement.left + 4})`,
+          bottom: `calc(var(--sf-px) * ${placement.slotHeight - placement.top - placement.height + 4})`,
+        }
+      : { left: `calc(var(--sf-px) * 4)`, top: `calc(var(--sf-px) * 4)` };
 
   /** The pen a region belongs to: the home pen, or (in Pen mode) the pen it shows. */
   const penOfRegion = (region: Region): string | undefined => {
     if (home) return home.id;
-    if (view.arrange === 'pen') return region.key.split('/')[0];
+    if (view.group === 'pen') return region.key.split('/')[0];
     return undefined;
   };
 
@@ -289,16 +316,39 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
       pens?.find((p) => p.id === penId)?.layout,
     );
 
+  /** The sort in force here: a single pen's, or the overview's. */
+  const activeSort = home ? view.homeSort : view.sort;
+
+  /**
+   * A pen's patch order as shown: its own layout when sorted by Custom, else
+   * the sorted order on screen (so a drag starts from what the user sees).
+   */
+  const shownOrder = (penId: string) =>
+    activeSort === 'custom'
+      ? penOrder(penId)
+      : applyLayout(
+          penOrder(penId),
+          arranged.filter((f) => f.penId === penId).map((f) => f.id),
+        );
+
+  /** Save a pen's new order; reordering by hand switches the sort to Custom. */
+  const saveOrder = async (penId: string, order: string[]) => {
+    await repo.setPenLayout(penId, order);
+    if (activeSort !== 'custom') {
+      setView(home ? { ...view, homeSort: 'custom' } : { ...view, sort: 'custom' });
+    }
+  };
+
   /** Keyboard reordering in a single pen: one place earlier or later. */
   const reorderByKey = async (id: string, step: -1 | 1) => {
     if (!home) return undefined;
-    const order = penOrder(home.id);
+    const order = shownOrder(home.id);
     const i = order.indexOf(id);
     const j = i + step;
     const onto = order[j];
     if (i < 0) return undefined;
     if (!onto) return { place: i + 1, of: order.length };
-    await repo.setPenLayout(home.id, reorder(order, id, onto));
+    await saveOrder(home.id, reorder(order, id, onto));
     return { place: j + 1, of: order.length };
   };
 
@@ -313,10 +363,10 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
     }
     if (target.kind !== 'region' || !target.region.patch) return;
     // Reorder: take the slot of the fish dropped on (the communal patch means last).
-    const order = penOrder(toPen);
+    const order = shownOrder(toPen);
     const onto = target.region.fishIds.length === 1 ? target.region.fishIds[0] : order.at(-1);
     if (!onto || onto === id) return;
-    void repo.setPenLayout(toPen, reorder(order, id, onto));
+    void saveOrder(toPen, reorder(order, id, onto));
   };
 
   const onPen = (penId: string, toggle: boolean) => {
@@ -338,7 +388,8 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
         <PenBar
           pens={pens}
           shown={shown.map((p) => p.id)}
-          arrange={view.arrange}
+          group={view.group}
+          sort={home ? view.homeSort : view.sort}
           overview={!home}
           dropTarget={dropPen}
           onShowAll={() => {
@@ -346,7 +397,8 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
             setView({ ...view, pens: 'all' });
           }}
           onPen={onPen}
-          onArrange={(arrange) => setView({ ...view, arrange })}
+          onGroup={(group) => setView({ ...view, group })}
+          onSort={(sort) => setView(home ? { ...view, homeSort: sort } : { ...view, sort })}
           labels={labels}
           onLabels={setLabels}
           onNewPen={() => setDialog({ kind: 'new-pen' })}
@@ -385,15 +437,15 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
         weather={PREVIEW_WEATHER ?? (priced ? weather.weather : 'calm')}
         selectedId={selected?.id}
         groupOutline={groupRegion?.group?.rect}
-        alignTop={stacked}
+        fishCount={visible.length}
         onSelect={setSelectedId}
         onTapWater={(tapX, tapY) => {
           // In an overview, open water belongs to a group: tap it for that
           // group's summary (again to close). Elsewhere it clears the selection.
           // Taps in the thin margins above and below the water (easy to hit
           // with a finger on a phone) count for the nearest area.
-          const x = Math.min(WATER.x + WATER.w - 1, Math.max(WATER.x, tapX));
-          const y = Math.min(WATER.y + WATER.h - 1, Math.max(WATER.y, tapY));
+          const x = Math.min(water.x + water.w - 1, Math.max(water.x, tapX));
+          const y = Math.min(water.y + water.h - 1, Math.max(water.y, tapY));
           const r = regions.find(
             ({ group: g }) =>
               g &&
@@ -428,7 +480,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
           />
         </div>
         {(summary || selected) && (
-          <div className="details-anchor" style={{ top: `calc(var(--sf-px) * ${detailsTop})` }}>
+          <div className="details-anchor" style={detailsAt}>
             {summary && (
               <GroupDetails
                 summary={summary}

@@ -35,6 +35,10 @@ A sad fish always means "unusual for this one," not just "red."
   and today's % in one column on the dark ticker strip.
   The same green and red repeat the sign of today's change on fish labels in the tank (the ticker
   stays white) and on the total in the status bar.
+- **Zoom:** with only a few fish the whole tank zooms in (a bigger whole-number scale, up to twice
+  the normal one) as far as every fish keeps a few patches' worth of water, so a small pen looks
+  close up; adding fish zooms out. Fish swim proportionally slower in art pixels when zoomed. Labels
+  and mood badges grow with the fish, but never below the UI's text size. On phones held upright, details sit over the tank's bottom.
 - **Tap for numbers:** ticker, % change and $ change, so the app fully replaces a price board.
   A range bar under the mood shows why: a band for a calm day, ticks where strong moves begin, and
   a marker for today, with the typical day's size (±σ) written under it.
@@ -95,21 +99,31 @@ weather.
   a treemap. Very small holdings share a communal area. When weights change, patches shift gently
   (order-preserving treemap), never a full reshuffle.
 
-**One screen, two controls:** which pens (one, several, or all) and how to arrange them.
+**One screen, three controls:** which pens (one, several, or all), how to group them, and the
+order.
 
-- **A single pen is a home.** The user's own layout persists there.
-- **Several or all pens is an overview.** Arrangement modes take over and fish swim into formation.
-  This never changes pen layouts.
+- **A single pen is a home.** Sorted by Custom (its default), the user's own layout persists there;
+  dragging a fish (or Alt+arrows) reorders it, and reordering by hand under another sort switches
+  back to Custom, starting from the order on screen.
+- **Several or all pens is an overview.** Grouping takes over and fish swim into formation. Each
+  group's area is sized by its weight, and every fish in it has its own patch. This never changes
+  pen layouts.
 
-| Mode | Fish gather by | Answers |
+| Group by | Fish gather by | Answers |
 | --- | --- | --- |
 | Mood | Happy to sad, left to right | What's winning and losing today? (default) |
-| Species | Ticker | What do I own? |
-| Family | Sector | What's my sector mix? |
-| Weight | Territory sized by share | Where is my money concentrated? |
 | Pen | The user's pens | How is each pen doing? |
-| Free roam | Nothing | Just vibes |
+| Family | Sector | What's my sector mix? |
+| Species | Ticker | What do I own? |
+| None | Nothing: every fish its own patch | Where is my money concentrated? (with Weight) |
+| Free roam | Nothing, no patches | Just vibes |
 | Correlation (later) | Similar price behaviour | How diversified am I really? |
+
+**Sort by** orders the patches, top-left first like reading a price board, and the groups by the
+same measure (Mood columns always run happiest to saddest): Weight (default in an overview),
+Today's change, Mood (today's move in typical days), Name, or Custom (the pens' own layouts; the
+default in a single pen). Fish without a price sort last. Sorting by change or mood reshuffles as
+prices refresh; keyboard order and screen readers follow the sort.
 
 ## Design principles
 
@@ -135,8 +149,9 @@ weather.
 
 Flat pixel art, ENDESGA 32 palette, no shading. Full rules in `art/STYLE.md`.
 
-- **Pixel integrity:** one shared pixel grid for tank and UI; native 320 × 180 render, integer
-  upscaling, no rotation, positions rounded to art pixels; pixel font at integer scale; pixel-art
+- **Pixel integrity:** one shared pixel grid for tank and UI; a native low-res render (the scale
+  fits a 320 × 180 tank, then the tank grows in whole art pixels to fill its space with a 4-pixel
+  margin, no wider than 2.4 × its height or taller than 1.5 × its width), integer upscaling, no rotation, positions rounded to art pixels; pixel font at integer scale; pixel-art
   borders and panels rather than off-the-shelf component styling.
 - **Black outline** on every fish; **white outline only for hover and selection.**
 - **What each visual encodes:**

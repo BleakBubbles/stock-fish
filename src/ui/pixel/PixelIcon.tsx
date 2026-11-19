@@ -5,7 +5,7 @@ import { TONE_COLOUR, type Tone } from './tones';
 
 /** The icons in art/ui/icons. */
 export type IconName =
-  | 'arrange'
+  | 'group'
   | 'back'
   | 'check'
   | 'close'
@@ -27,7 +27,8 @@ export type IconName =
   | 'fair'
   | 'calm'
   | 'rainy'
-  | 'stormy';
+  | 'stormy'
+  | 'sort';
 
 const SIZE = 7;
 /** The font's line is 9 pixels tall with capitals on rows 3 to 7: two rows down centres a 7-pixel icon on them. */

@@ -98,7 +98,7 @@ palette colours through `palette.json` `decor` (not the fish roles above).
   and `grass-*` in front of it. Each tank picks a few of each and places them along the floor,
   seeded by its pen, so a tank always looks the same.
 - **Sand** is drawn by the app, not a grid: `s` sand, a pale `e` top edge, `S` specks.
-- **`frame.grid`** is the lid, glass edges, rim and stand, stretched to 320 × 180 at build time:
+- **`frame.grid`** is the lid, glass edges, rim and stand, stretched to the tank's size in the app:
   the middle column repeats across, and the first row with water (`.`) in the middle repeats
   down. Its sizes must match `FRAME` in `src/tank/constants.ts` (a test checks).
 

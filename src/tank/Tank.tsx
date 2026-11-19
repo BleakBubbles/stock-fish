@@ -8,9 +8,9 @@ import { decorUrl } from '../theme/decor';
 import { Rescale } from '../ui/pixel/PixelRoot';
 import { usePixelScale } from '../ui/pixel/context';
 import type { Weather } from '../mood';
-import type { Region } from './arrange';
+import { type Region, tankZoom } from './arrange';
 import type { Rect } from './territory';
-import { TANK_HEIGHT, TANK_WIDTH, integerScale } from './constants';
+import { TANK_HEIGHT, TANK_PAD, TANK_WIDTH, tankSize } from './constants';
 import { type SceneFish, type SceneLabels, TankScene } from './scene';
 
 /** Where the tank's art pixels sit inside the tank slot, in UI pixels. */
@@ -19,6 +19,9 @@ export interface TankPlacement {
   top: number;
   /** Device pixels per art pixel. */
   scale: number;
+  /** The tank's own size in art pixels (it grows to fill the slot). */
+  artWidth: number;
+  artHeight: number;
   /** The tank's size and the space it sits in (the slot), in UI pixels. */
   width: number;
   height: number;
@@ -38,8 +41,8 @@ interface Props {
   active: boolean;
   /** A selected group's whole area, outlined like a fish's territory. */
   groupOutline?: Rect;
-  /** Sit at the top of the slot instead of centred (details go below it). */
-  alignTop?: boolean;
+  /** How many fish are shown: with only a few, the tank zooms in. */
+  fishCount: number;
   /** Which pens are shown: when it changes, fish no longer shown vanish instead of swimming off. */
   view: string;
   /** Picks the tank's sand, plants and rocks: the same seed always looks the same. */
@@ -81,16 +84,18 @@ const penUnder = (x: number, y: number) =>
   document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-pen-id]')?.dataset.penId;
 
 /**
- * The pixel pipeline: the scene is drawn at native 320 × 180 into a render
- * texture with nearest-neighbour filtering, then shown upscaled by the largest
- * whole number that fits. The canvas lives in a device-pixel layer (Rescale),
- * so every art pixel is exactly `scale` screen pixels at any devicePixelRatio.
+ * The pixel pipeline: the scene is drawn at its native size into a render
+ * texture with nearest-neighbour filtering, then shown upscaled by a whole
+ * number. The scale is the app's tank scale (chosen so a 320 × 180 tank fits);
+ * the native size then grows to fill the slot in whole art pixels (tankSize).
+ * The canvas lives in a device-pixel layer (Rescale), so every art pixel is
+ * exactly `scale` screen pixels at any devicePixelRatio.
  */
 export function Tank({
   fish,
   active,
   groupOutline,
-  alignTop,
+  fishCount,
   view,
   decorSeed,
   labels,
@@ -118,7 +123,7 @@ export function Tank({
     fish,
     active,
     groupOutline,
-    alignTop,
+    fishCount,
     regions,
     night,
     weather,
@@ -135,7 +140,7 @@ export function Tank({
       fish,
       active,
       groupOutline,
-      alignTop,
+      fishCount,
       regions,
       night,
       weather,
@@ -180,14 +185,15 @@ export function Tank({
       scene.setSelected(latest.current.selectedId);
       scene.setGroupOutline(latest.current.groupOutline);
 
-      const target = RenderTexture.create({
-        width: TANK_WIDTH,
-        height: TANK_HEIGHT,
-        resolution: 1,
-        scaleMode: 'nearest',
-      });
+      const makeTarget = (width: number, height: number) =>
+        RenderTexture.create({ width, height, resolution: 1, scaleMode: 'nearest' });
+      let target = makeTarget(TANK_WIDTH, TANK_HEIGHT);
       const display = new Sprite(target);
-      app.stage.addChild(display);
+      // Fish labels go over the upscaled tank, in label pixels (scaled below), so
+      // they can be drawn bigger than the tank's art pixels (phones).
+      app.stage.addChild(display, scene.overlay);
+      /** The tank's current native size, art pixels. */
+      const size = { w: TANK_WIDTH, h: TANK_HEIGHT };
 
       const canvas = app.canvas;
       canvas.setAttribute('role', 'img');
@@ -206,17 +212,37 @@ export function Tank({
           host.clientHeight,
           Math.round((window.innerHeight - rect.top) * dpr),
         );
-        // The app-wide tank scale, unless this host is smaller than expected.
-        const scale = Math.max(1, Math.min(tank, integerScale(hostW, hostH)));
-        app.renderer.resize(TANK_WIDTH * scale, TANK_HEIGHT * scale);
-        canvas.style.width = `${TANK_WIDTH * scale}px`;
-        canvas.style.height = `${TANK_HEIGHT * scale}px`;
+        // A little room all round, then the app-wide tank scale (stepping down
+        // if this host is small), zoomed in when there are only a few fish, and
+        // the tank grown to fill the rest at that scale.
+        const pad = TANK_PAD * ui;
+        const roomW = hostW - 2 * pad;
+        const roomH = hostH - 2 * pad;
+        const base = tankSize(roomW, roomH, tank).scale;
+        const { scale, width, height } = tankZoom(roomW, roomH, tank, latest.current.fishCount);
+        if (width !== size.w || height !== size.h) {
+          size.w = width;
+          size.h = height;
+          // A fresh texture at the new size (the sprite showing it takes its size from it).
+          const old = target;
+          target = makeTarget(width, height);
+          display.texture = target;
+          old.destroy(true);
+          scene.setSize(width, height);
+        }
+        // Labels (text and mood badges) grow with the fish when zoomed in, but are
+        // never smaller than the app's text: a label pixel is the larger of an art
+        // pixel and a UI pixel, both whole device pixels. Fish swim as slowly in
+        // art pixels as the tank is zoomed in, so they cross it in the same time.
+        const labelPx = Math.max(scale, ui);
+        scene.setZoom({ labels: scale / labelPx, pace: base / scale });
+        scene.overlay.scale.set(labelPx);
+        app.renderer.resize(width * scale, height * scale);
+        canvas.style.width = `${width * scale}px`;
+        canvas.style.height = `${height * scale}px`;
         // Centre on whole UI pixels, so labels drawn over the tank share its grid.
-        const left = Math.max(0, Math.floor((hostW - TANK_WIDTH * scale) / 2 / ui));
-        // At the top when the screen puts details below the tank (phones), else centred.
-        const top = latest.current.alignTop
-          ? 0
-          : Math.max(0, Math.floor((hostH - TANK_HEIGHT * scale) / 2 / ui));
+        const left = Math.max(0, Math.floor((hostW - width * scale) / 2 / ui));
+        const top = Math.max(0, Math.floor((hostH - height * scale) / 2 / ui));
         canvas.style.marginLeft = `${left * ui}px`;
         canvas.style.marginTop = `${top * ui}px`;
         display.scale.set(scale);
@@ -224,8 +250,10 @@ export function Tank({
           left,
           top,
           scale,
-          width: Math.ceil((TANK_WIDTH * scale) / ui),
-          height: Math.ceil((TANK_HEIGHT * scale) / ui),
+          artWidth: width,
+          artHeight: height,
+          width: Math.ceil((width * scale) / ui),
+          height: Math.ceil((height * scale) / ui),
           slotWidth: Math.floor(hostW / ui),
           slotHeight: Math.floor(hostH / ui),
         });
@@ -248,8 +276,8 @@ export function Tank({
       const toArt = (e: PointerEvent) => {
         const rect = canvas.getBoundingClientRect();
         return {
-          x: ((e.clientX - rect.left) / rect.width) * TANK_WIDTH,
-          y: ((e.clientY - rect.top) / rect.height) * TANK_HEIGHT,
+          x: ((e.clientX - rect.left) / rect.width) * size.w,
+          y: ((e.clientY - rect.top) / rect.height) * size.h,
         };
       };
 
@@ -307,7 +335,7 @@ export function Tank({
             id,
             penId
               ? { kind: 'pen', penId }
-              : region && x >= 0 && x < TANK_WIDTH && y >= 0 && y < TANK_HEIGHT
+              : region && x >= 0 && x < size.w && y >= 0 && y < size.h
                 ? { kind: 'region', region }
                 : undefined,
           );
@@ -364,7 +392,7 @@ export function Tank({
     };
   }, []);
 
-  useEffect(() => fitRef.current?.(), [pixelScale, alignTop]);
+  useEffect(() => fitRef.current?.(), [pixelScale, fishCount]);
   useEffect(() => {
     const ticker = appRef.current?.ticker;
     if (!ticker) return;

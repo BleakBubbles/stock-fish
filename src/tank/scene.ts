@@ -8,11 +8,17 @@ import type { Mood, Weather } from '../mood';
 import { css, ui } from '../theme';
 import { drawText, measureText, normalizeText, uiFont } from '../theme/pixelFont';
 import { atlasFrames, frameRect } from '../theme/atlas';
-import { decorFrames, decorItems, sand } from '../theme/decor';
+import { decorColour, decorFrames, decorItems, frameRows, sand } from '../theme/decor';
 import type { AtlasLayer, TailPose } from '../theme/grid';
 import type { Body, Face } from '../theme/sprites';
-import { NIGHT_ALPHA, TANK_HEIGHT, TANK_WIDTH, TAP_SLOP } from './constants';
-import { INNER_WATER, type Region, SAND_TOP, WATER, boundsFor } from './arrange';
+import { NIGHT_ALPHA, TAP_SLOP } from './constants';
+import {
+  DEFAULT_GEOMETRY,
+  type Region,
+  type TankGeometry,
+  boundsFor,
+  tankGeometry,
+} from './arrange';
 import { SWAY_PERIOD, decorLayout } from './decor';
 import {
   type Drop,
@@ -96,16 +102,21 @@ interface FishNode {
 }
 
 /**
- * Labels in the UI font, in art pixels: each line is 7 rows (the capitals on
- * rows 1–5, with a row of outline above and below), so the font's 9-row glyphs
- * are drawn 2 rows up. One pixel of outline each side.
+ * Labels in the UI font, in label pixels (the larger of an art pixel and a UI
+ * pixel: they grow with the fish, but never below the app's text size): each
+ * line is 7 rows
+ * (the capitals on rows 1–5, with a row of outline above and below), so the
+ * font's 9-row glyphs are drawn 2 rows up. One pixel of outline each side.
  */
 const LABEL_LINE = 7;
 const LABEL_FONT_TOP = -2;
 const LABEL_PAD = 1;
-/** Where labels sit relative to the fish's top-left: text below the body, badge above. */
+/**
+ * Where labels sit, in art pixels from the fish's top-left: text from just
+ * below the body, the badge ending just above the head.
+ */
 const LABEL_BELOW = 23;
-const BADGE_ABOVE = 8;
+const BADGE_BOTTOM = 1;
 const BADGE_SIZE = 9;
 
 /** Asleep, fish rest in the lowest few art pixels of their patch... */
@@ -131,8 +142,26 @@ const ZED_PIXELS = ['####', '..#.', '.#..', '####'];
 const FISH_W = atlasFrames.frameWidth;
 const FISH_H = atlasFrames.frameHeight;
 
-/** The whole water, for fish without a region (and for leaving). */
-export const TANK_BOUNDS: Bounds = boundsFor(WATER);
+/** The tank frame stretched to a size, drawn once into its own texture. */
+function frameTexture(width: number, height: number): Texture {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    frameRows(width, height).forEach((row, y) => {
+      for (let x = 0; x < row.length; x++) {
+        const ch = row[x] ?? '.';
+        if (ch === '.') continue;
+        ctx.fillStyle = css(decorColour(ch));
+        ctx.fillRect(x, y, 1, 1);
+      }
+    });
+  }
+  const texture = Texture.from(canvas);
+  texture.source.scaleMode = 'nearest';
+  return texture;
+}
 
 /** A plant that sways between its still and swayed frames. */
 interface Swayer {
@@ -148,6 +177,19 @@ const NIGHT_SWAY = 0.5;
 export class TankScene {
   /** Everything drawn in the tank, in art pixels. Render this into the low-res texture. */
   readonly root = new Container();
+  /**
+   * Drawn over the upscaled tank: fish labels (text and mood badges), in label
+   * pixels, so on phones they can be bigger than the tank's art pixels. Tank.tsx
+   * scales it to device pixels.
+   */
+  readonly overlay = new Container();
+  /** Label pixels per art pixel: 1, or less where UI pixels are bigger than art pixels (phones). */
+  private labelZoom = 1;
+  /**
+   * Swimming pace: zoomed in, art pixels are bigger on screen, so fish swim
+   * that much slower in art pixels and cross the tank in about the same time.
+   */
+  private swimPace = 1;
   private readonly fishLayer = new Container();
   private readonly night = new Graphics();
   /** Weather (./weather.ts): light shafts and gloom over the fish, raindrop ripples at the surface. */
@@ -178,6 +220,14 @@ export class TankScene {
    * spot. Kept for the visit only; a sold fish's entry just goes unused.
    */
   private readonly parked = new Map<string, SwimState>();
+  /** The tank's size and water (it grows to fill its space: setSize). */
+  private geo: TankGeometry = DEFAULT_GEOMETRY;
+  /** The whole water, for fish without a region (and for leaving). */
+  private bounds: Bounds = boundsFor(DEFAULT_GEOMETRY.water);
+  /** Around the tank: the room (the slot's colour), where the stand's legs stand. */
+  private readonly room = new Graphics();
+  private readonly waterFill = new Graphics();
+  private readonly frameSprite = new Sprite();
   /** Plants behind the sand's edge, the sand, then rocks and low plants in front of it. */
   private readonly decorBack = new Container();
   private readonly sandLayer = new Graphics();
@@ -196,19 +246,13 @@ export class TankScene {
     private readonly decorAtlas: Texture,
     private readonly rand: Rand = Math.random,
   ) {
-    // Around the tank: the room (the slot's colour), where the stand's legs stand.
-    const room = new Graphics().rect(0, 0, TANK_WIDTH, TANK_HEIGHT).fill(css(ui.night));
-    const { x, y, w, h } = INNER_WATER;
-    const water = new Graphics().rect(x, y, w, h).fill(css(ui.water));
-    // The light goes off in the water; the frame stays as it is.
-    this.night.rect(x, y, w, h).fill({ color: css(ui.night), alpha: NIGHT_ALPHA });
     this.night.visible = false;
-    const frame = new Sprite(this.decorTexture('frame'));
+    this.drawTank();
     // Fish swim behind the frame, so leaving fish slip out of sight past the glass.
     // Z's float above the dimmed tank, so they're readable at night.
     this.root.addChild(
-      room,
-      water,
+      this.room,
+      this.waterFill,
       this.decorBack,
       this.sandLayer,
       this.decorFront,
@@ -218,10 +262,64 @@ export class TankScene {
       this.gloom,
       this.rippleLayer,
       this.night,
-      this.labelLayer,
-      frame,
+      this.frameSprite,
       this.zedLayer,
     );
+    this.overlay.addChild(this.labelLayer);
+  }
+
+  /**
+   * The tank's size in art pixels. Everything that depends on it (the room,
+   * water, frame, sand and plants, weather, swimming bounds) is redrawn; fish
+   * head back inside if the tank shrank under them.
+   */
+  setSize(width: number, height: number): void {
+    if (width === this.geo.width && height === this.geo.height) return;
+    this.geo = tankGeometry(width, height);
+    this.bounds = boundsFor(this.geo.water);
+    this.drawTank();
+    const seed = this.decorSeed;
+    this.decorSeed = undefined;
+    if (seed !== undefined) this.setDecor(seed);
+    const weather = this.weather;
+    this.weather = 'calm';
+    this.setWeather(weather);
+    this.ripples = [];
+    this.drops = [];
+    for (const [id, node] of this.fish) {
+      if (id !== this.drag?.id && !node.swim.leaving) {
+        node.swim = regroup(node.swim, this.boundsOf(id), this.rand);
+      }
+    }
+    this.layoutLabels();
+  }
+
+  /**
+   * How the tank is drawn: `labels` is label pixels per art pixel (see
+   * labelZoom); `pace` slows swimming in art pixels as the tank zooms in (1 at
+   * normal zoom).
+   */
+  setZoom({ labels, pace }: { labels: number; pace: number }): void {
+    this.swimPace = pace;
+    if (labels === this.labelZoom) return;
+    this.labelZoom = labels;
+    this.layoutLabels();
+  }
+
+  /** The room, the water, the night overlay and the frame, at the tank's size. */
+  private drawTank(): void {
+    const { width, height, inner } = this.geo;
+    const { x, y, w, h } = inner;
+    this.room.clear().rect(0, 0, width, height).fill(css(ui.night));
+    this.waterFill.clear().rect(x, y, w, h).fill(css(ui.water));
+    // The light goes off in the water; the frame stays as it is.
+    this.night
+      .clear()
+      .rect(x, y, w, h)
+      .fill({ color: css(ui.night), alpha: NIGHT_ALPHA });
+    const old = this.frameSprite.texture;
+    this.frameSprite.texture = frameTexture(width, height);
+    if (old !== Texture.EMPTY) old.destroy(true);
   }
 
   /** Which labels to draw with the fish. */
@@ -305,7 +403,8 @@ export class TankScene {
       for (const child of layer.removeChildren()) child.destroy();
     }
     this.swayers = [];
-    const layout = decorLayout(seed, INNER_WATER, SAND_TOP, decorItems());
+    const { inner, sandTop } = this.geo;
+    const layout = decorLayout(seed, inner, sandTop, decorItems());
     for (const item of layout.items) {
       const still = this.decorTexture(item.name);
       const sprite = new Sprite(still);
@@ -321,10 +420,10 @@ export class TankScene {
     }
     // Sand: one column at a time (its pale top edge, then the sand), then the specks.
     const g = this.sandLayer.clear();
-    const bottom = INNER_WATER.y + INNER_WATER.h;
-    layout.sandTops.forEach((top, i) => g.rect(INNER_WATER.x + i, top + 1, 1, bottom - top - 1));
+    const bottom = inner.y + inner.h;
+    layout.sandTops.forEach((top, i) => g.rect(inner.x + i, top + 1, 1, bottom - top - 1));
     g.fill(css(sand.base));
-    layout.sandTops.forEach((top, i) => g.rect(INNER_WATER.x + i, top, 1, 1));
+    layout.sandTops.forEach((top, i) => g.rect(inner.x + i, top, 1, 1));
     g.fill(css(sand.edge));
     for (const { x, y } of layout.specks) g.rect(x, y, 1, 1);
     if (layout.specks.length) g.fill(css(sand.speck));
@@ -366,7 +465,7 @@ export class TankScene {
         if (!node.swim.leaving) this.parked.set(id, node.swim);
         this.removeNode(id, node);
       } else if (!node.swim.leaving) {
-        node.swim = leave(node.swim, TANK_BOUNDS, FISH_W);
+        node.swim = leave(node.swim, this.bounds, FISH_W);
       }
     }
     for (const spec of list) {
@@ -451,7 +550,7 @@ export class TankScene {
 
   private boundsOf(id: string): Bounds {
     const region = this.regionOf.get(id);
-    const b = region ? boundsFor(region.rect) : TANK_BOUNDS;
+    const b = region ? boundsFor(region.rect, this.geo.water) : this.bounds;
     // Sleeping fish rest low in their patch.
     return this.asleep && id !== this.selected
       ? { ...b, minY: Math.max(b.minY, b.maxY - REST_BAND) }
@@ -498,8 +597,8 @@ export class TankScene {
   dragTo(x: number, y: number): void {
     const node = this.drag ? this.fish.get(this.drag.id) : undefined;
     if (!node || !this.drag) return;
-    const nx = Math.min(TANK_BOUNDS.maxX, Math.max(TANK_BOUNDS.minX, x - this.drag.dx));
-    const ny = Math.min(TANK_BOUNDS.maxY, Math.max(TANK_BOUNDS.minY, y - this.drag.dy));
+    const nx = Math.min(this.bounds.maxX, Math.max(this.bounds.minX, x - this.drag.dx));
+    const ny = Math.min(this.bounds.maxY, Math.max(this.bounds.minY, y - this.drag.dy));
     if (Math.abs(nx - node.swim.x) >= 1) node.swim.facing = nx > node.swim.x ? 1 : -1;
     node.swim = { ...node.swim, x: nx, y: ny, targetX: nx, targetY: ny, pause: 0.3 };
     this.place(node);
@@ -592,9 +691,10 @@ export class TankScene {
       this.showFrame(node, id);
       if (id === this.drag?.id) continue;
       // Asleep, everything happens slowly: drifting down, and drifting about.
-      node.swim = step(node.swim, sleeping ? dt * SLEEP_SPEED : dt, this.rand, this.boundsOf(id));
+      const pace = (sleeping ? SLEEP_SPEED : 1) * this.swimPace;
+      node.swim = step(node.swim, dt * pace, this.rand, this.boundsOf(id));
       if (sleeping && !node.swim.leaving && this.rand() < dt * ZED_RATE) this.breathe(node);
-      if (hasLeft(node.swim, TANK_BOUNDS, FISH_W)) {
+      if (hasLeft(node.swim, this.bounds, FISH_W)) {
         this.removeNode(id, node);
         continue;
       }
@@ -611,13 +711,13 @@ export class TankScene {
     if (weather === this.weather) return;
     this.weather = weather;
     const look = WEATHER_LOOK[weather];
-    this.shafts = makeShafts(look.shafts, WATER, this.rand);
+    this.shafts = makeShafts(look.shafts, this.geo.water, this.rand);
     this.shaftKey = '';
     if (!look.rain) {
       this.ripples = [];
       this.drops = [];
     }
-    const { x, y, w, h } = INNER_WATER;
+    const { x, y, w, h } = this.geo.inner;
     this.gloom.clear();
     if (look.gloom > 0)
       this.gloom.rect(x, y, w, h).fill({ color: css(ui.night), alpha: look.gloom });
@@ -629,7 +729,7 @@ export class TankScene {
     const look = WEATHER_LOOK[this.weather];
     this.weatherClock += dt;
     // At night the shafts sit under the dimmed water: faint moonlight, still showing the day.
-    const rows = shaftRows(this.shafts, WATER, this.weatherClock);
+    const rows = shaftRows(this.shafts, this.geo.water, this.weatherClock);
     const key = rows.map((r) => `${r.x},${r.w}`).join(';');
     if (key !== this.shaftKey) {
       this.shaftKey = key;
@@ -648,14 +748,15 @@ export class TankScene {
       this.ripples,
       dt,
       look,
-      WATER,
+      this.geo.water,
       this.rand,
     ));
     const g = this.rippleLayer.clear();
-    for (const r of this.ripples) for (const p of ripplePixels(r, WATER)) g.rect(p.x, p.y, 1, 1);
+    const water = this.geo.water;
+    for (const r of this.ripples) for (const p of ripplePixels(r, water)) g.rect(p.x, p.y, 1, 1);
     if (this.ripples.length) g.fill(css(ui.ripple));
     for (const d of this.drops)
-      for (const p of dropPixels(d, look.wind, WATER)) g.rect(p.x, p.y, 1, 1);
+      for (const p of dropPixels(d, look.wind, water)) g.rect(p.x, p.y, 1, 1);
     if (this.drops.length) g.fill({ color: css(ui.ripple), alpha: RAIN_ALPHA });
   }
 
@@ -720,20 +821,23 @@ export class TankScene {
     for (const node of [...backToFront].reverse()) {
       node.labelGroup.visible = !node.swim.leaving;
       if (node.swim.leaving) continue;
+      // The fish in label pixels (whole ones, from its whole art pixels).
+      const k = this.labelZoom;
       const x = Math.round(node.swim.x);
       const y = Math.round(node.swim.y);
+      const centre = Math.round((x + FISH_W / 2) * k);
       const boxes: { box: Box; away: 1 | -1 }[] = [];
       const shown: Sprite[] = [];
       if (node.text.visible) {
         const { width: w, height: h } = node.text.texture;
-        const box = { x: x + Math.floor((FISH_W - w) / 2), y: y + LABEL_BELOW, w, h };
+        const box = { x: centre - Math.floor(w / 2), y: Math.round((y + LABEL_BELOW) * k), w, h };
         boxes.push({ box, away: 1 });
         shown.push(node.text);
       }
       if (node.badge.visible) {
         const box: Box = {
-          x: x + Math.floor((FISH_W - BADGE_SIZE) / 2),
-          y: y - BADGE_ABOVE,
+          x: centre - Math.floor(BADGE_SIZE / 2),
+          y: Math.round((y + BADGE_BOTTOM) * k) - BADGE_SIZE,
           w: BADGE_SIZE,
           h: BADGE_SIZE,
         };
@@ -744,7 +848,15 @@ export class TankScene {
       sprites.set(node.spec.id, shown);
     }
     const previous = new Map([...this.fish.values()].map((n) => [n.spec.id, n.nudges]));
-    for (const [id, { boxes, nudges }] of placeLabels(homes, INNER_WATER, previous)) {
+    const { x, y, w, h } = this.geo.inner;
+    const k = this.labelZoom;
+    const area = {
+      x: Math.ceil(x * k),
+      y: Math.ceil(y * k),
+      w: Math.floor((x + w) * k) - Math.ceil(x * k),
+      h: Math.floor((y + h) * k) - Math.ceil(y * k),
+    };
+    for (const [id, { boxes, nudges }] of placeLabels(homes, area, previous)) {
       const node = this.fish.get(id);
       if (node) node.nudges = nudges;
       sprites.get(id)?.forEach((sprite, i) => {

@@ -1,11 +1,12 @@
 /**
- * Tank decoration: plants, rocks and the tank frame from art/decor, baked by
+ * Tank decoration from art/decor: plants and rocks baked by
  * scripts/build-sprites.ts into ./generated/decor.png (each grid at its own
- * size, the frame stretched to the whole tank). Sand is drawn by the scene in
- * the decor colours below.
+ * size), and the tank frame, stretched here to whatever size the tank is.
+ * Sand is drawn by the scene in the decor colours below.
  */
 import palette from '../../art/palette.json';
-import type { DecorFrame } from './grid';
+import frameText from '../../art/decor/frame.grid?raw';
+import { type DecorFrame, parseGrid, stretchFrame } from './grid';
 import frames from './generated/decor.json';
 import decorUrl from './generated/decor.png';
 import type { Hex } from './index';
@@ -21,6 +22,17 @@ export const sand: { edge: Hex; base: Hex; speck: Hex } = {
   base: decorColour('s'),
   speck: decorColour('S'),
 };
+
+const frameGrid = parseGrid(frameText);
+
+/**
+ * The tank frame (art/decor/frame.grid: lid, glass edges, rim and stand)
+ * stretched to a tank of any size, as rows of grid characters ('.' clear).
+ * Built when the tank's size is known, so the tank can fill its space.
+ */
+export function frameRows(width: number, height: number): string[] {
+  return stretchFrame(frameGrid, width, height);
+}
 
 /** Colour of a decor grid character (art/palette.json "decor"). */
 export function decorColour(ch: string): Hex {
