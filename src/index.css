@@ -145,10 +145,16 @@ canvas {
   touch-action: none;
 }
 
-.tank-bar.px-bar {
-  flex: none;
-  padding: calc(var(--sf-px) * 3) calc(var(--sf-px) * 3) calc(var(--sf-px) * 4);
-  box-shadow: var(--bar-edges);
+/*
+ * The hood: a strip on the tank's lid, in the lid's own colours (a light top
+ * edge over the panel colour), so the status reads as part of the tank.
+ */
+.tank-hood.px-bar {
+  position: absolute;
+  z-index: 3;
+  padding: calc(var(--sf-px) * 3) calc(var(--sf-px) * 3) calc(var(--sf-px) * 2);
+  background: var(--sf-panel);
+  box-shadow: inset 0 var(--sf-px) 0 var(--sf-panelLight);
 }
 
 .tank-empty {

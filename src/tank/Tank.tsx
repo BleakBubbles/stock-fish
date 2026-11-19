@@ -43,6 +43,8 @@ interface Props {
   groupOutline?: Rect;
   /** How many fish are shown: with only a few, the tank zooms in. */
   fishCount: number;
+  /** UI pixels kept clear above the tank, for the hood (the status strip on its lid). */
+  hood: number;
   /** Which pens are shown: when it changes, fish no longer shown vanish instead of swimming off. */
   view: string;
   /** Picks the tank's sand, plants and rocks: the same seed always looks the same. */
@@ -96,6 +98,7 @@ export function Tank({
   active,
   groupOutline,
   fishCount,
+  hood,
   view,
   decorSeed,
   labels,
@@ -124,6 +127,7 @@ export function Tank({
     active,
     groupOutline,
     fishCount,
+    hood,
     regions,
     night,
     weather,
@@ -141,6 +145,7 @@ export function Tank({
       active,
       groupOutline,
       fishCount,
+      hood,
       regions,
       night,
       weather,
@@ -217,7 +222,8 @@ export function Tank({
         // the tank grown to fill the rest at that scale.
         const pad = TANK_PAD * ui;
         const roomW = hostW - 2 * pad;
-        const roomH = hostH - 2 * pad;
+        const hoodH = latest.current.hood * ui;
+        const roomH = hostH - 2 * pad - hoodH;
         const base = tankSize(roomW, roomH, tank).scale;
         const { scale, width, height } = tankZoom(roomW, roomH, tank, latest.current.fishCount);
         if (width !== size.w || height !== size.h) {
@@ -242,7 +248,9 @@ export function Tank({
         canvas.style.height = `${height * scale}px`;
         // Centre on whole UI pixels, so labels drawn over the tank share its grid.
         const left = Math.max(0, Math.floor((hostW - width * scale) / 2 / ui));
-        const top = Math.max(0, Math.floor((hostH - height * scale) / 2 / ui));
+        // Centred below the hood.
+        const top =
+          latest.current.hood + Math.max(0, Math.floor((hostH - hoodH - height * scale) / 2 / ui));
         canvas.style.marginLeft = `${left * ui}px`;
         canvas.style.marginTop = `${top * ui}px`;
         display.scale.set(scale);
@@ -392,7 +400,7 @@ export function Tank({
     };
   }, []);
 
-  useEffect(() => fitRef.current?.(), [pixelScale, fishCount]);
+  useEffect(() => fitRef.current?.(), [pixelScale, fishCount, hood]);
   useEffect(() => {
     const ticker = appRef.current?.ticker;
     if (!ticker) return;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { marketOpenNow } from '../data/market';
 import {
   DEFAULT_TANK_LABELS,
@@ -113,6 +113,32 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
   const [dialog, setDialog] = useState<Dialog>();
   const [dropPen, setDropPen] = useState<string>();
   const [placement, setPlacement] = useState<TankPlacement>();
+  /**
+   * The hood's height in UI pixels: the tank leaves this much room above it.
+   * Measured whenever the hood appears or changes size (it wraps on phones).
+   */
+  const [hoodHeight, setHoodHeight] = useState(0);
+  const hoodNode = useRef<HTMLDivElement>(null);
+  const hoodObserver = useRef<ResizeObserver>(undefined);
+  // Inside PixelRoot one CSS pixel is one UI pixel, and every size is whole.
+  const measureHood = useCallback(() => {
+    const node = hoodNode.current;
+    if (node) setHoodHeight(Math.round(node.offsetHeight));
+  }, []);
+  const hoodRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      hoodObserver.current?.disconnect();
+      hoodObserver.current = undefined;
+      hoodNode.current = node;
+      if (!node) return;
+      hoodObserver.current = new ResizeObserver(measureHood);
+      hoodObserver.current.observe(node);
+    },
+    [measureHood],
+  );
+  // Also after every render: the hood rewraps when the tank's width arrives,
+  // which the observer doesn't always report. Settles once the height stops changing.
+  useLayoutEffect(measureHood);
   // Shown immediately on change, before the settings write comes back.
   const [localView, setLocalView] = useState<TankView>();
   const view = useMemo(
@@ -287,7 +313,13 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
           left: `calc(var(--sf-px) * ${placement.left + 4})`,
           bottom: `calc(var(--sf-px) * ${placement.slotHeight - placement.top - placement.height + 4})`,
         }
-      : { left: `calc(var(--sf-px) * 4)`, top: `calc(var(--sf-px) * 4)` };
+      : placement
+        ? // Just inside the tank's top-left corner, below the hood.
+          {
+            left: `calc(var(--sf-px) * ${placement.left + 4})`,
+            top: `calc(var(--sf-px) * ${placement.top + 4})`,
+          }
+        : { left: `calc(var(--sf-px) * 4)`, top: `calc(var(--sf-px) * 4)` };
 
   /** The pen a region belongs to: the home pen, or (in Pen mode) the pen it shows. */
   const penOfRegion = (region: Region): string | undefined => {
@@ -408,24 +440,6 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
         />
       )}
 
-      <div className="tank-bar px-bar" role="status">
-        {priced && (
-          <>
-            <span className="tank-bar-weather">
-              <PixelIcon name={weather.weather} />
-              <PixelText text={WEATHER_LABEL[weather.weather]} />
-            </span>
-            <ChangeTicker
-              change={weather.changeRatio}
-              text={`${formatChangeRatio(weather.changeRatio)} (${formatMoney(weather.change, currency, true)})`}
-            />
-            <PixelText text="today" tone="textMuted" />
-          </>
-        )}
-        {!open && <PixelText text="Market closed" tone="textMuted" />}
-        <MarketMessage market={market} hasFish={fish.length > 0} onSettings={onSettings} />
-      </div>
-
       <Tank
         fish={sceneFish}
         active={active}
@@ -438,6 +452,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
         selectedId={selected?.id}
         groupOutline={groupRegion?.group?.rect}
         fishCount={visible.length}
+        hood={hoodHeight}
         onSelect={setSelectedId}
         onTapWater={(tapX, tapY) => {
           // In an overview, open water belongs to a group: tap it for that
@@ -461,6 +476,40 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
         onPlacement={setPlacement}
         label={`Fish tank with ${visible.length} fish`}
       >
+        {/*
+          The hood: the tank's weather, today's change and market state on a
+          strip sitting on the tank's lid (drawn in the same panel colours).
+        */}
+        <div
+          ref={hoodRef}
+          className="tank-hood px-bar"
+          role="status"
+          style={
+            placement
+              ? {
+                  left: `calc(var(--sf-px) * ${placement.left})`,
+                  top: `calc(var(--sf-px) * ${placement.top - hoodHeight})`,
+                  width: `calc(var(--sf-px) * ${placement.width})`,
+                }
+              : { visibility: 'hidden' }
+          }
+        >
+          {priced && (
+            <>
+              <span className="tank-bar-weather">
+                <PixelIcon name={weather.weather} />
+                <PixelText text={WEATHER_LABEL[weather.weather]} />
+              </span>
+              <ChangeTicker
+                change={weather.changeRatio}
+                text={`${formatChangeRatio(weather.changeRatio)} (${formatMoney(weather.change, currency, true)})`}
+              />
+              <PixelText text="today" tone="textMuted" />
+            </>
+          )}
+          {!open && <PixelText text="Market closed" tone="textMuted" />}
+          <MarketMessage market={market} hasFish={fish.length > 0} onSettings={onSettings} />
+        </div>
         {!home && placement && (
           <RegionLabels
             regions={regions}
