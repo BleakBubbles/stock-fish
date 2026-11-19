@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from 'react';
 import { type Backup, exportBackup, restoreBackup, validateBackup } from '../data/backup';
-import type { ProviderId, Settings } from '../data/model';
+import { type ProviderId, REGROUP_SPEEDS, type RegroupSpeed, type Settings } from '../data/model';
 import {
   PROVIDERS,
   type KeyTestResult,
@@ -32,6 +32,7 @@ export function SettingsScreen() {
       <MarketDataSettings settings={settings} />
       <CurrencySettings settings={settings} />
       <ChangeColourSettings settings={settings} />
+      <RegroupSettings settings={settings} />
       <BackupSettings />
       <InstallSettings />
       <div className="px-panel px-stack px-wide">
@@ -193,6 +194,32 @@ function ChangeColourSettings({ settings }: { settings: Settings }) {
     </div>
   );
 }
+
+/** How fast fish move to their new places when the grouping or order changes. */
+function RegroupSettings({ settings }: { settings: Settings }) {
+  return (
+    <div className="px-panel px-stack px-wide">
+      <PixelHeading text="Rearranging" level={3} />
+      <PixelParagraph
+        text="How fast fish swim to their new places when you change the group, sort or pens. Their everyday swimming stays the same."
+        tone="textMuted"
+      />
+      <PixelChoice
+        label="Rearranging speed"
+        options={REGROUP_SPEEDS.map((v) => ({ value: v, label: REGROUP_LABEL[v] }))}
+        value={settings.regroupSpeed ?? 'normal'}
+        onChange={(v) => void repo.saveSettings({ regroupSpeed: v === 'normal' ? undefined : v })}
+      />
+    </div>
+  );
+}
+
+const REGROUP_LABEL: Record<RegroupSpeed, string> = {
+  slow: 'Slow',
+  normal: 'Normal',
+  fast: 'Fast',
+  instant: 'Instant',
+};
 
 /** Add Stock Fish to the home screen or desktop, as an app that also opens offline. */
 function InstallSettings() {

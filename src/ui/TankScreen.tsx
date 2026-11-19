@@ -452,6 +452,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
         selectedId={selected?.id}
         groupOutline={groupRegion?.group?.rect}
         fishCount={visible.length}
+        regroupSpeed={settings?.regroupSpeed ?? 'normal'}
         hood={hoodHeight}
         onSelect={setSelectedId}
         onTapWater={(tapX, tapY) => {

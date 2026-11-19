@@ -8,6 +8,7 @@ import { decorUrl } from '../theme/decor';
 import { Rescale } from '../ui/pixel/PixelRoot';
 import { usePixelScale } from '../ui/pixel/context';
 import type { Weather } from '../mood';
+import type { RegroupSpeed } from '../data/model';
 import { type Region, tankZoom } from './arrange';
 import type { Rect } from './territory';
 import { TANK_HEIGHT, TANK_PAD, TANK_WIDTH, tankSize } from './constants';
@@ -45,6 +46,8 @@ interface Props {
   fishCount: number;
   /** UI pixels kept clear above the tank, for the hood (the status strip on its lid). */
   hood: number;
+  /** How fast fish move to new places when the grouping or order changes. */
+  regroupSpeed: RegroupSpeed;
   /** Which pens are shown: when it changes, fish no longer shown vanish instead of swimming off. */
   view: string;
   /** Picks the tank's sand, plants and rocks: the same seed always looks the same. */
@@ -99,6 +102,7 @@ export function Tank({
   groupOutline,
   fishCount,
   hood,
+  regroupSpeed,
   view,
   decorSeed,
   labels,
@@ -128,6 +132,7 @@ export function Tank({
     groupOutline,
     fishCount,
     hood,
+    regroupSpeed,
     regions,
     night,
     weather,
@@ -146,6 +151,7 @@ export function Tank({
       groupOutline,
       fishCount,
       hood,
+      regroupSpeed,
       regions,
       night,
       weather,
@@ -183,6 +189,7 @@ export function Tank({
       sceneRef.current = scene;
       scene.setDecor(decorSeedRef.current);
       scene.setLabels(labelsRef.current);
+      scene.setRegroupSpeed(latest.current.regroupSpeed);
       scene.setRegions(latest.current.regions);
       scene.setFish(latest.current.fish);
       scene.setNight(latest.current.night);
@@ -408,6 +415,8 @@ export function Tank({
     }
   }, [active]);
   // Regions before fish, so new fish spawn inside their own territory.
+  // The speed first, so a rearrangement in the same render uses it.
+  useEffect(() => sceneRef.current?.setRegroupSpeed(regroupSpeed), [regroupSpeed]);
   useEffect(() => sceneRef.current?.setRegions(regions), [regions]);
   const shownView = useRef(view);
   useEffect(() => {

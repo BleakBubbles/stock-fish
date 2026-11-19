@@ -125,7 +125,9 @@ order.
 same measure (Mood columns always run happiest to saddest): Weight (default in an overview),
 Today's change, Mood (today's move in typical days), Name, or Custom (the pens' own layouts; the
 default in a single pen). Fish without a price sort last. Sorting by change or mood reshuffles as
-prices refresh; keyboard order and screen readers follow the sort.
+prices refresh; keyboard order and screen readers follow the sort. A **rearranging speed** setting (Slow,
+Normal, Fast, Instant) sets how fast fish swim to their new places when the grouping, sort or pens
+change; Instant puts them there at once. Everyday swimming is unaffected.
 
 ## Design principles
 

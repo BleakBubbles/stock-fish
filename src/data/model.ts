@@ -169,7 +169,12 @@ export interface Settings {
   homeCurrency?: string;
   /** Colour of rising prices: green (default) or red, as in China, Japan, Korea and Taiwan. */
   upColour?: UpColour;
+  /** How fast fish swim to their new places when the grouping or order changes. */
+  regroupSpeed?: RegroupSpeed;
 }
+
+export type RegroupSpeed = 'slow' | 'normal' | 'fast' | 'instant';
+export const REGROUP_SPEEDS: readonly RegroupSpeed[] = ['slow', 'normal', 'fast', 'instant'];
 
 export type UpColour = 'green' | 'red';
 

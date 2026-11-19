@@ -135,14 +135,23 @@ export function hasLeft(state: SwimState, bounds: Bounds, width: number): boolea
   return state.leaving && (state.x > bounds.maxX + width || state.x < bounds.minX - width);
 }
 
-/** Advance one fish by `dt` seconds. */
-export function step(state: SwimState, dt: number, rand: Rand, bounds: Bounds): SwimState {
+/**
+ * Advance one fish by `dt` seconds. A hurrying fish (heading to a new region)
+ * swims `hurrySpeedup` times its cruising speed.
+ */
+export function step(
+  state: SwimState,
+  dt: number,
+  rand: Rand,
+  bounds: Bounds,
+  hurrySpeedup = HURRY_SPEEDUP,
+): SwimState {
   if (state.pause > 0) return { ...state, pause: Math.max(0, state.pause - dt) };
 
   const dx = state.targetX - state.x;
   const dy = (state.targetY - state.y) / VERTICAL_FACTOR;
   const distance = Math.hypot(dx, dy);
-  const speed = state.speed * (state.leaving ? LEAVE_SPEEDUP : state.hurry ? HURRY_SPEEDUP : 1);
+  const speed = state.speed * (state.leaving ? LEAVE_SPEEDUP : state.hurry ? hurrySpeedup : 1);
   const facing: 1 | -1 = Math.abs(dx) >= TURN_THRESHOLD ? (dx > 0 ? 1 : -1) : state.facing;
 
   if (distance <= speed * dt) {
@@ -203,6 +212,12 @@ export function resume(state: SwimState, bounds: Bounds, rand: Rand): SwimState 
  * already inside just keeps its target in bounds; one outside hurries to a
  * random spot in the new region, swimming there rather than jumping.
  */
+/** A hurrying fish appears at its target at once (rearranging set to instant). */
+export function arrive(state: SwimState): SwimState {
+  if (!state.hurry) return state;
+  return { ...state, x: state.targetX, y: state.targetY, hurry: false };
+}
+
 export function regroup(state: SwimState, bounds: Bounds, rand: Rand): SwimState {
   if (state.leaving) return state;
   if (inside(state.x, state.y, bounds)) {

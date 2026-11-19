@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type Bounds,
   type SwimState,
+  arrive,
   clampTo,
   hasLeft,
   leave,
@@ -195,5 +196,38 @@ describe('temperament', () => {
     expect(swimStyle(undefined)).toEqual(swimStyle(0.5));
     expect(swimStyle(-1)).toEqual(swimStyle(0));
     expect(swimStyle(2)).toEqual(swimStyle(1));
+  });
+});
+
+describe('rearranging speed', () => {
+  const hurrying: SwimState = {
+    x: 0,
+    y: 50,
+    targetX: 200,
+    targetY: 50,
+    speed: 10,
+    facing: 1,
+    pause: 0,
+    leaving: false,
+    hurry: true,
+  };
+
+  it('swims a hurrying fish faster with a bigger speed-up', () => {
+    const slow = step(hurrying, 1, seeded(4), BOUNDS, 2);
+    const fast = step(hurrying, 1, seeded(4), BOUNDS, 10);
+    expect(slow.x).toBeCloseTo(20, 9);
+    expect(fast.x).toBeCloseTo(100, 9);
+  });
+
+  it('leaves everyday swimming at its own pace', () => {
+    const idle = { ...hurrying, hurry: false };
+    expect(step(idle, 1, seeded(4), BOUNDS, 10).x).toBeCloseTo(10, 9);
+  });
+
+  it('places a hurrying fish at its target at once when instant', () => {
+    const there = arrive(hurrying);
+    expect([there.x, there.y, there.hurry]).toEqual([200, 50, false]);
+    const idle = { ...hurrying, hurry: false };
+    expect(arrive(idle)).toBe(idle);
   });
 });

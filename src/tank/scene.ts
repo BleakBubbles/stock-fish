@@ -1,9 +1,10 @@
 /**
- * The tank scene in art pixels (320 × 180). Framework-free: Tank.tsx owns the
+ * The tank scene in art pixels (at the tank's native size). Framework-free: Tank.tsx owns the
  * PixiJS application and renders this scene into a low-res render texture,
  * which is then upscaled by a whole number (CLAUDE.md, firm rule 4).
  */
 import { Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
+import type { RegroupSpeed } from '../data/model';
 import type { Mood, Weather } from '../mood';
 import { css, ui } from '../theme';
 import { drawText, measureText, normalizeText, uiFont } from '../theme/pixelFont';
@@ -39,6 +40,8 @@ import {
   type SwimState,
   hasLeft,
   leave,
+  HURRY_SPEEDUP,
+  arrive,
   regroup,
   resume,
   spawn,
@@ -178,6 +181,17 @@ const NIGHT_TINT = (() => {
   return (mix(16) << 16) | (mix(8) << 8) | mix(0);
 })();
 
+/**
+ * How many times their cruising speed fish swim to new places after a
+ * rearrangement, by the user's setting (instant places them at once).
+ */
+const REGROUP_SPEEDUP: Record<RegroupSpeed, number> = {
+  slow: 2,
+  normal: HURRY_SPEEDUP,
+  fast: 10,
+  instant: HURRY_SPEEDUP,
+};
+
 /** Rain streaks are see-through, so they don't hide the fish. */
 const RAIN_ALPHA = 0.5;
 /** At night the water is calm: plants sway at this fraction of their usual pace. */
@@ -197,6 +211,8 @@ export class TankScene {
    * that much slower in art pixels and cross the tank in about the same time.
    */
   private swimPace = 1;
+  /** How fast fish swim to new places after a rearrangement (setRegroupSpeed). */
+  private regroupSpeed: RegroupSpeed = 'normal';
   private readonly fishLayer = new Container();
   private readonly night = new Graphics();
   /** Weather (./weather.ts): light shafts and gloom over the fish, raindrop ripples at the surface. */
@@ -549,10 +565,22 @@ export class TankScene {
   setRegions(regions: readonly Region[]): void {
     this.regions = [...regions];
     this.regionOf = new Map(regions.flatMap((r) => r.fishIds.map((id) => [id, r] as const)));
+    const instant = this.regroupSpeed === 'instant';
     for (const [id, node] of this.fish) {
-      if (id !== this.drag?.id) node.swim = regroup(node.swim, this.boundsOf(id), this.rand);
+      if (id === this.drag?.id) continue;
+      node.swim = regroup(node.swim, this.boundsOf(id), this.rand);
+      if (instant) {
+        node.swim = arrive(node.swim);
+        this.place(node);
+      }
     }
+    if (instant) this.layoutLabels();
     this.drawPatch();
+  }
+
+  /** How fast fish move to their new places when the grouping or order changes. */
+  setRegroupSpeed(speed: RegroupSpeed): void {
+    this.regroupSpeed = speed;
   }
 
   private boundsOf(id: string): Bounds {
@@ -701,7 +729,8 @@ export class TankScene {
       if (id === this.drag?.id) continue;
       // Asleep, everything happens slowly: drifting down, and drifting about.
       const pace = (sleeping ? SLEEP_SPEED : 1) * this.swimPace;
-      node.swim = step(node.swim, dt * pace, this.rand, this.boundsOf(id));
+      const hurry = REGROUP_SPEEDUP[this.regroupSpeed];
+      node.swim = step(node.swim, dt * pace, this.rand, this.boundsOf(id), hurry);
       if (sleeping && !node.swim.leaving && this.rand() < dt * ZED_RATE) this.breathe(node);
       if (hasLeft(node.swim, this.bounds, FISH_W)) {
         this.removeNode(id, node);
