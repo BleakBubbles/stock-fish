@@ -9,6 +9,7 @@ import {
   resume,
   spawn,
   step,
+  swimStyle,
 } from './swim';
 
 /** Deterministic PRNG (mulberry32) so runs are repeatable. */
@@ -145,5 +146,54 @@ describe('resume', () => {
     const parked = { ...spawn(rand, B), x: 10, y: 45 };
     const s = resume(parked, { minX: 200, minY: 6, maxX: 288, maxY: 150 }, rand);
     expect(s).toMatchObject({ x: 10, y: 45, hurry: true });
+  });
+});
+
+describe('temperament', () => {
+  /** Swim for a while; report average leg length, speed and rest per leg. */
+  function legs(temper: number) {
+    const rand = seeded(7);
+    let s = spawn(rand, BOUNDS, temper);
+    let legs = 0;
+    let distance = 0;
+    let rest = 0;
+    let speed = 0;
+    for (let i = 0; i < 60 * 600; i++) {
+      const before = s;
+      s = step(s, 1 / 60, rand, BOUNDS);
+      if (before.pause > 0) rest += 1 / 60;
+      else if (s.pause > 0) {
+        legs++;
+        speed += before.speed;
+      }
+      distance += Math.hypot(s.x - before.x, s.y - before.y);
+    }
+    return { length: distance / legs, speed: speed / legs, rest: rest / legs };
+  }
+
+  it('makes calm fish glide far and slowly, with long rests', () => {
+    const calm = legs(0);
+    const jittery = legs(1);
+    expect(calm.length).toBeGreaterThan(jittery.length * 2);
+    expect(jittery.speed).toBeGreaterThan(calm.speed * 2);
+    expect(calm.rest).toBeGreaterThan(jittery.rest * 3);
+  });
+
+  it('keeps jittery darts inside the bounds', () => {
+    const rand = seeded(8);
+    let s = spawn(rand, BOUNDS, 1);
+    for (let i = 0; i < 20_000; i++) {
+      s = step(s, 1 / 60, rand, BOUNDS);
+      expect(s.x).toBeGreaterThanOrEqual(BOUNDS.minX);
+      expect(s.x).toBeLessThanOrEqual(BOUNDS.maxX);
+      expect(s.y).toBeGreaterThanOrEqual(BOUNDS.minY);
+      expect(s.y).toBeLessThanOrEqual(BOUNDS.maxY);
+    }
+  });
+
+  it('swims the middle way without a temperament', () => {
+    expect(swimStyle(undefined)).toEqual(swimStyle(0.5));
+    expect(swimStyle(-1)).toEqual(swimStyle(0));
+    expect(swimStyle(2)).toEqual(swimStyle(1));
   });
 });

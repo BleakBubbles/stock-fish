@@ -41,6 +41,8 @@ export interface SceneFish {
   change?: string;
   /** Whether the mood is known (a badge would otherwise claim "calm" without data). */
   moodKnown: boolean;
+  /** Temperament, 0 (calm) to 1 (jittery), from typical volatility (src/mood/temperament.ts). */
+  temper: number;
 }
 
 /** Labels drawn with every fish. */
@@ -366,7 +368,7 @@ export class TankScene {
       textKey: '',
       swim: parked
         ? resume(parked, this.boundsOf(spec.id), this.rand)
-        : spawn(this.rand, this.boundsOf(spec.id)),
+        : spawn(this.rand, this.boundsOf(spec.id), spec.temper),
       container,
       layers,
     };
@@ -385,6 +387,8 @@ export class TankScene {
     node.layers.body.tint = css(spec.primary);
     node.layers.fin.tint = css(spec.secondary);
     node.spec = spec;
+    // A new temperament (σ arrived or changed) shows from the fish's next leg.
+    node.swim = { ...node.swim, temper: spec.temper };
     this.updateLabel(node);
     if (node.swim.leaving && !force) {
       // Re-added before it finished leaving (e.g. an undo): come back.

@@ -13,6 +13,7 @@ export {
   assessMood,
   tierFor,
 } from './tiers';
+export { DEFAULT_TEMPER, SIGMA_CALM, SIGMA_JITTERY, temperFor } from './temperament';
 export {
   type Bar,
   MIN_RETURNS,

@@ -2,7 +2,11 @@
  * Fish movement in art pixels. Pure: positions are floats here and get
  * rounded to whole art pixels only when drawn (CLAUDE.md, firm rule 4).
  * Fish wander between random targets, pause, and face where they're going.
+ * How they wander depends on their temperament (src/mood/temperament.ts):
+ * calm fish glide slowly over long distances and rest a while, jittery fish
+ * dart quickly a short way and hardly stop.
  */
+import { DEFAULT_TEMPER } from '../mood/temperament';
 
 /** Allowed area for a fish's top-left corner. */
 export interface Bounds {
@@ -27,18 +31,45 @@ export interface SwimState {
   leaving: boolean;
   /** Heading to a new region (a rearrangement): swims faster, no pause, until it arrives. */
   hurry?: boolean;
+  /** Temperament, 0 (calm) to 1 (jittery); DEFAULT_TEMPER when missing. */
+  temper?: number;
 }
 
 export type Rand = () => number;
 
-/** Cruising speed range, art px/s. */
-export const SPEED_MIN = 6;
-export const SPEED_MAX = 14;
+/** How a fish of some temperament swims. */
+export interface SwimStyle {
+  /** Cruising speed range for each leg, art px/s. */
+  speedMin: number;
+  speedMax: number;
+  /** Idle time at each target, seconds. */
+  pauseMin: number;
+  pauseMax: number;
+  /** How far the next target may be, as a share of its region's width and height. */
+  reach: number;
+}
+
+const CALM: SwimStyle = { speedMin: 3, speedMax: 7, pauseMin: 1.5, pauseMax: 5, reach: 1 };
+const JITTERY: SwimStyle = { speedMin: 12, speedMax: 24, pauseMin: 0.1, pauseMax: 0.9, reach: 0.3 };
+
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+/** The swimming style for a temperament: a blend from calm (0) to jittery (1). */
+export function swimStyle(temper: number = DEFAULT_TEMPER): SwimStyle {
+  const t = Math.min(1, Math.max(0, temper));
+  return {
+    speedMin: lerp(CALM.speedMin, JITTERY.speedMin, t),
+    speedMax: lerp(CALM.speedMax, JITTERY.speedMax, t),
+    pauseMin: lerp(CALM.pauseMin, JITTERY.pauseMin, t),
+    pauseMax: lerp(CALM.pauseMax, JITTERY.pauseMax, t),
+    reach: lerp(CALM.reach, JITTERY.reach, t),
+  };
+}
+
 /** Fish swim mostly sideways: vertical speed is scaled by this. */
 export const VERTICAL_FACTOR = 0.4;
-/** Idle time at each target, seconds. */
-export const PAUSE_MIN = 0.5;
-export const PAUSE_MAX = 3;
+/** A hurrying fish rests at most this long when it arrives, seconds. */
+const HURRY_PAUSE = 0.5;
 /** Only turn round for targets at least this far sideways, to avoid flicker. */
 const TURN_THRESHOLD = 2;
 /** A leaving fish speeds up by this much. */
@@ -48,21 +79,42 @@ export const HURRY_SPEEDUP = 4;
 
 const between = (rand: Rand, a: number, b: number) => a + (b - a) * rand();
 
-function pickTarget(rand: Rand, b: Bounds): { targetX: number; targetY: number } {
-  return { targetX: between(rand, b.minX, b.maxX), targetY: between(rand, b.minY, b.maxY) };
+/**
+ * A random target in the bounds. With a `from` point and a reach below 1, the
+ * target is within that share of the bounds' size from it (a short dart).
+ */
+function pickTarget(
+  rand: Rand,
+  b: Bounds,
+  from?: { x: number; y: number },
+  reach = 1,
+): { targetX: number; targetY: number } {
+  if (!from || reach >= 1) {
+    return { targetX: between(rand, b.minX, b.maxX), targetY: between(rand, b.minY, b.maxY) };
+  }
+  const rx = (b.maxX - b.minX) * reach;
+  const ry = (b.maxY - b.minY) * reach;
+  const x = Math.min(b.maxX, Math.max(b.minX, from.x));
+  const y = Math.min(b.maxY, Math.max(b.minY, from.y));
+  return {
+    targetX: between(rand, Math.max(b.minX, x - rx), Math.min(b.maxX, x + rx)),
+    targetY: between(rand, Math.max(b.minY, y - ry), Math.min(b.maxY, y + ry)),
+  };
 }
 
-export function spawn(rand: Rand, bounds: Bounds): SwimState {
+export function spawn(rand: Rand, bounds: Bounds, temper: number = DEFAULT_TEMPER): SwimState {
+  const style = swimStyle(temper);
   const x = between(rand, bounds.minX, bounds.maxX);
   const y = between(rand, bounds.minY, bounds.maxY);
   return {
     x,
     y,
-    ...pickTarget(rand, bounds),
-    speed: between(rand, SPEED_MIN, SPEED_MAX),
+    ...pickTarget(rand, bounds, { x, y }, style.reach),
+    speed: between(rand, style.speedMin, style.speedMax),
     facing: rand() < 0.5 ? 1 : -1,
-    pause: between(rand, 0, PAUSE_MAX),
+    pause: between(rand, 0, style.pauseMax),
     leaving: false,
+    temper,
   };
 }
 
@@ -97,13 +149,18 @@ export function step(state: SwimState, dt: number, rand: Rand, bounds: Bounds): 
     if (state.leaving) {
       return { ...state, x: state.targetX, y: state.targetY, facing };
     }
+    // Arrived: rest, then set off on a new leg at a new speed.
+    const style = swimStyle(state.temper);
+    const at = { x: state.targetX, y: state.targetY };
     return {
       ...state,
-      x: state.targetX,
-      y: state.targetY,
+      ...at,
       facing,
-      ...pickTarget(rand, bounds),
-      pause: state.hurry ? between(rand, 0, PAUSE_MIN) : between(rand, PAUSE_MIN, PAUSE_MAX),
+      ...pickTarget(rand, bounds, at, style.reach),
+      speed: between(rand, style.speedMin, style.speedMax),
+      pause: state.hurry
+        ? between(rand, 0, Math.min(HURRY_PAUSE, style.pauseMin))
+        : between(rand, style.pauseMin, style.pauseMax),
       hurry: false,
     };
   }

@@ -46,6 +46,10 @@ Not in v1. Recorded so the architecture leaves room for them.
 
 - **Traits:** temperament by volatility (jittery vs sleepy swimming), dividend payers drop pearls on
   payout days, ETFs lead a small school representing top holdings.
+  - *Temperament is built* (November 2026): typical daily volatility σ sets it on a log scale from
+    calm (σ ≤ 0.5 %: slow, long glides with long rests) to jittery (σ ≥ 4 %: quick short darts,
+    hardly stopping). It never depends on today's move, which is the mood's job. Unknown σ swims
+    the middle way. Asleep, every fish drifts the same.
 - **Events (tap the fish to learn why):** earnings (nervous before, reacts after), stock split (the
   fish splits in two), ex-dividend and payout dates, trading halts. Only structured calendar events;
   no news feeds.

@@ -6,7 +6,8 @@
   selected fish's territory outline, dragging). No React.
 - `decor.ts`: pure, seeded layout of a tank's floor (sand surface, specks, plants and rocks), so
   each pen always looks the same. The frame and decor art come from `art/decor/`.
-- `swim.ts`: pure fish movement; positions round to whole art pixels only when drawn.
+- `swim.ts`: pure fish movement; positions round to whole art pixels only when drawn. How a fish
+  swims (speed, rests, how far it darts) comes from its temperament (`src/mood/temperament.ts`).
 - `model.ts`: pure derivation of what each fish shows (body, colours, mood, numbers) and the weather.
 - `territory.ts`: pure, order-preserving treemap. Each fish's patch is sized by its value; holdings
   too small for a patch share a communal one, and no patch is cut thinner than a fish can swim in.

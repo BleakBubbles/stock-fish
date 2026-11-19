@@ -15,7 +15,7 @@ import {
   useHomeCurrency,
   useMarketEntries,
 } from '../data/useMarket';
-import type { Weather } from '../mood';
+import { type Weather, temperFor } from '../mood';
 import { type DropTarget, Tank, type TankPlacement } from '../tank/Tank';
 import {
   type ArrangeFish,
@@ -149,6 +149,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
             ? formatChangeRatio(moodResult.todayReturn)
             : undefined,
         moodKnown: moodResult !== undefined && moodResult.reason !== 'bad-quote',
+        temper: temperFor(moodResult?.sigma),
       })),
     [visible],
   );
