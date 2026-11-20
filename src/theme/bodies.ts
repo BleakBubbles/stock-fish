@@ -3,8 +3,8 @@ import type { Body } from './sprites';
 /**
  * Sector → fish body (CLAUDE.md, mapping rules). Accepts GICS names and the
  * Morningstar-style names Twelve Data returns ("Technology", "Consumer
- * Cyclical", "Healthcare", ...). Unknown sectors, ETFs, funds and crypto get
- * body 3 for now.
+ * Cyclical", "Healthcare", ...), plus Fund (ETFs and mutual funds: the
+ * sunfish) and Crypto (the anglerfish). Unknown sectors get body 3.
  */
 const SECTOR_BODIES: Record<string, Body> = {
   // 1: tech triangle
@@ -30,6 +30,10 @@ const SECTOR_BODIES: Record<string, Body> = {
   // 6: health capsule
   'health care': 6,
   healthcare: 6,
+  // 7: fund sunfish
+  fund: 7,
+  // 8: crypto anglerfish
+  crypto: 8,
 };
 
 export const DEFAULT_BODY: Body = 3;
@@ -40,8 +44,9 @@ export function bodyForSector(sector: string | undefined): Body {
 }
 
 /**
- * The six families a user can pick for a fish, one per body. `sector` is the
- * GICS sector stored for the choice, so it maps back to the same body.
+ * The families a user can pick for a fish, one per body. `sector` is the
+ * sector stored for the choice (GICS, or Fund / Crypto), so it maps back to
+ * the same body.
  */
 export const FAMILIES: readonly { body: Body; label: string; sector: string }[] = [
   { body: 1, label: 'Tech & communication', sector: 'Information Technology' },
@@ -50,12 +55,13 @@ export const FAMILIES: readonly { body: Body; label: string; sector: string }[] 
   { body: 4, label: 'Energy & utilities', sector: 'Energy' },
   { body: 5, label: 'Industrial & materials', sector: 'Industrials' },
   { body: 6, label: 'Health care', sector: 'Health Care' },
+  { body: 7, label: 'Fund', sector: 'Fund' },
+  { body: 8, label: 'Crypto', sector: 'Crypto' },
 ];
 
-/** Human name for a stored sector: its family, or Fund / Crypto / Unknown. */
+/** Human name for a stored sector: its family, or Unknown. */
 export function familyLabel(sector: string | undefined): string {
   if (!sector) return 'Unknown';
-  if (sector === 'Fund' || sector === 'Crypto') return sector;
   const body = SECTOR_BODIES[sector.trim().toLowerCase()];
   return FAMILIES.find((f) => f.body === body)?.label ?? 'Unknown';
 }

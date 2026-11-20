@@ -35,6 +35,16 @@ export function formatMoney(value: number, currency?: string, signed = false): s
   return new Intl.NumberFormat(undefined, options).format(value);
 }
 
+/** A trading day (YYYY-MM-DD) as a short date in the reader's locale, e.g. "18 Nov" or "Nov 18". */
+export function formatDay(day: string): string {
+  const [y, m, d] = day.split('-').map(Number) as [number, number, number];
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
+}
+
 /** "15 min", "57 min", "1 h 12 min", "6 h". */
 export function formatInterval(ms: number): string {
   const minutes = Math.round(ms / 60_000);

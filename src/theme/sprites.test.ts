@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { FAMILIES, bodyForSector, familyLabel } from './bodies';
-import { ROLES, SPRITE_HEIGHT, SPRITE_WIDTH, allSprites, spriteColours } from './sprites';
+import { BODIES, ROLES, SPRITE_HEIGHT, SPRITE_WIDTH, allSprites, spriteColours } from './sprites';
 import { parseGrid } from './grid';
 
 describe('sprites', () => {
   it('builds every body × face × tail frame at 32 × 25 using only legal roles', () => {
     const all = allSprites();
-    expect(all).toHaveLength(6 * 6 * 3);
+    expect(all).toHaveLength(BODIES.length * 6 * 3);
     for (const { body, face, tail, rows } of all) {
       const name = `${body}/${face}/${tail}`;
       expect(rows, name).toHaveLength(SPRITE_HEIGHT);
@@ -76,6 +76,8 @@ describe('bodyForSector', () => {
     ['Basic Materials', 5],
     ['Healthcare', 6],
     [' health care ', 6],
+    ['Fund', 7],
+    ['Crypto', 8],
     ['Something new', 3],
     [undefined, 3],
   ])('%s → body %i', (sector, body) => {
@@ -85,7 +87,7 @@ describe('bodyForSector', () => {
 
 describe('families', () => {
   it('each family sector maps back to its own body', () => {
-    expect(FAMILIES.map((f) => bodyForSector(f.sector))).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(FAMILIES.map((f) => bodyForSector(f.sector))).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
   });
 
   it('labels sectors by family', () => {

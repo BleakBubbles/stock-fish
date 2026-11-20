@@ -46,6 +46,24 @@ describe('needsQuote', () => {
     expect(needsQuote(entry({ quoteAt: at(16, 25) }), at(9, 0, 18), false)).toBe(false);
   });
 
+  it('asks for a day-old price again: hourly for a while after the close', () => {
+    const e = entry({ quoteAt: at(16, 25) });
+    // Settled at 16:20; fetched 16:25 and still yesterday's.
+    expect(needsQuote(e, at(17, 0), false, US, QUOTE_INTERVAL, true)).toBe(false);
+    expect(needsQuote(e, at(17, 25), false, US, QUOTE_INTERVAL, true)).toBe(true);
+    expect(
+      needsQuote(entry({ quoteAt: at(21, 30) }), at(22, 30), false, US, QUOTE_INTERVAL, true),
+    ).toBe(false); // 6 hours after the close settled: wait for tomorrow.
+    expect(needsQuote(e, at(17, 25), false)).toBe(false);
+  });
+
+  it('asks for a day-old price while open at least every 15 minutes', () => {
+    const e = entry({ quoteAt: at(11) });
+    const hourly = 60 * 60_000;
+    expect(needsQuote(e, at(11, 15), true, CRYPTO, hourly)).toBe(false);
+    expect(needsQuote(e, at(11, 15), true, CRYPTO, hourly, true)).toBe(true);
+  });
+
   it('backs off after an error', () => {
     const e = entry({ error: { kind: 'network', message: 'x', at: at(11) } });
     expect(needsQuote(e, at(11) + ERROR_RETRY - 1, true)).toBe(false);
@@ -60,13 +78,13 @@ describe('refreshPlan', () => {
 
   it('gives crypto what the stocks leave of the daily budget', () => {
     // A US stock needs 26 quotes, one after the close and one history fetch: 28.
-    // 640 - 10 × 28 - 6 = 354 left for 6 coins: 6 × 1440 / 354 ≈ 24.4 → 25 min.
+    // 640 - 10 × 28 - 2 × 6 = 348 left for 6 coins: 6 × 1440 / 348 ≈ 24.8 → 25 min.
     expect(refreshPlan([...stocks(10), ...coins(6)])).toEqual({
       roundTheClock: minutes(25),
       overBudget: false,
     });
-    // 640 - 560 - 3 = 77 left for 3 coins: 4320 / 77 ≈ 56.1 → 57 min.
-    expect(refreshPlan([...stocks(20), ...coins(3)]).roundTheClock).toBe(minutes(57));
+    // 640 - 560 - 6 = 74 left for 3 coins: 4320 / 74 ≈ 58.4 → 59 min.
+    expect(refreshPlan([...stocks(20), ...coins(3)]).roundTheClock).toBe(minutes(59));
   });
 
   it('never goes faster than every 15 minutes', () => {

@@ -1,4 +1,5 @@
 import table from './sectors.json';
+import { CRYPTO, exchangeFor } from './market';
 import { type SymbolProfile, normalizeSymbol } from './model';
 
 /**
@@ -16,8 +17,10 @@ export interface ResolvedSector {
 
 const builtin: Readonly<Record<string, string>> = table.sectors;
 
+/** The built-in table's sector; any crypto pair (BTC/USD) not in it is Crypto too. */
 export function builtinSector(symbol: string): string | undefined {
-  return builtin[normalizeSymbol(symbol)];
+  const s = normalizeSymbol(symbol);
+  return builtin[s] ?? (exchangeFor(s) === CRYPTO ? 'Crypto' : undefined);
 }
 
 export function resolveSector(symbol: string, profile?: SymbolProfile): ResolvedSector {

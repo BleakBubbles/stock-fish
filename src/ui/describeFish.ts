@@ -1,6 +1,6 @@
 import type { Mood } from '../mood/types';
 import type { FishView } from '../tank/model';
-import { formatChangeRatio, formatMoney } from './format';
+import { formatChangeRatio, formatDay, formatMoney } from './format';
 
 const MOOD_WORD: Record<Mood, string> = {
   ecstatic: 'ecstatic',
@@ -16,7 +16,13 @@ const MOOD_WORD: Record<Mood, string> = {
  */
 export function describeFish(f: FishView, penName?: string, closedMarket?: string): string {
   const parts = [f.name ? `${f.symbol}, ${f.name}` : f.symbol];
-  if (f.quote && f.moodResult) {
+  if (f.quote && f.moodResult && f.stale) {
+    parts.push(
+      'no price yet today',
+      `${formatChangeRatio(f.moodResult.todayReturn)} on ${formatDay(f.stale)}`,
+      formatMoney(f.quantity * f.quote.price, f.quote.currency),
+    );
+  } else if (f.quote && f.moodResult) {
     parts.push(
       MOOD_WORD[f.mood],
       `${formatChangeRatio(f.moodResult.todayReturn)} today`,

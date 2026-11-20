@@ -20,6 +20,8 @@ const SHORT: Record<number, string> = {
   4: 'Energy',
   5: 'Industrial',
   6: 'Health',
+  7: 'Fund',
+  8: 'Crypto',
 };
 
 /** Card width in UI pixels: room for the longest name ("Industrial") plus a margin. */
@@ -31,7 +33,7 @@ const CARD = 58;
  */
 const centre = (width: number) => `calc(var(--sf-px) * ${Math.floor((CARD - width) / 2)})`;
 
-/** Pick which of the six families (bodies) a fish belongs to, shown as the fish itself. */
+/** Pick which family (body) a fish belongs to, shown as the fish itself. */
 export function FamilyPicker({ sector, colours, onChange }: Props) {
   const current = sector ? bodyForSector(sector) : undefined;
   return (

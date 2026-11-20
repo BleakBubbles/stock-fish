@@ -43,11 +43,14 @@ export function ChangeHeadline({
   percent,
   money,
   aside,
+  when = 'today',
 }: {
   change: number;
   percent: string;
   money: string;
   aside?: ReactNode;
+  /** When the change happened: "today", or an earlier day's "on 18 Nov". */
+  when?: string;
 }) {
   const tone = useChangeTone(change);
   return (
@@ -56,7 +59,7 @@ export function ChangeHeadline({
         <ChangeTicker change={change} text={percent} size={2} />
         {aside}
       </div>
-      <PixelText text={`${money} today`} tone={tone} />
+      <PixelText text={`${money} ${when}`} tone={tone} />
     </div>
   );
 }

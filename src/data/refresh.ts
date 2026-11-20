@@ -1,11 +1,17 @@
 import { pairsNeeded } from './currency';
 import type { StockFishDb } from './db';
-import { type Exchange, US, lastSettledClose, marketStates } from './market';
+import { type Exchange, US, lastSettledClose, marketStates, staleSince } from './market';
 import type { FxEntry, MarketEntry } from './model';
 import { type MarketDataProvider, ProviderError } from './providers';
 
 /** Quotes refresh this often while their market is open (CLAUDE.md placeholder). */
 export const QUOTE_INTERVAL = 15 * 60_000;
+/**
+ * A day-old price (a fund before tonight's price) is retried this often after
+ * its market closes, for STALE_RETRY_FOR after the close has settled.
+ */
+export const STALE_RETRY = 60 * 60_000;
+export const STALE_RETRY_FOR = 6 * 60 * 60_000;
 /** A symbol that failed isn't retried for this long. */
 export const ERROR_RETRY = 15 * 60_000;
 /** Exchange rates refresh this often (totals only need a recent rate). */
@@ -33,7 +39,7 @@ export interface RefreshPlan {
  * How often round-the-clock symbols can refresh within the daily budget.
  * Each stock first gets what its trading day needs (a quote every
  * QUOTE_INTERVAL through its session, one after the close, one history
- * fetch); round-the-clock symbols share what's left (less a history fetch
+ * fetch); round-the-clock symbols share what's left (less a history fetch and a new-day quote
  * each), never faster than QUOTE_INTERVAL nor slower than
  * MAX_ROUND_THE_CLOCK_INTERVAL. One entry per symbol.
  */
@@ -42,7 +48,7 @@ export function refreshPlan(exchanges: readonly Exchange[]): RefreshPlan {
   const stockRequests = exchanges
     .filter((e) => e.days === 'weekdays')
     .reduce((sum, e) => sum + Math.ceil(((e.close - e.open) * 60_000) / QUOTE_INTERVAL) + 2, 0);
-  const left = DAILY_REQUESTS * BUDGET_SHARE - stockRequests - always;
+  const left = DAILY_REQUESTS * BUDGET_SHARE - stockRequests - 2 * always;
   if (always === 0) return { roundTheClock: QUOTE_INTERVAL, overBudget: left < 0 };
   const wanted = left > 0 ? (DAY * always) / left : Infinity;
   // Whole minutes, so the schedule reads plainly.
@@ -73,6 +79,9 @@ const fetchedAt = (at: number | undefined, now: number) =>
 /**
  * Does this symbol need a new quote? Every `interval` while its market is
  * open; once after each close has settled (for the final price); otherwise no.
+ * A day-old price (`stale`) is asked for again sooner: every QUOTE_INTERVAL
+ * while open (crypto's new UTC day), and every STALE_RETRY for a while after
+ * the close (a fund's price comes out in the evening).
  */
 export function needsQuote(
   entry: MarketEntry | undefined,
@@ -80,12 +89,15 @@ export function needsQuote(
   open: boolean,
   exchange: Exchange = US,
   interval = QUOTE_INTERVAL,
+  stale = false,
 ): boolean {
   if (backingOff(entry, now)) return false;
   const at = fetchedAt(entry?.quoteAt, now);
   if (at === undefined) return true;
-  if (open) return now - at >= interval;
-  return at < lastSettledClose(now, exchange);
+  if (open) return now - at >= (stale ? Math.min(interval, QUOTE_INTERVAL) : interval);
+  const settled = lastSettledClose(now, exchange);
+  if (at < settled) return true;
+  return stale && now - at >= STALE_RETRY && now - settled < STALE_RETRY_FOR;
 }
 
 /** Does this symbol need new daily bars? Once per completed session of its market. */
@@ -161,9 +173,11 @@ export async function refreshMarketData(
   const plan = refreshPlan(unique.map((symbol) => stateOf(symbol).exchange));
 
   const quoteJobs = unique.filter((symbol, i) => {
-    const { open, exchange } = stateOf(symbol);
+    const state = stateOf(symbol);
+    const { open, exchange } = state;
     const interval = exchange.days === 'weekdays' ? QUOTE_INTERVAL : plan.roundTheClock;
-    return needsQuote(entries[i], now(), open, exchange, interval);
+    const stale = staleSince(entries[i]?.quote, state) !== undefined;
+    return needsQuote(entries[i], now(), open, exchange, interval, stale);
   });
   const historyJobs = unique.filter((symbol, i) =>
     needsHistory(entries[i], now(), stateOf(symbol).exchange),

@@ -244,6 +244,8 @@ const FAMILY_LABEL: Record<Body, string> = {
   4: 'Energy',
   5: 'Industrial',
   6: 'Health',
+  7: 'Fund',
+  8: 'Crypto',
 };
 
 /** Fish in `sort` order. Unknown values go last; ties keep the custom order. */

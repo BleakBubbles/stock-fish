@@ -12,6 +12,12 @@ describe('built-in sector table', () => {
     expect(builtinSector('NOPE')).toBeUndefined();
   });
 
+  it('calls any crypto pair Crypto, but not currency pairs', () => {
+    expect(builtinSector('DOGE/USD')).toBe('Crypto');
+    expect(builtinSector('sol/eur')).toBe('Crypto');
+    expect(builtinSector('EUR/USD')).toBeUndefined();
+  });
+
   it('uses only the 11 GICS sectors, Fund and Crypto', () => {
     const allowed = new Set([
       'Communication Services',

@@ -38,6 +38,17 @@ describe('describeFish', () => {
     expect(text).toMatch(/^AAPL, Apple Inc\., happy, \+2\.04% today, .*2,000.*, in TFSA$/);
   });
 
+  it('says when the price is a day old', () => {
+    const text = describeFish({
+      ...base,
+      state: 'ok',
+      stale: '2026-11-17',
+      quote: { symbol: 'AAPL', price: 200, previousClose: 196, timestamp: 0, currency: 'USD' },
+      moodResult: { mood: 'happy', todayReturn: 0.0204, reason: 'ok', sigma: 0.015, z: 1.36 },
+    });
+    expect(text).toMatch(/^AAPL, Apple Inc\., no price yet today, \+2\.04% on .*17.*, .*2,000/);
+  });
+
   it('says when its market is closed', () => {
     expect(describeFish(base, 'TFSA', 'London')).toBe(
       'AAPL, Apple Inc., waiting for prices, asleep, London market closed, in TFSA',

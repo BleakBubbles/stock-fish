@@ -52,9 +52,15 @@ A sad fish always means "unusual for this one," not just "red."
   London fish sleeps while New York still trades). The market comes from the quote's exchange
   code, else the symbol's suffix (`RY:TSX`, `RY.TO`); unknown markets keep US hours. Crypto pairs
   (`BTC/USD`) never sleep, and their day runs on UTC; currency pairs (`EUR/USD`) trade from Sunday
-  to Friday, 17:00 New York time. Holidays come from the provider's "market is open" flag. The tank light goes off only when
-  every shown market is closed, and the hood names what is closed ("London closed"). Sleeping also
-  signals stale data.
+  to Friday, 17:00 New York time. Holidays come from the provider's "market is open" flag. The tank
+  light goes off only when every shown market is closed, and the hood names what is closed
+  ("London closed").
+- **Day-old prices:** a quote from an earlier trading day than its market's latest (today while
+  open, else the newest day among that market's quotes) is a day old: a mutual fund before its
+  evening price, a lagging foreign quote, crypto just after midnight UTC. The fish sleeps, shows
+  no change or mood badge, sorts as unknown and counts as no move in totals; its details give that
+  day's move "on 18 Nov". It's asked for again hourly for six hours after the close.
+- **New listings:** fewer than 20 days of history stay calm; details say how many days they need.
 
 | Tier | Move vs. typical (σ) |
 | --- | --- |
@@ -168,7 +174,7 @@ Flat pixel art, ENDESGA 32 palette, no shading. Full rules in `art/STYLE.md`.
 
 | Encodes | Visual | Chosen by |
 | --- | --- | --- |
-| Sector | Body shape | Sector lookup (6 bodies for 11 GICS sectors) |
+| Sector | Body shape | Sector lookup (6 bodies for 11 GICS sectors, plus a sunfish for funds and an anglerfish for crypto) |
 | Ticker | Primary (body) + secondary (fin) colours | The user, pre-filled from a brand preset or a hash of the ticker |
 | Mood | Eye + mouth | Volatility-scaled daily move |
 | Weight | Territory | Share of portfolio |
@@ -246,14 +252,11 @@ Placeholders are fine during the build:
 
 - What happens when a holding is sold (placeholder: the fish swims away).
 - CSV import format (placeholder: `symbol,quantity,pen`).
-- Special bodies for ETFs, funds and crypto (placeholder: body 3).
 - Neglect: no consequences.
 
 Before a public launch:
 
 - Notifications: event-based only, never price-based nudges.
-- Mood edge cases: 24/7 crypto, foreign-currency holdings, mutual funds pricing once a day, new
-  listings without volatility history.
 - Accessibility: numbers available to screen readers; mood never conveyed by colour alone.
 - Privacy: data stays in the browser; "not investment advice" disclaimer.
 - Final name and branding (working name: Stock Fish).

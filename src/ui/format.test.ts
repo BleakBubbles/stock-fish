@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatChangeRatio, formatInterval, formatMoney } from './format';
+import { formatChangeRatio, formatDay, formatInterval, formatMoney } from './format';
 
 // Locale-dependent output: check the parts that don't vary.
 describe('format', () => {
@@ -17,6 +17,13 @@ describe('format', () => {
     expect(formatMoney(-12.3, 'USD', true)).toMatch(/^[-−]/);
     expect(formatMoney(5, 'NOT-A-CODE')).toMatch(/^5[.,]00$/);
     expect(formatMoney(Infinity)).toBe('–');
+  });
+});
+
+describe('formatDay', () => {
+  it('shows the day and month of a trading day, whatever the local time zone', () => {
+    expect(formatDay('2026-11-18')).toMatch(/18/);
+    expect(formatDay('2026-11-18')).not.toMatch(/2026/);
   });
 });
 

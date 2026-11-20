@@ -301,17 +301,25 @@ export function marketOpenNow(
 export interface MarketState {
   exchange: Exchange;
   open: boolean;
+  /**
+   * The market's latest trading day (YYYY-MM-DD) as far as we can tell: today
+   * while it's open, else the newest day any of its quotes is from. Unset when
+   * nothing says. A quote from before it is a day old (see staleSince).
+   */
+  day?: string;
 }
 
 /** What marketStates needs from a cached entry. */
 interface CachedQuote {
-  quote?: { mic?: string; exchange?: string; marketOpen?: boolean };
+  quote?: { mic?: string; exchange?: string; marketOpen?: boolean; tradingDay?: string };
   quoteAt?: number;
 }
 
 /**
- * Each symbol's market and whether it's open now. Quotes from the same market
- * vote together on holidays.
+ * Each symbol's market, whether it's open now, and its latest trading day.
+ * Quotes from the same market vote together on holidays, and the newest day
+ * among them is the market's: a fund that prices once a day, after the
+ * close, lags its market's other quotes.
  */
 export function marketStates(
   ms: number,
@@ -320,6 +328,7 @@ export function marketStates(
 ): Map<string, MarketState> {
   const exchangeOf = new Map<string, Exchange>();
   const recent = new Map<string, { marketOpen?: boolean; fetchedAt: number }[]>();
+  const newest = new Map<string, string>();
   for (const symbol of symbols) {
     if (exchangeOf.has(symbol)) continue;
     const entry = entries.get(symbol);
@@ -330,17 +339,38 @@ export function marketStates(
     if (entry?.quote && entry.quoteAt !== undefined) {
       list.push({ marketOpen: entry.quote.marketOpen, fetchedAt: entry.quoteAt });
     }
+    const day = entry?.quote?.tradingDay;
+    if (day && day > (newest.get(exchange.id) ?? '')) newest.set(exchange.id, day);
   }
-  const open = new Map<string, boolean>();
+  const state = new Map<string, Omit<MarketState, 'exchange'>>();
   for (const exchange of new Set(exchangeOf.values())) {
-    open.set(exchange.id, marketOpenNow(ms, recent.get(exchange.id), exchange));
+    const open = marketOpenNow(ms, recent.get(exchange.id), exchange);
+    // Open: today's session, in the market's own zone. Currencies are left to
+    // their quotes (their trading day ends at 17:00 New York, not midnight).
+    const today = open && exchange.days !== 'forex' ? zonedTime(ms, exchange.zone).date : undefined;
+    const quoted = newest.get(exchange.id);
+    const day = today && (!quoted || today > quoted) ? today : quoted;
+    state.set(exchange.id, { open, ...(day ? { day } : {}) });
   }
   return new Map(
     [...exchangeOf].map(([symbol, exchange]) => [
       symbol,
-      { exchange, open: open.get(exchange.id) ?? false },
+      { exchange, ...(state.get(exchange.id) ?? { open: false }) },
     ]),
   );
+}
+
+/**
+ * The trading day of a price that's a day old: from an earlier session than
+ * its market's latest (a fund before tonight's price, a lagging foreign
+ * quote). Undefined when it's current, or when we can't tell.
+ */
+export function staleSince(
+  quote: { tradingDay?: string } | undefined,
+  state: MarketState | undefined,
+): string | undefined {
+  const day = quote?.tradingDay;
+  return day && state?.day && day < state.day ? day : undefined;
 }
 
 /**

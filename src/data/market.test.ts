@@ -10,6 +10,7 @@ import {
   marketOpenNow,
   marketStates,
   newYorkTime,
+  staleSince,
 } from './market';
 
 // 2026-11-17 is a Tuesday; New York is on EST (UTC−5). 2026-07-14 is a Tuesday on EDT (UTC−4).
@@ -150,6 +151,70 @@ describe('marketStates', () => {
     );
     expect(states.get('AAPL')?.open).toBe(true);
     expect(states.get('VOD')?.open).toBe(false);
+  });
+});
+
+describe('day-old prices', () => {
+  const at = (mic: string, tradingDay: string, marketOpen?: boolean) => ({
+    quote: { mic, tradingDay, ...(marketOpen === undefined ? {} : { marketOpen }) },
+    quoteAt: nov(9, 45),
+  });
+
+  it("are behind their market's latest day: today while open, else the newest quote's", () => {
+    // Open: today is 2026-11-17 in New York; the fund still has yesterday's price.
+    const open = marketStates(
+      nov(11),
+      ['AAPL', 'FUND'],
+      new Map([
+        ['AAPL', at('XNGS', '2026-11-17')],
+        ['FUND', at('XNAS', '2026-11-16')],
+      ]),
+    );
+    expect(open.get('FUND')?.day).toBe('2026-11-17');
+    expect(staleSince({ tradingDay: '2026-11-16' }, open.get('FUND'))).toBe('2026-11-16');
+    expect(staleSince({ tradingDay: '2026-11-17' }, open.get('AAPL'))).toBeUndefined();
+    // Closed, after the session: the other quotes say today happened.
+    const evening = marketStates(
+      nov(18),
+      ['AAPL', 'FUND'],
+      new Map([
+        ['AAPL', at('XNGS', '2026-11-17')],
+        ['FUND', at('XNAS', '2026-11-16')],
+      ]),
+    );
+    expect(staleSince({ tradingDay: '2026-11-16' }, evening.get('FUND'))).toBe('2026-11-16');
+  });
+
+  it('are not flagged on a holiday, when every quote is from the last session', () => {
+    const holiday = marketStates(
+      nov(11),
+      ['AAPL', 'FUND'],
+      new Map([
+        ['AAPL', at('XNGS', '2026-11-16', false)],
+        ['FUND', at('XNAS', '2026-11-16', false)],
+      ]),
+    );
+    expect(holiday.get('AAPL')).toMatchObject({ open: false, day: '2026-11-16' });
+    expect(staleSince({ tradingDay: '2026-11-16' }, holiday.get('FUND'))).toBeUndefined();
+  });
+
+  it("are flagged for crypto from the new UTC day until it's priced", () => {
+    const states = marketStates(
+      Date.UTC(2026, 10, 18, 0, 5),
+      ['BTC/USD'],
+      new Map([
+        [
+          'BTC/USD',
+          { quote: { tradingDay: '2026-11-17' }, quoteAt: Date.UTC(2026, 10, 17, 23, 50) },
+        ],
+      ]),
+    );
+    expect(staleSince({ tradingDay: '2026-11-17' }, states.get('BTC/USD'))).toBe('2026-11-17');
+  });
+
+  it('are unknown with nothing to compare', () => {
+    expect(staleSince({ tradingDay: '2026-11-16' }, undefined)).toBeUndefined();
+    expect(staleSince({}, { exchange: US, open: true, day: '2026-11-17' })).toBeUndefined();
   });
 });
 

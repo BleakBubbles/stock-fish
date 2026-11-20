@@ -71,7 +71,8 @@ Mapping rules:
 
 - **Sector → body:** IT and Communication Services → 1; Financials and Real Estate → 2; Consumer
   Discretionary and Staples → 3; Energy and Utilities → 4; Industrials and Materials → 5;
-  Health Care → 6. Unknown sector, ETFs, funds and crypto → body 3 for now.
+  Health Care → 6; funds (ETFs and mutual funds) → 7, the sunfish; crypto → 8, the anglerfish
+  (any crypto pair such as `BTC/USD`). Unknown sectors and currency pairs → body 3.
 - **Sector source,** best first: the user's family choice, the provider's company profile, then
   the built-in table `src/data/sectors.json` (S&P 500 GICS sectors plus common funds; regenerate
   with `scripts/update-sectors.ts`). Twelve Data's free plan has no profiles, so the table does

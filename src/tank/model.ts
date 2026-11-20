@@ -37,6 +37,13 @@ export interface FishView {
   moodResult?: MoodResult;
   /** Today's change in value for this holding (quantity × price move). */
   change?: number;
+  /**
+   * The price is a day old (from this trading day, before its market's
+   * latest): a fund before tonight's price, a lagging quote. The fish sleeps,
+   * its mood is calm, and its move counts as nothing today; `change` and
+   * `moodResult` are that earlier day's.
+   */
+  stale?: string;
   /** Message from the last failed fetch, if any. */
   error?: string;
   /**
@@ -57,6 +64,8 @@ export function buildFish(
   profiles: ReadonlyMap<string, SymbolProfile>,
   market: ReadonlyMap<string, MarketEntry>,
   money?: Money,
+  /** The quote's trading day when it's a day old (see FishView.stale). */
+  staleSince?: (symbol: string, quote: Quote) => string | undefined,
 ): FishView[] {
   return holdings.map((h) => {
     const profile = profiles.get(h.symbol);
@@ -85,15 +94,21 @@ export function buildFish(
     });
     const change = h.quantity * (quote.price - quote.previousClose);
     const factor = money ? homeFactor(quote.currency, money.home, money.rates) : 1;
+    const stale = staleSince?.(h.symbol, quote);
     return {
       ...base,
-      mood: moodResult.mood,
+      mood: stale ? 'neutral' : moodResult.mood,
       state: 'ok',
       quote,
       moodResult,
       change,
+      ...(stale && { stale }),
       ...(factor !== undefined && {
-        home: { factor, value: h.quantity * quote.price * factor, change: change * factor },
+        home: {
+          factor,
+          value: h.quantity * quote.price * factor,
+          change: stale ? 0 : change * factor,
+        },
       }),
     };
   });
@@ -115,7 +130,8 @@ export function weatherFor(
             {
               quantity: f.quantity,
               price: f.quote.price * f.home.factor,
-              previousClose: f.quote.previousClose * f.home.factor,
+              // A day-old price hasn't moved today.
+              previousClose: (f.stale ? f.quote.price : f.quote.previousClose) * f.home.factor,
               history: market.get(f.symbol)?.bars ?? [],
               asOf: f.quote.tradingDay,
             },

@@ -1,8 +1,9 @@
+import { MIN_RETURNS } from '../mood/volatility';
 import type { Mood } from '../mood/types';
 import type { FishView } from '../tank/model';
 import { measureText, uiFont } from '../theme/pixelFont';
 import { normalizeCurrency } from '../data/currency';
-import { formatChangeRatio, formatMoney } from './format';
+import { formatChangeRatio, formatDay, formatMoney } from './format';
 import { PixelButton } from './pixel/PixelButton';
 import { PixelText } from './pixel/PixelText';
 import { RangeBar } from './RangeBar';
@@ -75,10 +76,16 @@ export function FishDetails({
     </div>
   );
 
-  const moodNote = result?.reason === 'short-history' ? '(not enough history yet)' : undefined;
+  // A day-old price (a fund before tonight's price): its move is that day's, not today's.
+  const staleDay = fish.stale ? formatDay(fish.stale) : undefined;
+  const moodNote = staleDay
+    ? '(no price yet today)'
+    : result?.reason === 'short-history'
+      ? `(new: needs ${MIN_RETURNS} days of prices first)`
+      : undefined;
   // Today against a typical day, as a bar with the numbers under it.
   const range =
-    result?.reason === 'ok' && result.sigma !== undefined && result.z !== undefined
+    !staleDay && result?.reason === 'ok' && result.sigma !== undefined && result.z !== undefined
       ? { z: result.z, sigma: result.sigma }
       : undefined;
 
@@ -97,6 +104,7 @@ export function FishDetails({
             percent={formatChangeRatio(result.todayReturn)}
             money={formatMoney(fish.change ?? NaN, currency, true)}
             aside={range && <MoodFace mood={fish.mood} size={2} />}
+            {...(staleDay && { when: `on ${staleDay}` })}
           />
           <div className="px-dl">
             {row('Price', formatMoney(quote.price, currency))}

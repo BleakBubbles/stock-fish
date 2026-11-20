@@ -77,6 +77,12 @@ stay whole and the base never moves. 1-pixel changes are enough: they read in mo
 | `4-energy-diamond` | Energy, Utilities | True diamond | Tall swept-back angelfish fins |
 | `5-industrial-sawfish` | Industrials, Materials | Long body, toothed snout | Shark first dorsal, small second dorsal, broad pectorals, shark tail |
 | `6-health-capsule` | Health Care | Capsule | Long swept-back dorsal, shorter anal (goby-like) |
+| `7-fund-sunfish` | Funds (ETFs, mutual funds) | Tall disc, chopped-off back | No tail: a fringe of four 2-row lobes 1 px deep; short upright dorsal + anal at the rear |
+| `8-crypto-anglerfish` | Crypto | Big round head, tapering body | Fan tail; a lure on a stalk (fin colour). A wide jaw with fixed fangs (`w`) |
+
+The sunfish has no tail to wag: its poses scull the dorsal and anal fins instead, each pose
+shortening one of them at the stem. The anglerfish's mouth line changes with the mood while its
+fangs stay put; asleep, its mouth shuts to the usual short line and the fangs hide.
 
 ## UI font
 
@@ -110,4 +116,4 @@ palette colours through `palette.json` `decor` (not the fish roles above).
 
 ## Not drawn yet
 
-Code-generated patterns, special bodies for ETFs, funds and crypto.
+Code-generated patterns.

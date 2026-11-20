@@ -8,7 +8,7 @@ import { TAIL_POSES, type TailPose, parseGrid, withTail } from './grid';
 import logoText from '../../art/ui/logo.grid?raw';
 import { type Hex, roleColour } from './index';
 
-export const BODIES = [1, 2, 3, 4, 5, 6] as const;
+export const BODIES = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 export type Body = (typeof BODIES)[number];
 
 /** What a fish's face shows: its mood, or asleep while the market is closed. */

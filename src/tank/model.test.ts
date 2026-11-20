@@ -93,6 +93,29 @@ describe('weatherFor', () => {
   });
 });
 
+describe('day-old prices', () => {
+  it("sleep calm, keep that day's move, and count as no move today", () => {
+    const market = new Map([
+      ['FUND', entry('FUND', -0.03)],
+      ['A', entry('A', 0.01)],
+    ]);
+    const staleSince = (symbol: string) => (symbol === 'FUND' ? '2026-03-03' : undefined);
+    const fish = buildFish(
+      [holding('FUND'), holding('A')],
+      new Map(),
+      market,
+      undefined,
+      staleSince,
+    );
+    expect(fish[0]).toMatchObject({ stale: '2026-03-03', mood: 'neutral', home: { change: 0 } });
+    expect(fish[0]!.moodResult?.mood).toBe('sad');
+    expect(fish[0]!.change).toBeLessThan(0);
+    expect(fish[1]!.stale).toBeUndefined();
+    // Only A's +1 % moves the tank.
+    expect(weatherFor(fish, market).change).toBeGreaterThan(0);
+  });
+});
+
 describe('mixed currencies', () => {
   const inCurrency = (symbol: string, move: number, currency: string): MarketEntry => {
     const e = entry(symbol, move);
