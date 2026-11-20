@@ -15,6 +15,7 @@ export type IconName =
   | 'export'
   | 'forward'
   | 'holdings'
+  | 'all'
   | 'import'
   | 'plus'
   | 'settings'

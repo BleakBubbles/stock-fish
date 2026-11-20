@@ -156,7 +156,9 @@ export function PenBar(props: Props) {
         <PensMenu
           {...props}
           // Beside the right-hand buttons when there's room, else alone on its row (phones).
-          maxLabel={(room >= MENU_MIN ? room : cols - 1 - 2 * BAR_PADDING) - BUTTON_CHROME}
+          maxLabel={
+            (room >= MENU_MIN ? room : cols - 1 - 2 * BAR_PADDING) - BUTTON_CHROME - ICON_WIDTH
+          }
         />
         {right}
       </div>
@@ -256,6 +258,7 @@ function PensMenu({
   return (
     <Popover
       label={fit(summary, maxLabel)}
+      icon="all"
       buttonLabel={`Pens: ${summary}`}
       className="pens-menu"
       menuLabel="Pens"
