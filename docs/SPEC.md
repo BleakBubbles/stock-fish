@@ -129,11 +129,11 @@ order.
 | Pen | The user's pens | How is each pen doing? |
 | Family | Sector | What's my sector mix? |
 | Species | Ticker | What do I own? |
-| Moves together | Similar price behaviour | How diversified am I really? |
+| Correlation | Similar price behaviour | How diversified am I really? |
 | None | Nothing: every fish its own patch | Where is my money concentrated? (with Weight) |
 | Free roam | Nothing, no patches | Just vibes |
 
-**Moves together** (`src/mood/correlation.ts`, pure and tested): daily returns over the last 60
+**Correlation** (`src/mood/correlation.ts`, pure and tested): daily returns over the last 60
 completed days; the market's move taken out with the market model (each holding regressed on the
 average of the other shown holdings, needing at least 5 of them; with fewer, plain returns); then
 Pearson correlation over the days two holdings share (at least 20) and average-linkage
@@ -166,7 +166,7 @@ change; Instant puts them there at once. Everyday swimming is unaffected.
 | --- | --- |
 | Pens | Tanks |
 | Cosmetics (later) | Tank decoration: plants, castles, gravel, backgrounds |
-| Moves together | Grouped now; schooling (swimming as one) later |
+| Correlation | Grouped now; schooling (swimming as one) later |
 | Market closed | Its fish sleep; tank light off when every shown market is |
 | Dividends (later) | Pearls |
 | Mood | The fish's face |

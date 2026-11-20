@@ -36,7 +36,7 @@ export interface GroupSummary {
   unpriced: number;
   /** The home currency every amount here is in. */
   currency?: string;
-  /** "Moves together" groups: the mean correlation between its members. */
+  /** Correlation groups: the mean correlation between its members. */
   together?: number;
 }
 

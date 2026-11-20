@@ -340,8 +340,8 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
               family: 'Family',
               mood: 'Mood',
               species: 'Species',
-              together: 'Together',
-            }[view.group as 'pen' | 'family' | 'mood' | 'species' | 'together'] ?? 'Group'),
+              correlation: 'Correlation',
+            }[view.group as 'pen' | 'family' | 'mood' | 'species' | 'correlation'] ?? 'Group'),
       name: groupRegion.label ?? '',
       fishCount: members.length,
       weather: pricedMembers.length ? weatherFor(members, entries ?? new Map()) : undefined,
@@ -350,7 +350,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
       unpriced: members.length - pricedMembers.length,
       currency: homeCurrency,
       // A kin group's tightness, found through its fish (region keys aren't group keys).
-      ...(view.group === 'together' && {
+      ...(view.group === 'correlation' && {
         together: kin.tightness.get(kin.groupOf.get(members[0]?.symbol ?? '') ?? ''),
       }),
     };
@@ -481,7 +481,19 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
           dropTarget={dropPen}
           onShowAll={() => {
             setSelectedId(undefined);
-            setView({ ...view, pens: 'all' });
+            // Remember what was shown, for unticking "All pens" later.
+            const current = shown.map((p) => p.id);
+            const all = current.length === (pens?.length ?? 0);
+            setView({ ...view, pens: 'all', ...(!all && { beforeAll: current }) });
+          }}
+          onUnshowAll={() => {
+            setSelectedId(undefined);
+            // Back to the pens shown before "All pens", those that still exist, else the first pen.
+            const ids = new Set(pens?.map((p) => p.id));
+            const before = (view.beforeAll ?? []).filter((id) => ids.has(id));
+            const first = pens?.[0]?.id;
+            const next = before.length && before.length < ids.size ? before : first ? [first] : [];
+            if (next.length) setView({ ...view, pens: next });
           }}
           onPen={onPen}
           onGroup={(group) => setView({ ...view, group })}

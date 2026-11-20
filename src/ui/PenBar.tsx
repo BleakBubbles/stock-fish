@@ -23,13 +23,10 @@ const GROUP_LABEL: Record<GroupMode, string> = {
   pen: 'Pen',
   family: 'Family',
   species: 'Species',
-  together: 'Moves together',
+  correlation: 'Correlation',
   none: 'None',
   free: 'Free roam',
 };
-
-/** Names for the bar's button, where the menu's are long. */
-const GROUP_SHORT: Record<GroupMode, string> = { ...GROUP_LABEL, together: 'Together' };
 
 const SORT_LABEL: Record<SortMode, string> = {
   weight: 'Weight',
@@ -72,6 +69,8 @@ interface Props {
   /** The pen tab a dragged fish is over. */
   dropTarget?: string;
   onShowAll: () => void;
+  /** Untick "All pens": back to the pens shown before it was chosen. */
+  onUnshowAll: () => void;
   /** Show only this pen, or add or remove it from what's shown. */
   onPen: (penId: string, toggle: boolean) => void;
   onGroup: (mode: GroupMode) => void;
@@ -107,7 +106,6 @@ export function PenBar(props: Props) {
           className="arrange"
           modes={GROUP_MODES}
           labels={GROUP_LABEL}
-          short={GROUP_SHORT}
           value={group}
           onChange={props.onGroup}
         />
@@ -130,7 +128,7 @@ export function PenBar(props: Props) {
   );
   const rightButtons = [
     'View',
-    ...(overview ? [`Group: ${GROUP_SHORT[group]}`] : []),
+    ...(overview ? [`Group: ${GROUP_LABEL[group]}`] : []),
     ...(overview && group === 'free' ? [] : [`Sort: ${SORT_SHORT[sort]}`]),
     ...(overview ? [] : ['Edit pen']),
   ];
@@ -240,6 +238,7 @@ function PensMenu({
   pens,
   shown,
   onShowAll,
+  onUnshowAll,
   onPen,
   onNewPen,
   maxLabel,
@@ -267,6 +266,18 @@ function PensMenu({
         <>
           {pens.length > 1 && (
             <div className="px-input-row">
+              {/*
+                Ticked when every pen is shown. Ticking shows them all; unticking
+                goes back to the pens shown before (or the first pen alone).
+              */}
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={all}
+                aria-label="Show all pens"
+                className={all ? 'px-check is-on' : 'px-check'}
+                onClick={() => (all ? onUnshowAll() : onShowAll())}
+              />
               <PixelButton
                 label="All pens"
                 active={all}

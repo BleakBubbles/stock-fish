@@ -17,17 +17,17 @@ export interface Pen {
 /**
  * How an overview of several pens groups the fish (docs/SPEC.md, "Organizing
  * fish"): into labelled areas, or none (every fish its own patch), or free
- * roam (no patches at all). `together`: holdings whose prices move together
+ * roam (no patches at all). `correlation`: holdings whose prices move together
  * (src/mood/correlation.ts).
  */
-export type GroupMode = 'none' | 'pen' | 'family' | 'mood' | 'species' | 'together' | 'free';
+export type GroupMode = 'none' | 'pen' | 'family' | 'mood' | 'species' | 'correlation' | 'free';
 
 export const GROUP_MODES: readonly GroupMode[] = [
   'mood',
   'pen',
   'family',
   'species',
-  'together',
+  'correlation',
   'none',
   'free',
 ];
@@ -50,6 +50,8 @@ export interface TankView {
   sort: SortMode;
   /** Patch order in a single pen (custom: the pen's own layout). */
   homeSort: SortMode;
+  /** The pens shown before "All pens" was chosen, so unticking it goes back to them. */
+  beforeAll?: string[];
 }
 
 export const DEFAULT_TANK_VIEW: TankView = {
@@ -67,12 +69,16 @@ export function normalizeTankView(saved: unknown): TankView {
   const v = (saved ?? {}) as Partial<TankView> & { arrange?: string };
   const isGroup = (x: unknown): x is GroupMode => GROUP_MODES.includes(x as GroupMode);
   const isSort = (x: unknown): x is SortMode => SORT_MODES.includes(x as SortMode);
+  // 'weight' meant no groups; 'together' was correlation's first name.
   const legacy = v.arrange === 'weight' ? 'none' : v.arrange;
+  const group = (v.group as string) === 'together' ? 'correlation' : v.group;
   return {
     pens: v.pens === 'all' || Array.isArray(v.pens) ? v.pens : DEFAULT_TANK_VIEW.pens,
-    group: isGroup(v.group) ? v.group : isGroup(legacy) ? legacy : DEFAULT_TANK_VIEW.group,
+    group: isGroup(group) ? group : isGroup(legacy) ? legacy : DEFAULT_TANK_VIEW.group,
     sort: isSort(v.sort) ? v.sort : DEFAULT_TANK_VIEW.sort,
     homeSort: isSort(v.homeSort) ? v.homeSort : DEFAULT_TANK_VIEW.homeSort,
+    ...(Array.isArray(v.beforeAll) &&
+      v.beforeAll.every((id) => typeof id === 'string') && { beforeAll: v.beforeAll }),
   };
 }
 

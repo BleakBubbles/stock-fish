@@ -59,7 +59,7 @@ describe('overview groups', () => {
   ];
   // The pens' own order, pen by pen (p2's layout puts d before c).
   const custom = ['a', 'b', 'd', 'c'];
-  const groups = ['mood', 'pen', 'family', 'species', 'together', 'none', 'free'] as const;
+  const groups = ['mood', 'pen', 'family', 'species', 'correlation', 'none', 'free'] as const;
   const labelled = (mode: (typeof groups)[number]) =>
     overviewRegions(mode, 'weight', school, pens, custom).filter((r) => r.label);
 
@@ -119,7 +119,7 @@ describe('overview groups', () => {
     expect(labels).toEqual(['Tech', 'Finance', 'Health']);
   });
 
-  it('together: kin groups named after their biggest holding, then loners, then the unknown', () => {
+  it('correlation: kin groups named after their biggest holding, then loners, then the unknown', () => {
     const kin = [
       fish('a', { value: 500, kin: 'kin:B' }),
       fish('b', { value: 100, kin: 'kin:B' }),
@@ -127,7 +127,7 @@ describe('overview groups', () => {
       fish('c', { value: 100, kin: 'alone' }),
       fish('d', { value: 300 }),
     ];
-    const labels = overviewRegions('together', 'custom', kin, pens)
+    const labels = overviewRegions('correlation', 'custom', kin, pens)
       .filter((r) => r.label)
       .map((r) => [r.label, r.group!.fishIds.sort()]);
     // A (a + e) is worth more than B; two symbols, so "& 1 more".
@@ -215,6 +215,14 @@ describe('saved views', () => {
       pens: ['p1'],
       group: 'family',
     });
+    expect(normalizeTankView({ pens: 'all', group: 'together' })).toMatchObject({
+      group: 'correlation',
+    });
+    expect(normalizeTankView({ pens: 'all', beforeAll: ['p1', 'p2'] }).beforeAll).toEqual([
+      'p1',
+      'p2',
+    ]);
+    expect(normalizeTankView({ pens: 'all', beforeAll: [1] }).beforeAll).toBeUndefined();
     expect(normalizeTankView(undefined)).toEqual(DEFAULT_TANK_VIEW);
     expect(normalizeTankView({ pens: 'all', group: 'bogus', sort: 'change' })).toMatchObject({
       group: 'mood',

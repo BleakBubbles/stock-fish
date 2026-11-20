@@ -103,7 +103,7 @@ export interface ArrangeFish {
   /** Today's move in typical days (σ), if known (for sorting by mood). */
   z?: number;
   /**
-   * Which "moves together" group its symbol is in: a group key, or 'alone'
+   * Which correlation group its symbol is in: a group key, or 'alone'
    * (moves with no one), or unset (not enough history to tell).
    */
   kin?: string;
@@ -407,7 +407,7 @@ export function overviewRegions(
       return groupRegions(sortGroups(groups, sort, fish), fish, sort, custom, water);
     }
 
-    case 'together': {
+    case 'correlation': {
       // Groups of holdings that move together, each named after its biggest
       // holding; then the loners, then those too new to tell.
       const keys = [...new Set(fish.flatMap((f) => (f.kin && f.kin !== 'alone' ? [f.kin] : [])))];
