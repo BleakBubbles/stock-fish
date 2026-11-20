@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatChangeRatio, formatMoney } from './format';
+import { formatChangeRatio, formatInterval, formatMoney } from './format';
 
 // Locale-dependent output: check the parts that don't vary.
 describe('format', () => {
@@ -17,5 +17,14 @@ describe('format', () => {
     expect(formatMoney(-12.3, 'USD', true)).toMatch(/^[-−]/);
     expect(formatMoney(5, 'NOT-A-CODE')).toMatch(/^5[.,]00$/);
     expect(formatMoney(Infinity)).toBe('–');
+  });
+});
+
+describe('formatInterval', () => {
+  it('reads in minutes and hours', () => {
+    expect(formatInterval(15 * 60_000)).toBe('15 min');
+    expect(formatInterval(57 * 60_000)).toBe('57 min');
+    expect(formatInterval(72 * 60_000)).toBe('1 h 12 min');
+    expect(formatInterval(6 * 60 * 60_000)).toBe('6 h');
   });
 });

@@ -104,6 +104,8 @@ export function createTwelveDataProvider(options: TwelveDataOptions): MarketData
           : {}),
         ...(typeof body.is_market_open === 'boolean' ? { marketOpen: body.is_market_open } : {}),
         ...(typeof body.currency === 'string' && body.currency ? { currency: body.currency } : {}),
+        ...(typeof body.exchange === 'string' && body.exchange ? { exchange: body.exchange } : {}),
+        ...(typeof body.mic_code === 'string' && body.mic_code ? { mic: body.mic_code } : {}),
       };
     },
 

@@ -10,8 +10,11 @@ const MOOD_WORD: Record<Mood, string> = {
   sad: 'sad',
 };
 
-/** What a screen reader says for one fish. */
-export function describeFish(f: FishView, penName?: string): string {
+/**
+ * What a screen reader says for one fish. `closedMarket` names its market
+ * while it's closed (the fish is asleep).
+ */
+export function describeFish(f: FishView, penName?: string, closedMarket?: string): string {
   const parts = [f.name ? `${f.symbol}, ${f.name}` : f.symbol];
   if (f.quote && f.moodResult) {
     parts.push(
@@ -22,6 +25,7 @@ export function describeFish(f: FishView, penName?: string): string {
   } else {
     parts.push(f.state === 'error' ? 'no price' : 'waiting for prices');
   }
+  if (closedMarket) parts.push(`asleep, ${closedMarket} market closed`);
   if (penName) parts.push(`in ${penName}`);
   return parts.join(', ');
 }

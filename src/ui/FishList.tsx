@@ -7,6 +7,8 @@ interface Props {
   /** The fish on screen, in the order they're arranged. */
   fish: readonly FishView[];
   penName: (penId: string) => string | undefined;
+  /** The fish's market's name while that market is closed. */
+  closedMarket?: (symbol: string) => string | undefined;
   selectedId?: string;
   onSelect: (id: string | undefined) => void;
   /**
@@ -23,7 +25,7 @@ interface Props {
  * single pen; Escape clears. Visually hidden: the tank's highlight shows focus,
  * and a key hint appears in the tank's corner while the list has keyboard focus.
  */
-export function FishList({ fish, penName, selectedId, onSelect, onReorder }: Props) {
+export function FishList({ fish, penName, closedMarket, selectedId, onSelect, onReorder }: Props) {
   const listRef = useRef<HTMLUListElement>(null);
   const hintId = useId();
   const [announce, setAnnounce] = useState('');
@@ -97,7 +99,7 @@ export function FishList({ fish, penName, selectedId, onSelect, onReorder }: Pro
                 onFocus={() => f.id !== selectedId && onSelect(f.id)}
                 onClick={() => onSelect(f.id)}
               >
-                {describeFish(f, penName(f.penId))}
+                {describeFish(f, penName(f.penId), closedMarket?.(f.symbol))}
               </button>
             </li>
           ))}

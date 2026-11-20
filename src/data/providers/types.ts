@@ -21,6 +21,10 @@ export interface Quote {
   marketOpen?: boolean;
   /** ISO 4217 currency of the prices, e.g. USD. */
   currency?: string;
+  /** Exchange the symbol trades on, as the provider names it (e.g. NASDAQ, Binance). */
+  exchange?: string;
+  /** Its market identifier code (ISO 10383), e.g. XNGS: picks the market's hours. */
+  mic?: string;
 }
 
 export interface DailyBar {

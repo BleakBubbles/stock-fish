@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { marketOpenNow } from '../data/market';
+import { US, closedMarketsText, marketOpenNow, marketStates } from '../data/market';
 import {
   DEFAULT_TANK_LABELS,
   DEFAULT_TANK_VIEW,
@@ -175,6 +175,16 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
   const visible = useMemo(() => fish.filter((f) => shownIds.has(f.penId)), [fish, shownIds]);
   /** A single pen is a home with the user's layout; several are an overview. */
   const home = shown.length === 1 ? shown[0] : undefined;
+  /** Each shown fish's market, and whether it's open: fish sleep on their own market's hours. */
+  const markets = useMemo(
+    () =>
+      marketStates(
+        now,
+        visible.map((f) => f.symbol),
+        entries ?? new Map(),
+      ),
+    [now, visible, entries],
+  );
 
   const upColour = settings?.upColour;
   const sceneFish = useMemo(
@@ -195,8 +205,9 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
           : undefined,
         moodKnown: moodResult !== undefined && moodResult.reason !== 'bad-quote',
         temper: temperFor(moodResult?.sigma),
+        asleep: markets.get(symbol)?.open === false,
       })),
-    [visible, upColour],
+    [visible, upColour, markets],
   );
   // The water the tank has now (it grows to fill its space); the reference size until placed.
   const artWidth = placement?.artWidth;
@@ -260,14 +271,18 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
     }
     return out;
   }, [regions, visible, entries]);
-  const open = useMemo(() => {
-    const recent = [...(entries?.values() ?? [])].flatMap((e) =>
-      e.quote && e.quoteAt !== undefined
-        ? [{ marketOpen: e.quote.marketOpen, fetchedAt: e.quoteAt }]
-        : [],
-    );
-    return marketOpenNow(now, recent);
-  }, [entries, now]);
+  // The light goes off when every shown fish's market is closed (an empty
+  // tank follows US hours); the hood says which markets are closed.
+  const open = useMemo(
+    () =>
+      markets.size > 0 ? [...markets.values()].some((m) => m.open) : marketOpenNow(now, [], US),
+    [markets, now],
+  );
+  const closedText = useMemo(
+    () =>
+      markets.size > 0 ? closedMarketsText(markets.values()) : open ? undefined : 'Market closed',
+    [markets, open],
+  );
 
   const selected = visible.find((f) => f.id === selectedId);
   const currency = homeCurrency;
@@ -508,7 +523,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
               <PixelText text="today" tone="textMuted" />
             </>
           )}
-          {!open && <PixelText text="Market closed" tone="textMuted" />}
+          {closedText && <PixelText text={closedText} tone="textMuted" />}
           <MarketMessage market={market} hasFish={fish.length > 0} onSettings={onSettings} />
         </div>
         {!home && placement && (
@@ -524,6 +539,10 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
           <FishList
             fish={arranged}
             penName={(id) => (home ? undefined : pens?.find((p) => p.id === id)?.name)}
+            closedMarket={(symbol) => {
+              const m = markets.get(symbol);
+              return m && !m.open ? m.exchange.name : undefined;
+            }}
             selectedId={selected?.id}
             onSelect={setSelectedId}
             onReorder={home ? reorderByKey : undefined}

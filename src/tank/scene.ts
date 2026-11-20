@@ -64,6 +64,8 @@ export interface SceneFish {
   moodKnown: boolean;
   /** Temperament, 0 (calm) to 1 (jittery), from typical volatility (src/mood/temperament.ts). */
   temper: number;
+  /** Its market is closed: it sleeps (unless tapped awake). */
+  asleep?: boolean;
 }
 
 /** One line of a fish's label, in its colour (hex; white when unset). */
@@ -233,8 +235,8 @@ export class TankScene {
   private regionOf = new Map<string, Region>();
   private readonly patchOutline = new Graphics();
   private drag?: { id: string; dx: number; dy: number };
-  /** Market closed: fish sleep (except the selected one, which wakes up). */
-  private asleep = false;
+  /** Every shown market closed: the tank light is off (each fish sleeps on its own market's hours). */
+  private dark = false;
   private zeds: Zed[] = [];
   private readonly zedLayer = new Graphics();
   private groupOutline?: Rect;
@@ -455,7 +457,7 @@ export class TankScene {
 
   /** Plants sway: half of each cycle still, half swayed, each on its own phase. */
   private updateSway(dt: number): void {
-    this.swayClock += this.asleep ? dt * NIGHT_SWAY : dt;
+    this.swayClock += this.dark ? dt * NIGHT_SWAY : dt;
     for (const s of this.swayers) {
       const t = (this.swayClock + s.phase) % SWAY_PERIOD;
       const texture = s.frames[t < SWAY_PERIOD / 2 ? 0 : 1];
@@ -529,14 +531,14 @@ export class TankScene {
       textKey: '',
       swim: parked
         ? resume(parked, this.boundsOf(spec.id), this.rand)
-        : spawn(this.rand, this.boundsOf(spec.id), spec.temper),
+        : spawn(this.rand, this.boundsOf(spec.id, spec.asleep), spec.temper),
       container,
       layers,
     };
     this.applySpec(node, spec, true);
     this.fish.set(spec.id, node);
     this.fishLayer.addChild(container, labelGroup);
-    container.tint = this.asleep ? NIGHT_TINT : 0xffffff;
+    container.tint = this.dark ? NIGHT_TINT : 0xffffff;
     this.place(node);
     this.layoutLabels();
   }
@@ -545,6 +547,7 @@ export class TankScene {
     const old = node.spec;
     node.spec = spec;
     if (force || old.body !== spec.body || old.mood !== spec.mood) node.shown = '';
+    const sleepChanged = !force && !old.asleep !== !spec.asleep;
     this.showFrame(node);
     node.layers.body.tint = css(spec.primary);
     node.layers.fin.tint = css(spec.secondary);
@@ -555,6 +558,9 @@ export class TankScene {
     if (node.swim.leaving && !force) {
       // Re-added before it finished leaving (e.g. an undo): come back.
       node.swim = regroup({ ...node.swim, leaving: false }, this.boundsOf(spec.id), this.rand);
+    } else if (sleepChanged && spec.id !== this.drag?.id) {
+      // Its market opened or closed: settle down to rest low in its patch, or wake and spread out.
+      node.swim = regroup(node.swim, this.boundsOf(spec.id), this.rand);
     }
   }
 
@@ -583,11 +589,11 @@ export class TankScene {
     this.regroupSpeed = speed;
   }
 
-  private boundsOf(id: string): Bounds {
+  private boundsOf(id: string, asleep = this.fish.get(id)?.spec.asleep): Bounds {
     const region = this.regionOf.get(id);
     const b = region ? boundsFor(region.rect, this.geo.water) : this.bounds;
     // Sleeping fish rest low in their patch.
-    return this.asleep && id !== this.selected
+    return asleep && id !== this.selected
       ? { ...b, minY: Math.max(b.minY, b.maxY - REST_BAND) }
       : b;
   }
@@ -649,9 +655,9 @@ export class TankScene {
     this.refreshHighlights();
   }
 
-  /** The face a fish shows now: asleep at night, unless it's the one tapped awake. */
+  /** The face a fish shows now: asleep while its market is closed, unless it's the one tapped awake. */
   private faceOf(id: string, node: FishNode): Face {
-    return this.asleep && id !== this.selected && id !== this.drag?.id
+    return node.spec.asleep && id !== this.selected && id !== this.drag?.id
       ? 'sleeping'
       : node.spec.mood;
   }
@@ -668,18 +674,15 @@ export class TankScene {
     }
   }
 
+  /**
+   * Every shown market closed: the tank light goes off. Each fish sleeps on
+   * its own market's hours (SceneFish.asleep), whether or not the light is.
+   */
   setNight(on: boolean): void {
     this.night.visible = on;
+    this.dark = on;
     // The overlay dims the water; fish (not their labels) dim by a tint.
     for (const node of this.fish.values()) node.container.tint = on ? NIGHT_TINT : 0xffffff;
-    if (on === this.asleep) return;
-    this.asleep = on;
-    // Settle down to rest at the bottom of each patch (or wake and spread out).
-    for (const [id, node] of this.fish) {
-      if (id !== this.drag?.id) node.swim = regroup(node.swim, this.boundsOf(id), this.rand);
-      this.showFrame(node, id);
-    }
-    if (!on) this.zeds = [];
   }
 
   setSelected(id: string | undefined): void {

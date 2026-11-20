@@ -48,7 +48,13 @@ A sad fish always means "unusual for this one," not just "red."
   board's, with an arrow (▲/▼) and green or red repeating its sign, the mood's face (or a group's
   weather) beside it, and the money change under it. Which colour means up is a setting (red is up
   in China, Japan, Korea and Taiwan).
-- **Market closed:** fish sleep after hours and on weekends. This also signals stale data.
+- **Market closed:** fish sleep after hours and on weekends, each on its own market's hours (a
+  London fish sleeps while New York still trades). The market comes from the quote's exchange
+  code, else the symbol's suffix (`RY:TSX`, `RY.TO`); unknown markets keep US hours. Crypto pairs
+  (`BTC/USD`) never sleep, and their day runs on UTC; currency pairs (`EUR/USD`) trade from Sunday
+  to Friday, 17:00 New York time. Holidays come from the provider's "market is open" flag. The tank light goes off only when
+  every shown market is closed, and the hood names what is closed ("London closed"). Sleeping also
+  signals stale data.
 
 | Tier | Move vs. typical (σ) |
 | --- | --- |
@@ -145,7 +151,7 @@ change; Instant puts them there at once. Everyday swimming is unaffected.
 | Pens | Tanks |
 | Cosmetics (later) | Tank decoration: plants, castles, gravel, backgrounds |
 | Correlation (later) | Schooling |
-| Market closed | Tank light off, fish sleep |
+| Market closed | Its fish sleep; tank light off when every shown market is |
 | Dividends (later) | Pearls |
 | Mood | The fish's face |
 
@@ -201,8 +207,13 @@ account and the app is just a client.
 
 - **What moods need:** previous close, a delayed current price, and about 60 days of daily history
   per ticker, fetched in the browser with the user's key. Volatility is computed locally.
-- **Budget:** a 20-ticker portfolio refreshing every 15 minutes in market hours uses roughly 500
-  calls a day, within Twelve Data's free cap of 800/day (8/min). Cache history daily.
+- **Budget:** a 20-ticker portfolio refreshing every 15 minutes in market hours uses roughly 560
+  calls a day, within Twelve Data's free cap of 800/day (8/min). Cache history daily. The schedule
+  plans for 80% of the cap (the rest covers exchange rates, retries and key tests): each stock
+  gets what its session needs, and crypto and currencies, which never close, share what's left,
+  refreshing every 15 minutes at most and every 6 hours at least (`refreshPlan` in
+  `src/data/refresh.ts`). Settings shows their pace, and warns when the holdings need more than
+  the cap.
 - **Provider interface** (`getQuote`, `getDailyHistory`), Twelve Data as default, a mock adapter
   for development; at least one TSX-capable provider should be supported eventually.
 - **CORS:** Twelve Data allows browser requests (checked 2026-11-17), so no relay is needed for

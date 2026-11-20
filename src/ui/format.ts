@@ -34,3 +34,12 @@ export function formatMoney(value: number, currency?: string, signed = false): s
   }
   return new Intl.NumberFormat(undefined, options).format(value);
 }
+
+/** "15 min", "57 min", "1 h 12 min", "6 h". */
+export function formatInterval(ms: number): string {
+  const minutes = Math.round(ms / 60_000);
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} min`;
+  return m === 0 ? `${h} h` : `${h} h ${m} min`;
+}

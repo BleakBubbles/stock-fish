@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { StockFishDb } from './db';
 import type { MarketEntry } from './model';
+import { CRYPTO, US, exchangeFor } from './market';
 import { createMockProvider } from './providers/mock';
 import { type MarketDataProvider, ProviderError } from './providers/types';
 import {
@@ -13,6 +14,7 @@ import {
   needsQuote,
   needsRate,
   refreshMarketData,
+  refreshPlan,
   usableEntry,
 } from './refresh';
 
@@ -48,6 +50,44 @@ describe('needsQuote', () => {
     const e = entry({ error: { kind: 'network', message: 'x', at: at(11) } });
     expect(needsQuote(e, at(11) + ERROR_RETRY - 1, true)).toBe(false);
     expect(needsQuote(e, at(11) + ERROR_RETRY, true)).toBe(true);
+  });
+});
+
+describe('refreshPlan', () => {
+  const stocks = (n: number) => Array.from({ length: n }, () => US);
+  const coins = (n: number) => Array.from({ length: n }, () => CRYPTO);
+  const minutes = (n: number) => n * 60_000;
+
+  it('gives crypto what the stocks leave of the daily budget', () => {
+    // A US stock needs 26 quotes, one after the close and one history fetch: 28.
+    // 640 - 10 × 28 - 6 = 354 left for 6 coins: 6 × 1440 / 354 ≈ 24.4 → 25 min.
+    expect(refreshPlan([...stocks(10), ...coins(6)])).toEqual({
+      roundTheClock: minutes(25),
+      overBudget: false,
+    });
+    // 640 - 560 - 3 = 77 left for 3 coins: 4320 / 77 ≈ 56.1 → 57 min.
+    expect(refreshPlan([...stocks(20), ...coins(3)]).roundTheClock).toBe(minutes(57));
+  });
+
+  it('never goes faster than every 15 minutes', () => {
+    expect(refreshPlan([...stocks(10), ...coins(2)]).roundTheClock).toBe(QUOTE_INTERVAL);
+    expect(refreshPlan(coins(1)).roundTheClock).toBe(QUOTE_INTERVAL);
+  });
+
+  it('caps at 6 hours and says when the holdings are over budget', () => {
+    expect(refreshPlan([...stocks(23), ...coins(2)])).toEqual({
+      roundTheClock: 6 * 60 * 60_000,
+      overBudget: true,
+    });
+    expect(refreshPlan(stocks(22)).overBudget).toBe(false);
+    expect(refreshPlan(stocks(23)).overBudget).toBe(true);
+  });
+
+  it('counts each market by its own session length', () => {
+    // Taipei trades 4.5 hours: 18 quotes + 2 = 20 a stock.
+    const taipei = exchangeFor('X', { mic: 'XTAI' });
+    expect(refreshPlan([...Array.from({ length: 31 }, () => taipei)]).overBudget).toBe(false);
+    expect(refreshPlan([...Array.from({ length: 33 }, () => taipei)]).overBudget).toBe(true);
   });
 });
 
@@ -120,6 +160,33 @@ describe('refreshMarketData', () => {
     calls.length = 0;
     await refreshMarketData(db, provider, ['AAPL', 'KO'], { now: () => now + 60_000 });
     expect(calls).toEqual([]);
+  });
+
+  it("refreshes each symbol on its own market's hours", async () => {
+    // 10:00 in New York is 15:00 in London: both open. 12:00 is 17:00: only New York.
+    let now = at(10);
+    const { provider, calls } = counting(createMockProvider({ now: () => now }));
+    await refreshMarketData(db, provider, ['AAPL', 'VOD:LSE'], { now: () => now });
+    now = at(12);
+    calls.length = 0;
+    await refreshMarketData(db, provider, ['AAPL', 'VOD:LSE'], { now: () => now });
+    // London closed at 16:30 and settled at 16:50: one final quote, then rest.
+    expect(calls).toEqual(['quote:AAPL', 'quote:VOD:LSE', 'history:VOD:LSE:62']);
+    now = at(12, 30);
+    calls.length = 0;
+    await refreshMarketData(db, provider, ['AAPL', 'VOD:LSE'], { now: () => now });
+    expect(calls).toEqual(['quote:AAPL']);
+  });
+
+  it('refreshes crypto round the clock, at the budgeted pace', async () => {
+    // Saturday: stock markets closed, crypto open.
+    let now = at(12, 0, 21);
+    const { provider, calls } = counting(createMockProvider({ now: () => now }));
+    await refreshMarketData(db, provider, ['AAPL', 'BTC/USD'], { now: () => now });
+    now += QUOTE_INTERVAL;
+    calls.length = 0;
+    await refreshMarketData(db, provider, ['AAPL', 'BTC/USD'], { now: () => now });
+    expect(calls).toEqual(['quote:BTC/USD']);
   });
 
   it('records per-symbol errors and carries on', async () => {

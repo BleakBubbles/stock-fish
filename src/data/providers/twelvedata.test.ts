@@ -23,6 +23,8 @@ const QUOTE = {
   previous_close: '352.78000',
   is_market_open: true,
   currency: 'USD',
+  exchange: 'NASDAQ',
+  mic_code: 'XNGS',
 };
 
 const SERIES = {
@@ -51,6 +53,8 @@ describe('twelvedata provider', () => {
       tradingDay: '2026-11-17',
       marketOpen: true,
       currency: 'USD',
+      exchange: 'NASDAQ',
+      mic: 'XNGS',
     });
     const url = new URL(seen[0]!);
     expect(url.pathname).toBe('/quote');

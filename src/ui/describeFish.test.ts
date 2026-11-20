@@ -38,6 +38,12 @@ describe('describeFish', () => {
     expect(text).toMatch(/^AAPL, Apple Inc\., happy, \+2\.04% today, .*2,000.*, in TFSA$/);
   });
 
+  it('says when its market is closed', () => {
+    expect(describeFish(base, 'TFSA', 'London')).toBe(
+      'AAPL, Apple Inc., waiting for prices, asleep, London market closed, in TFSA',
+    );
+  });
+
   it('says when there is no price yet', () => {
     expect(describeFish(base)).toBe('AAPL, Apple Inc., waiting for prices');
     expect(describeFish({ ...base, state: 'error' })).toBe('AAPL, Apple Inc., no price');

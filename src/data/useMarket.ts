@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { type RateTable, autoHomeCurrency } from './currency';
 import type { MarketEntry } from './model';
 import { providerFromSettings } from './providers';
-import { type RefreshStop, refreshMarketData } from './refresh';
+import { exchangeFor } from './market';
+import { type RefreshPlan, type RefreshStop, refreshMarketData, refreshPlan } from './refresh';
 import { db, useHoldings, useSettings } from './store';
 
 /** How often to check whether anything is due (the schedule decides what to fetch). */
@@ -67,6 +68,25 @@ export function useMarketRefresh(): MarketStatus {
   }, [provider, symbolKey, home]);
 
   return provider ? status : { state: 'no-provider' };
+}
+
+/**
+ * How the refresh schedule fits the free plan's daily requests for the
+ * current holdings, and how many of them trade round the clock (crypto,
+ * currencies).
+ */
+export function useRefreshPlan(): (RefreshPlan & { roundTheClockCount: number }) | undefined {
+  const holdings = useHoldings();
+  const entries = useMarketEntries();
+  return useMemo(() => {
+    if (!holdings) return undefined;
+    const symbols = [...new Set(holdings.map((h) => h.symbol))];
+    const exchanges = symbols.map((s) => exchangeFor(s, entries?.get(s)?.quote));
+    return {
+      ...refreshPlan(exchanges),
+      roundTheClockCount: exchanges.filter((e) => e.days !== 'weekdays').length,
+    };
+  }, [holdings, entries]);
 }
 
 /** Cached market data for the current provider, by symbol. */

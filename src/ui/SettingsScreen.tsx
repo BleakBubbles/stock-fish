@@ -9,8 +9,9 @@ import {
 } from '../data/providers';
 import { normalizeCurrency } from '../data/currency';
 import { db, repo, useSettings } from '../data/store';
-import { useHomeCurrency, useMarketEntries } from '../data/useMarket';
+import { useHomeCurrency, useMarketEntries, useRefreshPlan } from '../data/useMarket';
 import { downloadText } from './files';
+import { formatInterval } from './format';
 import { promptInstall, useInstallState } from './install';
 import { PixelButton } from './pixel/PixelButton';
 import { PixelInput } from './pixel/PixelInput';
@@ -60,6 +61,7 @@ function MarketDataSettings({ settings }: { settings: Settings }) {
     apiKeys: { ...settings.apiKeys, twelvedata: key.trim() || undefined },
   };
   const needsKey = PROVIDERS.find((p) => p.id === provider)?.needsKey ?? false;
+  const plan = useRefreshPlan();
 
   async function save(e: FormEvent) {
     e.preventDefault();
@@ -117,6 +119,18 @@ function MarketDataSettings({ settings }: { settings: Settings }) {
             text="It stays in this browser and goes only to Twelve Data. Free plan: 800 requests a day."
             tone="textMuted"
           />
+          {plan && plan.roundTheClockCount > 0 && (
+            <PixelParagraph
+              text={`Crypto and currencies never close, so they update every ${formatInterval(plan.roundTheClock)} to stay within that.`}
+              tone="textMuted"
+            />
+          )}
+          {plan?.overBudget && (
+            <PixelParagraph
+              text="Your holdings need more requests than the free plan allows, so some prices will update late."
+              tone="warning"
+            />
+          )}
         </>
       )}
       <div className="px-row">
