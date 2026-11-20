@@ -17,15 +17,17 @@ export interface Pen {
 /**
  * How an overview of several pens groups the fish (docs/SPEC.md, "Organizing
  * fish"): into labelled areas, or none (every fish its own patch), or free
- * roam (no patches at all).
+ * roam (no patches at all). `together`: holdings whose prices move together
+ * (src/mood/correlation.ts).
  */
-export type GroupMode = 'none' | 'pen' | 'family' | 'mood' | 'species' | 'free';
+export type GroupMode = 'none' | 'pen' | 'family' | 'mood' | 'species' | 'together' | 'free';
 
 export const GROUP_MODES: readonly GroupMode[] = [
   'mood',
   'pen',
   'family',
   'species',
+  'together',
   'none',
   'free',
 ];

@@ -102,6 +102,11 @@ export interface ArrangeFish {
   change?: number;
   /** Today's move in typical days (σ), if known (for sorting by mood). */
   z?: number;
+  /**
+   * Which "moves together" group its symbol is in: a group key, or 'alone'
+   * (moves with no one), or unset (not enough history to tell).
+   */
+  kin?: string;
 }
 
 export interface Region {
@@ -399,6 +404,31 @@ export function overviewRegions(
               (b) => FAMILY_LABEL[b],
               value,
             );
+      return groupRegions(sortGroups(groups, sort, fish), fish, sort, custom, water);
+    }
+
+    case 'together': {
+      // Groups of holdings that move together, each named after its biggest
+      // holding; then the loners, then those too new to tell.
+      const keys = [...new Set(fish.flatMap((f) => (f.kin && f.kin !== 'alone' ? [f.kin] : [])))];
+      const labelOf = (key: string) => {
+        if (key === 'alone') return 'On their own';
+        if (key === 'unknown') return 'Too new to tell';
+        const members = fish.filter((f) => f.kin === key);
+        const bySymbol = new Map<string, number>();
+        for (const f of members)
+          bySymbol.set(f.symbol, (bySymbol.get(f.symbol) ?? 0) + (w.get(f.id) ?? 0));
+        const [lead] = [...bySymbol].sort((a, b) => b[1] - a[1]);
+        const more = bySymbol.size - 1;
+        return more > 0 ? `${lead?.[0] ?? ''} & ${more} more` : (lead?.[0] ?? '');
+      };
+      const groups = groupBy(
+        fish,
+        (f) => f.kin ?? 'unknown',
+        [...keys, 'alone', 'unknown'],
+        labelOf,
+        value,
+      );
       return groupRegions(sortGroups(groups, sort, fish), fish, sort, custom, water);
     }
 

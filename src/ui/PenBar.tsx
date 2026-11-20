@@ -23,9 +23,13 @@ const GROUP_LABEL: Record<GroupMode, string> = {
   pen: 'Pen',
   family: 'Family',
   species: 'Species',
+  together: 'Moves together',
   none: 'None',
   free: 'Free roam',
 };
+
+/** Names for the bar's button, where the menu's are long. */
+const GROUP_SHORT: Record<GroupMode, string> = { ...GROUP_LABEL, together: 'Together' };
 
 const SORT_LABEL: Record<SortMode, string> = {
   weight: 'Weight',
@@ -103,6 +107,7 @@ export function PenBar(props: Props) {
           className="arrange"
           modes={GROUP_MODES}
           labels={GROUP_LABEL}
+          short={GROUP_SHORT}
           value={group}
           onChange={props.onGroup}
         />
@@ -125,7 +130,7 @@ export function PenBar(props: Props) {
   );
   const rightButtons = [
     'View',
-    ...(overview ? [`Group: ${GROUP_LABEL[group]}`] : []),
+    ...(overview ? [`Group: ${GROUP_SHORT[group]}`] : []),
     ...(overview && group === 'free' ? [] : [`Sort: ${SORT_SHORT[sort]}`]),
     ...(overview ? [] : ['Edit pen']),
   ];

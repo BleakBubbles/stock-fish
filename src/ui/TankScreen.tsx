@@ -16,7 +16,7 @@ import {
   useHomeCurrency,
   useMarketEntries,
 } from '../data/useMarket';
-import { WEATHERS, type Weather, type WeatherResult, temperFor } from '../mood';
+import { WEATHERS, type Weather, type WeatherResult, kinship, temperFor } from '../mood';
 import { type DropTarget, Tank, type TankPlacement } from '../tank/Tank';
 import {
   type ArrangeFish,
@@ -225,6 +225,21 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
     () => (artWidth && artHeight ? tankGeometry(artWidth, artHeight).water : WATER),
     [artWidth, artHeight],
   );
+  // Which of the shown holdings move together (history changes once a day).
+  const kin = useMemo(() => {
+    const histories = new Map(
+      visible.map((f) => {
+        const entry = entries?.get(f.symbol);
+        return [f.symbol, { bars: entry?.bars ?? [], asOf: entry?.quote?.tradingDay }] as const;
+      }),
+    );
+    const k = kinship(histories);
+    const groupOf = new Map<string, string>();
+    for (const g of k.groups) for (const s of g.symbols) groupOf.set(s, `kin:${g.symbols[0]}`);
+    for (const s of k.alone) groupOf.set(s, 'alone');
+    const tightness = new Map(k.groups.map((g) => [`kin:${g.symbols[0]}`, g.tightness]));
+    return { groupOf, tightness, closest: k.closest };
+  }, [visible, entries]);
   const regions = useMemo(() => {
     // Oldest first, so a new fish's patch is added at the end (no reshuffle).
     const added = new Map(holdings?.map((h) => [h.id, h.createdAt]));
@@ -238,6 +253,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
       value: f.home?.value,
       change: f.stale ? undefined : f.moodResult?.todayReturn,
       z: f.stale ? undefined : f.moodResult?.z,
+      kin: kin.groupOf.get(f.symbol),
     }));
     // The user's own order: each shown pen's layout, pen by pen.
     const custom = shown.flatMap((p) =>
@@ -251,7 +267,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
       return homeRegions(items, order, water);
     }
     return overviewRegions(view.group, view.sort, items, shown, custom, water);
-  }, [visible, holdings, home, view.group, view.sort, view.homeSort, shown, water]);
+  }, [visible, holdings, home, view.group, view.sort, view.homeSort, shown, water, kin]);
 
   const weather = useMemo(() => weatherFor(visible, entries ?? new Map()), [visible, entries]);
   // Each pen's weather, and all pens', for the pens bar (only where some fish is priced).
@@ -319,9 +335,13 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
       kind:
         groupRegion.key === 'other'
           ? 'Group'
-          : ({ pen: 'Pen', family: 'Family', mood: 'Mood', species: 'Species' }[
-              view.group as 'pen' | 'family' | 'mood' | 'species'
-            ] ?? 'Group'),
+          : ({
+              pen: 'Pen',
+              family: 'Family',
+              mood: 'Mood',
+              species: 'Species',
+              together: 'Together',
+            }[view.group as 'pen' | 'family' | 'mood' | 'species' | 'together'] ?? 'Group'),
       name: groupRegion.label ?? '',
       fishCount: members.length,
       weather: pricedMembers.length ? weatherFor(members, entries ?? new Map()) : undefined,
@@ -329,8 +349,12 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
       share: pricedMembers.length && total > 0 ? value / total : undefined,
       unpriced: members.length - pricedMembers.length,
       currency: homeCurrency,
+      // A kin group's tightness, found through its fish (region keys aren't group keys).
+      ...(view.group === 'together' && {
+        together: kin.tightness.get(kin.groupOf.get(members[0]?.symbol ?? '') ?? ''),
+      }),
     };
-  }, [groupRegion, visible, entries, view.group, homeCurrency]);
+  }, [groupRegion, visible, entries, view.group, homeCurrency, kin]);
   const groupPen = groupRegion?.penId ? pens?.find((p) => p.id === groupRegion.penId) : undefined;
 
   /**
@@ -580,6 +604,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
                 fish={selected}
                 penName={home ? undefined : pens?.find((p) => p.id === selected.penId)?.name}
                 homeCurrency={homeCurrency}
+                closest={kin.closest.get(selected.symbol)}
                 onChangeColours={() => onChangeColours(selected.id)}
                 onMove={() => setDialog({ kind: 'move', holdingId: selected.id })}
                 onClose={() => setSelectedId(undefined)}

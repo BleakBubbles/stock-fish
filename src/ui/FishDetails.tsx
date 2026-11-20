@@ -1,3 +1,4 @@
+import { togetherWords } from '../mood';
 import { MIN_RETURNS } from '../mood/volatility';
 import type { Mood } from '../mood/types';
 import type { FishView } from '../tank/model';
@@ -23,7 +24,7 @@ const MOOD_LABEL: Record<Mood, string> = {
 /** UI pixels of padding, border and gaps around the panel's text (see .fish-details). */
 const PANEL_CHROME = 2 * (4 + 1 + 3);
 const LABEL_GAP = 4;
-const LABELS = ['Price', 'Holding', 'Mood'];
+const LABELS = ['Price', 'Holding', 'Mood', 'Moves'];
 /** Never wider than this many UI pixels, even on big screens. */
 const MAX_WIDTH = 200;
 /** The typical-day range bar is at most this wide. */
@@ -35,6 +36,8 @@ interface Props {
   penName?: string;
   /** Totals' currency: the holding's value is also shown in it when the stock trades in another. */
   homeCurrency?: string;
+  /** The shown holding it moves most with, market move taken out (src/mood/correlation.ts). */
+  closest?: { symbol: string; correlation: number };
   onChangeColours: () => void;
   onMove: () => void;
   onClose: () => void;
@@ -45,6 +48,7 @@ export function FishDetails({
   fish,
   penName,
   homeCurrency,
+  closest,
   onChangeColours,
   onMove,
   onClose,
@@ -126,6 +130,12 @@ export function FishDetails({
                 </span>
               </div>
             )}
+            {closest &&
+              closest.symbol !== fish.symbol &&
+              row(
+                'Moves',
+                `${togetherWords(closest.correlation)} with ${closest.symbol} (${closest.correlation.toFixed(2)})`,
+              )}
           </div>
         </div>
       ) : (

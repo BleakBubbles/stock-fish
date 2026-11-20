@@ -129,9 +129,19 @@ order.
 | Pen | The user's pens | How is each pen doing? |
 | Family | Sector | What's my sector mix? |
 | Species | Ticker | What do I own? |
+| Moves together | Similar price behaviour | How diversified am I really? |
 | None | Nothing: every fish its own patch | Where is my money concentrated? (with Weight) |
 | Free roam | Nothing, no patches | Just vibes |
-| Correlation (later) | Similar price behaviour | How diversified am I really? |
+
+**Moves together** (`src/mood/correlation.ts`, pure and tested): daily returns over the last 60
+completed days; the market's move taken out with the market model (each holding regressed on the
+average of the other shown holdings, needing at least 5 of them; with fewer, plain returns); then
+Pearson correlation over the days two holdings share (at least 20) and average-linkage
+hierarchical clustering, merging groups while their members average 0.5 or more. Each group is
+named after its biggest holding ("AAPL & 3 more"); holdings that join no one are "On their own",
+and those with under 20 days of history "Too new to tell". The group panel says how closely its
+members move together, and a fish's details say which shown holding it moves most with. Markets
+in different time zones close at different times, so they look less related than they are.
 
 **Sort by** orders the patches, top-left first like reading a price board, and the groups by the
 same measure (Mood columns always run happiest to saddest): Weight (default in an overview),
@@ -156,7 +166,7 @@ change; Instant puts them there at once. Everyday swimming is unaffected.
 | --- | --- |
 | Pens | Tanks |
 | Cosmetics (later) | Tank decoration: plants, castles, gravel, backgrounds |
-| Correlation (later) | Schooling |
+| Moves together | Grouped now; schooling (swimming as one) later |
 | Market closed | Its fish sleep; tank light off when every shown market is |
 | Dividends (later) | Pearls |
 | Mood | The fish's face |

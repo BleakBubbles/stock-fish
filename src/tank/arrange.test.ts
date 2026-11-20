@@ -59,7 +59,7 @@ describe('overview groups', () => {
   ];
   // The pens' own order, pen by pen (p2's layout puts d before c).
   const custom = ['a', 'b', 'd', 'c'];
-  const groups = ['mood', 'pen', 'family', 'species', 'none', 'free'] as const;
+  const groups = ['mood', 'pen', 'family', 'species', 'together', 'none', 'free'] as const;
   const labelled = (mode: (typeof groups)[number]) =>
     overviewRegions(mode, 'weight', school, pens, custom).filter((r) => r.label);
 
@@ -117,6 +117,25 @@ describe('overview groups', () => {
       .filter((r) => r.label)
       .map((r) => r.label);
     expect(labels).toEqual(['Tech', 'Finance', 'Health']);
+  });
+
+  it('together: kin groups named after their biggest holding, then loners, then the unknown', () => {
+    const kin = [
+      fish('a', { value: 500, kin: 'kin:B' }),
+      fish('b', { value: 100, kin: 'kin:B' }),
+      fish('e', { value: 50, kin: 'kin:B', symbol: 'A' }),
+      fish('c', { value: 100, kin: 'alone' }),
+      fish('d', { value: 300 }),
+    ];
+    const labels = overviewRegions('together', 'custom', kin, pens)
+      .filter((r) => r.label)
+      .map((r) => [r.label, r.group!.fishIds.sort()]);
+    // A (a + e) is worth more than B; two symbols, so "& 1 more".
+    expect(labels).toEqual([
+      ['A & 1 more', ['a', 'b', 'e']],
+      ['On their own', ['c']],
+      ['Too new to tell', ['d']],
+    ]);
   });
 
   it('pen: each pen labelled once, with its own layout inside when sorted by custom', () => {

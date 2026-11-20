@@ -1,6 +1,6 @@
 import { ChangeHeadline } from './ChangeTicker';
 import { PanelTitle } from './PanelTitle';
-import type { Weather, WeatherResult } from '../mood';
+import { type Weather, type WeatherResult, togetherWords } from '../mood';
 import { measureText, uiFont } from '../theme/pixelFont';
 import { formatChangeRatio, formatMoney } from './format';
 import { PixelButton } from './pixel/PixelButton';
@@ -18,7 +18,7 @@ const WEATHER_LABEL: Record<Weather, string> = {
 /** UI pixels of padding, line and gaps around the panel's text (as FishDetails). */
 const PANEL_CHROME = 2 * (4 + 1 + 3);
 const LABEL_GAP = 4;
-const LABELS = ['Today', 'Value', 'Share', 'Fish'];
+const LABELS = ['Today', 'Value', 'Share', 'Fish', 'Moves'];
 const MAX_WIDTH = 200;
 
 export interface GroupSummary {
@@ -36,6 +36,8 @@ export interface GroupSummary {
   unpriced: number;
   /** The home currency every amount here is in. */
   currency?: string;
+  /** "Moves together" groups: the mean correlation between its members. */
+  together?: number;
 }
 
 interface Props {
@@ -92,6 +94,11 @@ export function GroupDetails({ summary, onOpen, onEdit, onClose }: Props) {
             ? `${summary.fishCount} (${summary.unpriced} without a price yet)`
             : String(summary.fishCount),
         )}
+        {summary.together !== undefined &&
+          row(
+            'Moves',
+            `${togetherWords(summary.together)} together (${summary.together.toFixed(2)})`,
+          )}
       </div>
       {(onOpen || onEdit) && (
         <div className="px-row">

@@ -22,6 +22,17 @@ export {
   typicalVolatility,
 } from './volatility';
 export {
+  type Kinship,
+  MIN_FOR_MARKET,
+  TOGETHER,
+  averageLinkage,
+  correlation,
+  kinship,
+  marketAdjusted,
+  returnSeries,
+  togetherWords,
+} from './correlation';
+export {
   MIN_DAY_COVERAGE,
   type Position,
   WEATHERS,
