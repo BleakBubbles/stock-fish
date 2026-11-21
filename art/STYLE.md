@@ -97,11 +97,16 @@ substituted (e.g. minus sign → hyphen) or drawn as `?`.
 palette colours through `palette.json` `decor` (not the fish roles above).
 
 - **No black outline.** Decor sits behind the fish, so it stays flat and unoutlined; only fish
-  get the outline. Plants are greens (`g` light, `G`, `d` dark), rocks greys (`h`, `R`, `r`).
+  get the outline.
+- **Flat or shaded.** Decor grids are drawn with light and dark shades (plants `g`/`G`/`d`, rocks
+  `h`/`R`/`r`, the sand's edge and specks, the frame's lid and stand). `palette.json`
+  `decorStyle` picks how they show: `"flat"` (current) gives each shade listed in `decorFlat` its
+  base colour, so decor has no lighting or shading, like the fish; `"shaded"` uses every colour
+  as drawn. Keep drawing the shades: switching back needs no art changes. Plants are greens (`g` light, `G`, `d` dark), rocks greys (`h`, `R`, `r`).
 - **Sway:** a plant with a `NAME-sway.grid` alternates with it. The swayed frame is the same
   size, with its upper part shifted one pixel. Rocks have no sway frame and hold still.
-- **Kinds** go by name: `kelp-*` and `sword-*` stand behind the sand's edge; `rock-*`, `bush-*`
-  and `grass-*` in front of it. Each tank picks a few of each and places them along the floor,
+- **Kinds** go by name: `kelp-*` and `sword-*` stand behind the sand's edge; `rock-*` and
+  `grass-*` in front of it. Each tank picks a few of each and places them along the floor,
   seeded by its pen, so a tank always looks the same.
 - **Sand** is drawn by the app, not a grid: `s` sand, a pale `e` top edge, `S` specks.
 - **`frame.grid`** is the lid, glass edges, rim and stand, stretched to the tank's size in the app:

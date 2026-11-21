@@ -6,7 +6,7 @@
  */
 import palette from '../../art/palette.json';
 import frameText from '../../art/decor/frame.grid?raw';
-import { type DecorFrame, parseGrid, stretchFrame } from './grid';
+import { type DecorFrame, decorLegend, parseGrid, stretchFrame } from './grid';
 import frames from './generated/decor.json';
 import decorUrl from './generated/decor.png';
 import type { Hex } from './index';
@@ -14,7 +14,8 @@ import type { Hex } from './index';
 export { decorUrl };
 export const decorFrames = frames as Record<string, DecorFrame>;
 
-const legend = palette.decor as Record<string, string>;
+/** Flat or shaded, as palette.json "decorStyle" says. */
+const legend = decorLegend(palette);
 
 /** The sand's colours: its pale top edge, the sand itself, and the specks in it. */
 export const sand: { edge: Hex; base: Hex; speck: Hex } = {

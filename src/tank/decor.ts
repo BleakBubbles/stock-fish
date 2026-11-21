@@ -20,7 +20,7 @@ export interface DecorPlacement {
   x: number;
   y: number;
   sway: boolean;
-  /** Drawn in front of the sand's edge (rocks, grass, bushes), else behind it. */
+  /** Drawn in front of the sand's edge (rocks, grass), else behind it. */
   front: boolean;
   /** Seconds into the sway cycle at time zero, so plants don't sway in step. */
   phase: number;
@@ -51,7 +51,6 @@ const KINDS: { prefix: string; count: [number, number]; front: boolean; sink: nu
   { prefix: 'sword', count: [1, 2], front: false, sink: 2 },
   { prefix: 'kelp', count: [2, 3], front: false, sink: 2 },
   { prefix: 'rock', count: [2, 3], front: true, sink: 3 },
-  { prefix: 'bush', count: [1, 1], front: true, sink: 2 },
   { prefix: 'grass', count: [2, 3], front: true, sink: 2 },
 ];
 

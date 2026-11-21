@@ -142,6 +142,30 @@ export function buildAtlas(
  * column repeats across, and the first row with water ('.') in its middle
  * repeats down. Everything else keeps its exact pixels.
  */
+/**
+ * Decor colours by grid character (palette.json "decor"). With "decorStyle":
+ * "flat", each shade listed in "decorFlat" takes its base character's colour,
+ * so plants, rocks, sand and frame have no lighting or shading; "shaded" uses
+ * every colour as drawn. Keys starting with _ are notes.
+ */
+export function decorLegend(palette: {
+  decor: Record<string, string>;
+  decorStyle?: string;
+  decorFlat?: Record<string, string>;
+}): Record<string, string> {
+  const legend = Object.fromEntries(
+    Object.entries(palette.decor).filter(([ch]) => !ch.startsWith('_')),
+  );
+  if (palette.decorStyle !== 'flat') return legend;
+  for (const [ch, base] of Object.entries(palette.decorFlat ?? {})) {
+    if (ch.startsWith('_')) continue;
+    const hex = legend[base];
+    if (!hex) throw new Error(`palette.json decorFlat: no decor colour for ${base}`);
+    legend[ch] = hex;
+  }
+  return legend;
+}
+
 export function stretchFrame(rows: readonly string[], width: number, height: number): string[] {
   const w = rows[0]?.length ?? 0;
   const mid = Math.floor(w / 2);

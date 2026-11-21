@@ -13,6 +13,7 @@ import {
   TAIL_POSES,
   buildAtlas,
   buildDecorAtlas,
+  decorLegend,
   parseGrid,
   withTail,
 } from '../src/theme/grid.ts';
@@ -26,6 +27,8 @@ const palette = JSON.parse(readFileSync(new URL('art/palette.json', root), 'utf8
   colors: string[];
   roles: Record<string, { color: string | null }>;
   decor: Record<string, string>;
+  decorStyle?: string;
+  decorFlat?: Record<string, string>;
   moodBadge: Record<string, string>;
 };
 
@@ -78,9 +81,8 @@ for (const file of readdirSync(decorDir)) {
   const name = file.slice(0, -'.grid'.length);
   decorGrids[name] = parseGrid(readFileSync(new URL(file, decorDir), 'utf8'));
 }
-const legend: Record<string, string> = Object.fromEntries(
-  Object.entries(palette.decor).filter(([ch]) => !ch.startsWith('_')),
-);
+// Flat or shaded, as palette.json "decorStyle" says.
+const legend: Record<string, string> = decorLegend(palette);
 // Mood badges (art/badges/<mood>.grid) go in the same atlas, as badge-<mood>, the
 // face (i) filled with the mood's colour from palette.json moodBadge. Each badge
 // gets its own digit in the legend for that.

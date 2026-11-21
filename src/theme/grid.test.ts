@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildAtlas, parseGrid } from './grid';
+import { buildAtlas, decorLegend, parseGrid } from './grid';
 
 const FIXED = { o: '000000', p: '111111', w: 'ffffff', r: 'ff0000' };
 
@@ -45,5 +45,36 @@ describe('buildAtlas', () => {
   it('rejects unknown characters and mismatched sizes', () => {
     expect(() => buildAtlas({ a: ['.x.'] }, FIXED)).toThrow(/unknown grid character/);
     expect(() => buildAtlas({ a: ['...'], b: ['....'] }, FIXED)).toThrow(/must be/);
+  });
+});
+
+describe('decorLegend', () => {
+  const palette = {
+    decor: { _note: 'x', g: '63c74d', G: '3e8948', d: '265c42', s: 'e4a672' },
+    decorFlat: { _note: 'y', g: 'G', d: 'G' },
+  };
+
+  it('uses every colour as drawn when shaded', () => {
+    expect(decorLegend({ ...palette, decorStyle: 'shaded' })).toEqual({
+      g: '63c74d',
+      G: '3e8948',
+      d: '265c42',
+      s: 'e4a672',
+    });
+  });
+
+  it('gives each listed shade its base colour when flat', () => {
+    expect(decorLegend({ ...palette, decorStyle: 'flat' })).toEqual({
+      g: '3e8948',
+      G: '3e8948',
+      d: '3e8948',
+      s: 'e4a672',
+    });
+  });
+
+  it('rejects a shade mapped to a colour that does not exist', () => {
+    expect(() => decorLegend({ ...palette, decorStyle: 'flat', decorFlat: { g: 'X' } })).toThrow(
+      /no decor colour for X/,
+    );
   });
 });
