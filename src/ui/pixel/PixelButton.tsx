@@ -25,7 +25,7 @@ export function PixelButton({
   ...rest
 }: Props) {
   const filled = primary || active;
-  const tone = filled ? 'buttonText' : 'text';
+  const tone = filled ? 'buttonText' : rest.disabled ? 'textMuted' : 'text';
   const onlyIcon = icon && iconOnly;
   return (
     <button

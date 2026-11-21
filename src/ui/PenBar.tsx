@@ -1,4 +1,4 @@
-import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { Fragment, type MouseEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import {
   GROUP_MODES,
   type GroupMode,
@@ -55,6 +55,12 @@ const MENU_MIN = 60;
 const textWidth = (s: string) => measureText(uiFont, normalizeText(uiFont, s));
 const buttonWidth = (s: string, icon = false) =>
   textWidth(s) + BUTTON_CHROME + (icon ? ICON_WIDTH : 0);
+/** A Group or Sort button's width: its longest label, with its icon. */
+const choiceWidth = <T extends string>(
+  title: string,
+  modes: readonly T[],
+  labels: Record<T, string>,
+) => Math.max(...modes.map((m) => buttonWidth(`${title}: ${labels[m]}`, true)));
 
 interface Props {
   pens: readonly Pen[];
@@ -106,35 +112,35 @@ export function PenBar(props: Props) {
           className="arrange"
           modes={GROUP_MODES}
           labels={GROUP_LABEL}
+          breakBefore="none"
           value={group}
           onChange={props.onGroup}
         />
       )}
-      {/* Free roam has no patches, so no order. */}
-      {!(overview && group === 'free') && (
-        <ChoiceMenu
-          title="Sort"
-          icon="sort"
-          className="arrange"
-          modes={SORT_MODES}
-          labels={SORT_LABEL}
-          short={SORT_SHORT}
-          value={sort}
-          onChange={props.onSort}
-        />
-      )}
+      {/* Free roam has no patches, so no order: Sort stays in place, greyed out. */}
+      <ChoiceMenu
+        title="Sort"
+        disabled={overview && group === 'free'}
+        icon="sort"
+        className="arrange"
+        modes={SORT_MODES}
+        labels={SORT_LABEL}
+        short={SORT_SHORT}
+        breakBefore="custom"
+        value={sort}
+        onChange={props.onSort}
+      />
       {!overview && <PixelButton label="Edit pen" icon="edit" onClick={props.onEditPen} />}
     </div>
   );
-  const rightButtons = [
-    'View',
-    ...(overview ? [`Group: ${GROUP_LABEL[group]}`] : []),
-    ...(overview && group === 'free' ? [] : [`Sort: ${SORT_SHORT[sort]}`]),
-    ...(overview ? [] : ['Edit pen']),
+  // Group and Sort keep the width of their longest label, so the bar doesn't shift.
+  const rightWidths = [
+    buttonWidth('View', true),
+    ...(overview ? [choiceWidth('Group', GROUP_MODES, GROUP_LABEL)] : []),
+    choiceWidth('Sort', SORT_MODES, SORT_SHORT),
+    ...(overview ? [] : [buttonWidth('Edit pen', true)]),
   ];
-  const rightWidth =
-    rightButtons.reduce((a, l) => a + buttonWidth(l, true), 0) +
-    TAB_GAP * (rightButtons.length - 1);
+  const rightWidth = rightWidths.reduce((a, w) => a + w, 0) + TAB_GAP * (rightWidths.length - 1);
   // The pen tabs (each with its weather icon once priced), then the icon-only "new pen" button.
   const { penWeather, allWeather } = props;
   const tabs = [
@@ -338,10 +344,15 @@ function Popover({
   iconOnly,
   className,
   menuLabel,
+  width,
+  disabled,
   children,
 }: {
   label: string;
   icon?: IconName;
+  /** The button's width in UI pixels, when it shouldn't follow its label. */
+  width?: number;
+  disabled?: boolean;
   /** Show only the icon (the label becomes its name and tooltip). */
   iconOnly?: boolean;
   /** Accessible name, when the visible label is shortened. */
@@ -376,9 +387,11 @@ function Popover({
         aria-label={buttonLabel ?? (iconOnly ? label : undefined)}
         aria-expanded={open}
         aria-haspopup="true"
+        disabled={disabled}
+        style={width ? { width: `calc(var(--sf-px) * ${width})` } : undefined}
         onClick={() => setOpen((o) => !o)}
       />
-      {open && (
+      {open && !disabled && (
         <div className="popover-menu px-panel px-stack" role="group" aria-label={menuLabel}>
           {children(() => setOpen(false))}
         </div>
@@ -387,7 +400,12 @@ function Popover({
   );
 }
 
-/** A bar button that opens a list of modes to pick one from (Group, Sort). */
+/**
+ * A bar button that opens a list of modes to pick one from (Group, Sort): a
+ * heading, then one full-width row per mode with a marker on the current one,
+ * and a divider before `breakBefore` (the modes that don't group or sort by a
+ * measure).
+ */
 function ChoiceMenu<T extends string>({
   title,
   icon,
@@ -395,6 +413,8 @@ function ChoiceMenu<T extends string>({
   modes,
   labels,
   short = labels,
+  breakBefore,
+  disabled,
   value,
   onChange,
 }: {
@@ -405,6 +425,10 @@ function ChoiceMenu<T extends string>({
   labels: Record<T, string>;
   /** Names for the bar's button, when shorter than the menu's. */
   short?: Record<T, string>;
+  /** A divider goes above this mode. */
+  breakBefore?: T;
+  /** Shown but not usable (Sort in free roam). */
+  disabled?: boolean;
   value: T;
   onChange: (mode: T) => void;
 }) {
@@ -415,21 +439,33 @@ function ChoiceMenu<T extends string>({
       icon={icon}
       className={className}
       menuLabel={`${title} by`}
+      width={choiceWidth(title, modes, short)}
+      disabled={disabled}
     >
-      {(close) =>
-        modes.map((m) => (
-          <PixelButton
-            key={m}
-            label={labels[m]}
-            active={m === value}
-            aria-pressed={m === value}
-            onClick={() => {
-              onChange(m);
-              close();
-            }}
-          />
-        ))
-      }
+      {(close) => (
+        <>
+          <span className="choice-heading">
+            <PixelText text={`${title} by`} tone="textMuted" />
+          </span>
+          {modes.map((m) => (
+            <Fragment key={m}>
+              {m === breakBefore && <span className="choice-divider" aria-hidden />}
+              <button
+                type="button"
+                className={m === value ? 'choice-row is-on' : 'choice-row'}
+                aria-pressed={m === value}
+                onClick={() => {
+                  onChange(m);
+                  close();
+                }}
+              >
+                <span className="choice-mark" aria-hidden />
+                <PixelText text={labels[m]} />
+              </button>
+            </Fragment>
+          ))}
+        </>
+      )}
     </Popover>
   );
 }
