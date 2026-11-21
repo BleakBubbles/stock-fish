@@ -36,8 +36,8 @@ A sad fish always means "unusual for this one," not just "red."
   The same green and red repeat the sign of today's change on fish labels in the tank (the ticker
   stays white) and on the total in the tank's hood: a strip on the tank's lid, in the lid's colours, holding
   the weather, today's change and the market state (and any data message), wrapping on phones.
-- **Zoom:** with only a few fish the whole tank zooms in (a bigger whole-number scale, up to twice
-  the normal one) as far as every fish keeps a few patches' worth of water, so a small pen looks
+- **Zoom:** with only a few fish the whole tank zooms in (a bigger whole-number scale, up to three
+  times the normal one) as far as every fish keeps two and a half smallest patches' worth of water, so a small pen looks
   close up; adding fish zooms out. Fish swim proportionally slower in art pixels when zoomed. Labels
   and mood badges grow with the fish, but never below the UI's text size, and stack with their fish:
   a fish in front covers the fish behind and its labels. On phones held upright, details sit over the tank's bottom.

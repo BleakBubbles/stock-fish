@@ -16,7 +16,7 @@ export const MAX_TALL = 1.5;
 /** UI pixels of room around the tank, so its frame stays off the edges. */
 export const TANK_PAD = 4;
 /** Zooming in goes up to this many times the normal scale. */
-export const MAX_ZOOM = 2;
+export const MAX_ZOOM = 3;
 /** A zoomed-in tank may be this small in art pixels (bigger on screen, so fine). */
 export const MIN_ZOOMED_TANK = { w: 160, h: 100 } as const;
 /** At most this wide for its height (ultra-wide windows). */

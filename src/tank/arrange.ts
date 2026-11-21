@@ -62,10 +62,11 @@ export const MIN_PATCH: Rect = { x: 0, y: 0, w: FISH_SIZE.w + 8, h: FISH_SIZE.h 
 const MIN_AREA = MIN_PATCH.w * MIN_PATCH.h;
 
 /**
- * Water each fish should have before the tank zooms in: a few smallest
- * patches' worth, so uneven holdings still each get a patch of their own.
+ * Water each fish should have before the tank zooms in: two and a half
+ * smallest patches' worth, so fish are big while uneven holdings still mostly
+ * get a patch of their own (very small ones share the communal patch).
  */
-export const ROOM_PER_FISH = 4 * MIN_AREA;
+export const ROOM_PER_FISH = 2.5 * MIN_AREA;
 
 /**
  * The tank's size and scale for a box of device pixels holding `fishCount`
