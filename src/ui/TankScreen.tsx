@@ -1,9 +1,18 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { US, closedMarketsText, marketOpenNow, marketStates, staleSince } from '../data/market';
 import {
   DEFAULT_TANK_LABELS,
   DEFAULT_TANK_VIEW,
   normalizeTankView,
+  type PanelSpot,
   type Pen,
   type TankLabels,
   type TankView,
@@ -31,6 +40,16 @@ import { buildFish, weatherFor } from '../tank/model';
 import { measureText, normalizeText, uiFont } from '../theme/pixelFont';
 import { applyLayout, reorder } from '../tank/territory';
 import { FishDetails } from './FishDetails';
+import {
+  SPOT_MARGIN,
+  clampInto,
+  defaultSpot,
+  placeSpot,
+  resolveSpot,
+  spotAt,
+  spotPath,
+  withSpot,
+} from './panelSpot';
 import { FishList } from './FishList';
 import { GroupDetails, type GroupSummary } from './GroupDetails';
 import { formatChangeRatio, formatMoney } from './format';
@@ -79,6 +98,8 @@ function shownPens(pens: readonly Pen[], view: TankView): Pen[] {
 
 /** Narrower than this (UI pixels: phones held upright), details sit over the tank's bottom. */
 const NARROW_SLOT = 300;
+/** Two taps on a panel's title within this many milliseconds put it back in its default spot. */
+const DOUBLE_TAP_MS = 350;
 
 type Dialog =
   { kind: 'new-pen' } | { kind: 'edit-pen'; pen: Pen } | { kind: 'move'; holdingId: string };
@@ -113,6 +134,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
   const [dialog, setDialog] = useState<Dialog>();
   const [dropPen, setDropPen] = useState<string>();
   const [placement, setPlacement] = useState<TankPlacement>();
+  const { ui, dpr } = usePixelScale();
   /**
    * The hood's height in UI pixels: the tank leaves this much room above it.
    * Measured whenever the hood appears or changes size (it wraps on phones).
@@ -147,6 +169,28 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
   );
 
   const [localLabels, setLocalLabels] = useState<TankLabels>();
+  /** Panel spots just saved, ahead of the settings read catching up. */
+  const [localSpots, setLocalSpots] = useState<Record<string, PanelSpot>>();
+  /** The panel's place while it's being dragged. */
+  const [panelDrag, setPanelDrag] = useState<{ left: number; top: number }>();
+  const lastTitleTap = useRef(0);
+  /** The details panel's size in UI pixels, to keep it inside the tank. */
+  const [panelSize, setPanelSize] = useState({ w: 0, h: 0 });
+  const panelObserver = useRef<ResizeObserver>(undefined);
+  const panelRef = useCallback((node: HTMLDivElement | null) => {
+    panelObserver.current?.disconnect();
+    if (!node) return;
+    // Inside PixelRoot one CSS pixel is one UI pixel.
+    const measure = () =>
+      setPanelSize((s) =>
+        s.w === node.offsetWidth && s.h === node.offsetHeight
+          ? s
+          : { w: node.offsetWidth, h: node.offsetHeight },
+      );
+    measure();
+    panelObserver.current = new ResizeObserver(measure);
+    panelObserver.current.observe(node);
+  }, []);
   const labels = localLabels ?? settings?.tankLabels ?? DEFAULT_TANK_LABELS;
   const setLabels = (next: TankLabels) => {
     setLocalLabels(next);
@@ -358,23 +402,83 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
   const groupPen = groupRegion?.penId ? pens?.find((p) => p.id === groupRegion.penId) : undefined;
 
   /**
-   * Where a fish's or group's details go: over the tank's top-left corner, or
-   * on phones held upright (where the tank fills the screen) over its bottom,
-   * closer to the thumb, leaving the top of the tank in view.
+   * Where a fish's or group's details go. By default over the tank's top-left
+   * corner, or on phones held upright (where the tank fills the screen) over
+   * its bottom, closer to the thumb. The user can drag it by its title; the
+   * spot is kept per screen size, then per grouping (or per sort in a single
+   * pen), each inheriting the one above until moved (src/ui/panelSpot.ts).
    */
-  const detailsAt =
-    placement && placement.slotWidth < NARROW_SLOT
-      ? {
-          left: `calc(var(--sf-px) * ${placement.left + 4})`,
-          bottom: `calc(var(--sf-px) * ${placement.slotHeight - placement.top - placement.height + 4})`,
-        }
-      : placement
-        ? // Just inside the tank's top-left corner, below the hood.
-          {
-            left: `calc(var(--sf-px) * ${placement.left + 4})`,
-            top: `calc(var(--sf-px) * ${placement.top + 4})`,
-          }
-        : { left: `calc(var(--sf-px) * 4)`, top: `calc(var(--sf-px) * 4)` };
+  const narrowSlot = placement !== undefined && placement.slotWidth < NARROW_SLOT;
+  const spotKeys = spotPath(
+    narrowSlot,
+    home ? { kind: 'pen', sort: view.homeSort } : { kind: 'overview', group: view.group },
+  );
+  const spots = localSpots ?? settings?.panelSpots;
+  const tankBox = placement && {
+    x: placement.left,
+    y: placement.top,
+    w: placement.width,
+    h: placement.height,
+  };
+  const panelAt =
+    panelDrag ??
+    (tankBox
+      ? placeSpot(resolveSpot(spots, spotKeys, narrowSlot), tankBox, panelSize)
+      : { left: SPOT_MARGIN, top: SPOT_MARGIN });
+  const detailsAt = {
+    left: `calc(var(--sf-px) * ${panelAt.left})`,
+    top: `calc(var(--sf-px) * ${panelAt.top})`,
+  };
+  const savePanelSpot = (spot: PanelSpot) => {
+    const next = withSpot(spots, spotKeys, spot);
+    setLocalSpots(next);
+    void repo.saveSettings({ panelSpots: next });
+  };
+  /** Drag the panel by its title (not its buttons); double-tap the title to put it back. */
+  const onPanelPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const el = e.target as Element;
+    if (e.button !== 0 || !tankBox || !el.closest('.panel-title') || el.closest('button')) return;
+    e.preventDefault();
+    const target = e.currentTarget;
+    target.setPointerCapture(e.pointerId);
+    const box = tankBox;
+    const size = panelSize;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const from = panelAt;
+    let last = from;
+    let moved = false;
+    const onMove = (ev: PointerEvent) => {
+      // Pointer movement in UI pixels; a few pixels' wobble is still a tap.
+      const dx = (ev.clientX - startX) / (ui / dpr);
+      const dy = (ev.clientY - startY) / (ui / dpr);
+      if (!moved && Math.hypot(dx, dy) < 3) return;
+      moved = true;
+      last = clampInto(from.left + dx, from.top + dy, box, size);
+      setPanelDrag(last);
+    };
+    const onUp = () => {
+      target.removeEventListener('pointermove', onMove);
+      target.removeEventListener('pointerup', onUp);
+      target.removeEventListener('pointercancel', onUp);
+      if (moved) {
+        savePanelSpot(spotAt(last.left, last.top, box, size));
+        setPanelDrag(undefined);
+        lastTitleTap.current = 0;
+        return;
+      }
+      const now = performance.now();
+      if (now - lastTitleTap.current < DOUBLE_TAP_MS) {
+        savePanelSpot(defaultSpot(narrowSlot));
+        lastTitleTap.current = 0;
+      } else {
+        lastTitleTap.current = now;
+      }
+    };
+    target.addEventListener('pointermove', onMove);
+    target.addEventListener('pointerup', onUp);
+    target.addEventListener('pointercancel', onUp);
+  };
 
   /** The pen a region belongs to: the home pen, or (in Pen mode) the pen it shows. */
   const penOfRegion = (region: Region): string | undefined => {
@@ -601,7 +705,12 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
           />
         </div>
         {(summary || selected) && (
-          <div className="details-anchor" style={detailsAt}>
+          <div
+            ref={panelRef}
+            className="details-anchor"
+            style={detailsAt}
+            onPointerDown={onPanelPointerDown}
+          >
             {summary && (
               <GroupDetails
                 summary={summary}

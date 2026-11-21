@@ -179,6 +179,18 @@ export interface Settings {
   upColour?: UpColour;
   /** How fast fish swim to their new places when the grouping or order changes. */
   regroupSpeed?: RegroupSpeed;
+  /**
+   * Where the details panel was dragged over the tank, by screen size and
+   * grouping or sort (keys from spotPath in src/ui/panelSpot.ts).
+   */
+  panelSpots?: Record<string, PanelSpot>;
+}
+
+/** A panel position: distances in UI pixels from one of the tank's corners. */
+export interface PanelSpot {
+  corner: 'tl' | 'tr' | 'bl' | 'br';
+  x: number;
+  y: number;
 }
 
 export type RegroupSpeed = 'slow' | 'normal' | 'fast' | 'instant';

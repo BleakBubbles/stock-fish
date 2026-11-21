@@ -569,8 +569,22 @@ canvas {
 
 /* A details panel's title, with the close button in the top-right corner. */
 .panel-title {
+  /* The handle the panel is dragged by (TankScreen); its button stays a button. */
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
   display: flex;
   align-self: stretch;
+  /*
+   * A header strip, like the page's bars: full width inside the panel's
+   * outline (its 5-pixel padding less 1), a lit line along the top, and the
+   * outline with a shaded line along the bottom. Its text is inset a little.
+   */
+  margin: calc(var(--sf-px) * -4) calc(var(--sf-px) * -4) 0;
+  padding: calc(var(--sf-px) * 3) calc(var(--sf-px) * 3) calc(var(--sf-px) * 4)
+    calc(var(--sf-px) * 5);
+  background: var(--sf-panel);
+  box-shadow: var(--bar-edges);
   justify-content: space-between;
   align-items: flex-start;
   gap: calc(var(--sf-px) * 4);
