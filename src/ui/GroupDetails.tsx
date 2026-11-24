@@ -89,7 +89,7 @@ export function GroupDetails({ summary, onOpen, onEdit, onClose }: Props) {
           row('Today', 'Waiting for prices…')
         )}
         {row(
-          'Fish',
+          'Sharks',
           summary.unpriced > 0
             ? `${summary.fishCount} (${summary.unpriced} without a price yet)`
             : String(summary.fishCount),

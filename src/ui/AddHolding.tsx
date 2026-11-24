@@ -32,7 +32,7 @@ interface Draft {
   notice?: string;
 }
 
-/** Add a holding: details, then "meet your fish" with colours pre-filled. */
+/** Add a holding: details, then "meet your shark" with colours pre-filled. */
 export function AddHolding({ onDone }: Props) {
   const [draft, setDraft] = useState<Draft>();
 
@@ -188,7 +188,7 @@ function MeetYourFish({
 
   return (
     <section className="px-stack px-page-stack" aria-labelledby="meet-title">
-      <PixelHeading text="Meet your fish" id="meet-title" />
+      <PixelHeading text="Meet your shark" id="meet-title" />
       <div className="px-panel px-stack px-wide">
         <div className="meet">
           <FishSprite
@@ -197,7 +197,7 @@ function MeetYourFish({
             primary={colours.primary}
             secondary={colours.secondary}
             scale={3}
-            label={`${draft.symbol} fish`}
+            label={`${draft.symbol} shark`}
           />
           <div className="px-stack meet-text">
             <PixelText text={draft.symbol} />
@@ -211,7 +211,7 @@ function MeetYourFish({
         {draft.notice && <PixelParagraph text={draft.notice} tone="warning" />}
         <div className="px-row">
           <PixelButton
-            label="Add this fish"
+            label="Add this shark"
             icon="check"
             primary
             onClick={() => void save()}
@@ -233,7 +233,7 @@ function MeetYourFish({
           <>
             {!known && (
               <PixelParagraph
-                text={`${draft.symbol} isn't in the built-in list. Pick the closest family: it sets the fish's shape. Funds and unsure ones can stay Consumer.`}
+                text={`${draft.symbol} isn't in the built-in list. Pick the closest family: it sets the shark's species. Funds and unsure ones can stay Consumer.`}
                 tone="textMuted"
               />
             )}

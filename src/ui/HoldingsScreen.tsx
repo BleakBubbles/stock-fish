@@ -45,16 +45,16 @@ export function HoldingsScreen({ onAdd, onEdit, onColours }: Props) {
           <PixelButton
             label="CSV template"
             icon="export"
-            onClick={() => downloadText('stock-fish-template.csv', CSV_TEMPLATE, 'text/csv')}
+            onClick={() => downloadText('bullish-sharks-template.csv', CSV_TEMPLATE, 'text/csv')}
           />
           <PixelButton label="Load sample tank" onClick={() => void importText(SAMPLE_TANK_CSV)} />
         </div>
         <PixelParagraph
-          text="CSV columns: symbol, quantity, pen. Importing again updates quantities instead of adding fish twice."
+          text="CSV columns: symbol, quantity, pen. Importing again updates quantities instead of adding sharks twice."
           tone="textMuted"
         />
         <PixelParagraph
-          text="The sample is made-up fish in three Sample pens, for trying things out."
+          text="The sample is made-up sharks in three Sample pens, for trying things out."
           tone="textMuted"
         />
         {report && (
@@ -72,7 +72,7 @@ export function HoldingsScreen({ onAdd, onEdit, onColours }: Props) {
 
       {holdings.length === 0 ? (
         <div className="px-panel px-stack px-wide">
-          <PixelParagraph text="No fish yet. Add a holding, import a CSV or load the sample." />
+          <PixelParagraph text="No sharks yet. Add a holding, import a CSV or load the sample." />
         </div>
       ) : (
         pens.map((pen) => {

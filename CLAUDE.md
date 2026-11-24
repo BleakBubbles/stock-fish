@@ -1,8 +1,13 @@
-# Stock Fish
+# Bullish Sharks
 
-A web app (installable PWA) that shows a user's investments as pixel-art fish in a tank. Each
-fish's face shows how that holding is doing today, so the tank replaces a stock price board at a
+A web app (installable PWA) that shows a user's investments as pixel-art sharks in a tank. Each
+shark's face shows how that holding is doing today, so the tank replaces a stock price board at a
 glance. Hobby project, open source (MIT), no backend in v1.
+
+Formerly Stock Fish: the creatures were fish until November 2026. Code names (`FishView`,
+`FishSprite`, `fishIds`), the repo, the Worker, the IndexedDB name and the backup format's
+`app: 'stock-fish'` keep the old name on purpose (renaming the last two would lose saved data and
+break old backups). In docs, "fish" means a shark.
 
 Read before working:
 

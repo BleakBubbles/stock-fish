@@ -1,6 +1,6 @@
-# Stock Fish
+# Bullish Sharks
 
-Your portfolio as a tank of pixel-art fish. Each fish is one of your holdings, and its face shows
+Your portfolio as a tank of pixel-art sharks. Each shark is one of your holdings, and its face shows
 how it's doing today, scaled to how much that stock usually moves. A quick glance replaces a price
 board.
 
@@ -10,10 +10,10 @@ Hobby project. Bring your own free market data API key; your holdings never leav
 
 ## What it does
 
-- **Moods:** each fish's face shows today's move compared with a normal day for that stock
-  (ecstatic, happy, calm, uneasy, sad). Tap a fish for the real numbers.
-- **Pens:** keep fish in several tanks (e.g. Taxable, TFSA). Each fish claims a patch of its pen
-  sized by its value; drag fish to rearrange them or onto another pen to move them, or split a
+- **Moods:** each shark's face shows today's move compared with a normal day for that stock
+  (ecstatic, happy, calm, uneasy, sad). Tap a shark for the real numbers.
+- **Pens:** keep sharks in several tanks (e.g. Taxable, TFSA). Each shark claims a patch of its pen
+  sized by its value; drag sharks to rearrange them or onto another pen to move them, or split a
   holding across pens.
 - **Overviews:** show several pens at once, arranged by mood, species, family (sector), weight,
   pen or free roam. Tap a group's name, or its water, for that group's weather and share.
@@ -22,9 +22,9 @@ Hobby project. Bring your own free market data API key; your holdings never leav
 - **Works without a server:** prices come straight from Twelve Data with your own key (or made-up
   demo data); holdings, pens and colours stay in the browser. Export a backup now and then.
 - **Installable and accessible:** add it to your home screen or desktop; it opens offline. The tank
-  works with a keyboard and screen reader (arrow keys choose fish; numbers are read out).
+  works with a keyboard and screen reader (arrow keys choose sharks; numbers are read out).
 
-Not investment advice. Stock Fish only displays prices and never executes trades.
+Not investment advice. Bullish Sharks only displays prices and never executes trades.
 
 ## Running it
 

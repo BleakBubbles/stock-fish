@@ -646,7 +646,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
         onDrop={onDrop}
         onDragOverPen={setDropPen}
         onPlacement={setPlacement}
-        label={`Fish tank with ${visible.length} fish`}
+        label={`Shark tank with ${visible.length} ${visible.length === 1 ? 'shark' : 'sharks'}`}
       >
         {/*
           The hood: the tank's weather, today's change and market state on a
@@ -857,9 +857,9 @@ function EmptyTank({ onAdd }: { onAdd: () => void }) {
   const wrap = Math.min(190, cols - 24);
   return (
     <section ref={ref} className="tank-empty px-panel px-stack" aria-label="Welcome">
-      <PixelText text="Welcome to Stock Fish" tone="heading" />
+      <PixelText text="Welcome to Bullish Sharks" tone="heading" />
       <PixelText
-        text="Each fish is one of your holdings. Its face shows how today is going, compared with a normal day for that stock."
+        text="Each shark is one of your holdings. Its face shows how today is going, compared with a normal day for that stock."
         wrap={wrap}
       />
       <PixelText
@@ -868,14 +868,14 @@ function EmptyTank({ onAdd }: { onAdd: () => void }) {
         wrap={wrap}
       />
       <div className="px-row">
-        <PixelButton label="Add your first fish" icon="plus" primary onClick={onAdd} />
+        <PixelButton label="Add your first shark" icon="plus" primary onClick={onAdd} />
         <PixelButton
           label="Load sample tank"
           onClick={() => void importHoldingsCsv(repo, SAMPLE_TANK_CSV)}
         />
       </div>
       <PixelText
-        text="Not investment advice. Stock Fish never trades."
+        text="Not investment advice. Bullish Sharks never trades."
         tone="warning"
         wrap={wrap}
       />
@@ -888,9 +888,9 @@ function EmptyPen({ name }: { name: string }) {
   useSnap(ref);
   return (
     <div ref={ref} className="tank-empty px-panel px-stack">
-      <PixelText text={`No fish in ${name} yet.`} />
+      <PixelText text={`No sharks in ${name} yet.`} />
       <PixelText
-        text="Drag a fish onto this pen's tab, or tap a fish and choose Move."
+        text="Drag a shark onto this pen's tab, or tap a shark and choose Move."
         tone="textMuted"
         wrap={160}
       />

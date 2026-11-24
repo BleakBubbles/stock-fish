@@ -39,9 +39,9 @@ export function SettingsScreen() {
       <div className="px-panel px-stack px-wide">
         <PixelHeading text="About" level={3} />
         <PixelParagraph text="Not investment advice." tone="warning" />
-        <PixelParagraph text="Stock Fish only shows prices, for fun. It never trades and never says what to buy or sell." />
+        <PixelParagraph text="Bullish Sharks only shows prices, for fun. It never trades and never says what to buy or sell." />
         <PixelParagraph
-          text="Your fish and key stay in this browser. Clearing site data empties the tank, so export a backup now and then."
+          text="Your sharks and key stay in this browser. Clearing site data empties the tank, so export a backup now and then."
           tone="textMuted"
         />
       </div>
@@ -151,6 +151,9 @@ function MarketDataSettings({ settings }: { settings: Settings }) {
   );
 }
 
+/** "1 shark", "3 sharks". */
+const sharks = (n: number) => `${n} ${n === 1 ? 'shark' : 'sharks'}`;
+
 const COMMON_CURRENCIES = ['USD', 'CAD', 'EUR', 'GBP', 'AUD', 'JPY'];
 const AUTO = 'auto';
 
@@ -167,7 +170,7 @@ function CurrencySettings({ settings }: { settings: Settings }) {
     <div className="px-panel px-stack px-wide">
       <PixelHeading text="Currency" level={3} />
       <PixelParagraph
-        text="Totals (weather, groups, territory) are shown in one currency. Each fish keeps its own."
+        text="Totals (weather, groups, territory) are shown in one currency. Each shark keeps its own."
         tone="textMuted"
       />
       <PixelChoice
@@ -215,7 +218,7 @@ function RegroupSettings({ settings }: { settings: Settings }) {
     <div className="px-panel px-stack px-wide">
       <PixelHeading text="Rearranging" level={3} />
       <PixelParagraph
-        text="How fast fish swim to their new places when you change the group, sort or pens. Their everyday swimming stays the same."
+        text="How fast sharks swim to their new places when you change the group, sort or pens. Their everyday swimming stays the same."
         tone="textMuted"
       />
       <PixelChoice
@@ -235,7 +238,7 @@ const REGROUP_LABEL: Record<RegroupSpeed, string> = {
   instant: 'Instant',
 };
 
-/** Add Stock Fish to the home screen or desktop, as an app that also opens offline. */
+/** Add Bullish Sharks to the home screen or desktop, as an app that also opens offline. */
 function InstallSettings() {
   const state = useInstallState();
   return (
@@ -243,13 +246,13 @@ function InstallSettings() {
       <PixelHeading text="App" level={3} />
       {state === 'installed' ? (
         <PixelParagraph
-          text="Installed. Stock Fish opens like an app, even offline."
+          text="Installed. Bullish Sharks opens like an app, even offline."
           tone="success"
         />
       ) : (
         <>
           <PixelParagraph
-            text="Install Stock Fish to open it like an app. It works offline, showing the last prices it saw."
+            text="Install Bullish Sharks to open it like an app. It works offline, showing the last prices it saw."
             tone="textMuted"
           />
           {state === 'available' && (
@@ -281,7 +284,11 @@ function BackupSettings() {
   async function exportJson() {
     const backup = await exportBackup(db);
     const date = backup.exportedAt.slice(0, 10);
-    downloadText(`stock-fish-${date}.json`, JSON.stringify(backup, null, 2), 'application/json');
+    downloadText(
+      `bullish-sharks-${date}.json`,
+      JSON.stringify(backup, null, 2),
+      'application/json',
+    );
   }
 
   async function readFile(file: File) {
@@ -303,7 +310,7 @@ function BackupSettings() {
     await restoreBackup(db, pending);
     setMessage({
       ok: true,
-      text: `Restored ${pending.holdings.length} fish in ${pending.pens.length} pens.`,
+      text: `Restored ${sharks(pending.holdings.length)} in ${pending.pens.length} pens.`,
     });
     setPending(undefined);
   }
@@ -312,7 +319,7 @@ function BackupSettings() {
     <div className="px-panel px-stack px-wide">
       <PixelHeading text="Backup" level={3} />
       <PixelParagraph
-        text="A file with your pens, fish and colours. Your API key isn't in it."
+        text="A file with your pens, sharks and colours. Your API key isn't in it."
         tone="textMuted"
       />
       <div className="px-row">
@@ -327,7 +334,7 @@ function BackupSettings() {
       {pending && (
         <div className="px-stack" role="alertdialog" aria-label="Confirm restore">
           <PixelParagraph
-            text={`Replace your whole tank with this backup (${pending.holdings.length} fish in ${pending.pens.length} pens)? Your current fish will be lost.`}
+            text={`Replace your whole tank with this backup (${sharks(pending.holdings.length)} in ${pending.pens.length} pens)? Your current sharks will be lost.`}
             tone="warning"
           />
           <div className="px-row">

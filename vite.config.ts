@@ -13,9 +13,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icons/favicon.png'],
       manifest: {
-        name: 'Stock Fish',
-        short_name: 'Stock Fish',
-        description: 'Your portfolio as a tank of pixel-art fish.',
+        name: 'Bullish Sharks',
+        short_name: 'Bullish',
+        description: 'Your portfolio as a tank of pixel-art sharks.',
         theme_color: water,
         background_color: water,
         display: 'standalone',

@@ -60,7 +60,11 @@ export function PenDialog({
     return (
       <PixelDialog title={`Delete ${pen.name}?`} onClose={() => setConfirmDelete(false)}>
         <PixelText
-          text={fishCount > 0 ? `Its ${fishCount} fish move to ${heir.name}.` : 'It has no fish.'}
+          text={
+            fishCount > 0
+              ? `Its ${fishCount === 1 ? 'shark moves' : `${fishCount} sharks move`} to ${heir.name}.`
+              : 'It has no sharks.'
+          }
           wrap={FIELD_WIDTH + 40}
         />
         {error && <PixelText text={error} tone="warning" wrap={FIELD_WIDTH + 40} />}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render Stock Fish sprite grids to PNG.
+"""Render Bullish Sharks sprite grids to PNG.
 
 Reference implementation of the sprite pipeline. The app build should port this
 to a Node script; this version is for quick previews and for round-tripping

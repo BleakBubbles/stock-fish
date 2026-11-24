@@ -74,7 +74,7 @@ export function FishList({ fish, penName, closedMarket, selectedId, onSelect, on
       {/* For sighted keyboard users; screen readers hear the hint below instead. */}
       <div className="fish-list-hint px-panel" aria-hidden="true">
         <PixelText
-          text={`Arrows: choose fish${onReorder ? ' · Alt+arrows: move patch' : ''} · Esc: close`}
+          text={`Arrows: choose shark${onReorder ? ' · Alt+arrows: move patch' : ''} · Esc: close`}
           tone="textMuted"
         />
       </div>
@@ -85,7 +85,7 @@ export function FishList({ fish, penName, closedMarket, selectedId, onSelect, on
         </p>
         <ul
           ref={listRef}
-          aria-label="Fish"
+          aria-label="Sharks"
           aria-describedby={hintId}
           onKeyDown={(e) => void onKeyDown(e)}
         >

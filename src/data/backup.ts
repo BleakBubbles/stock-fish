@@ -58,7 +58,7 @@ export function validateBackup(
 ): { ok: true; backup: Backup } | { ok: false; errors: string[] } {
   const errors: string[] = [];
   if (!isObject(data) || data.app !== 'stock-fish') {
-    return { ok: false, errors: ['This is not a Stock Fish backup file.'] };
+    return { ok: false, errors: ['This is not a Bullish Sharks backup file.'] };
   }
   if (data.version !== 1) {
     return { ok: false, errors: [`Unsupported backup version: ${String(data.version)}.`] };

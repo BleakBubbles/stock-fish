@@ -193,7 +193,7 @@ export function createRepo(db: StockFishDb) {
 
   /** Delete a pen, moving its fish into `intoPenId`. The last pen can't go. */
   async function deletePen(id: string, intoPenId: string): Promise<void> {
-    if (id === intoPenId) throw new Error('Pick another pen for its fish.');
+    if (id === intoPenId) throw new Error('Pick another pen for its sharks.');
     await db.transaction('rw', db.holdings, db.pens, async () => {
       if ((await db.pens.count()) <= 1) throw new Error("The last pen can't be deleted.");
       for (const h of await db.holdings.where({ penId: id }).toArray()) {

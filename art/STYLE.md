@@ -1,4 +1,4 @@
-# Stock Fish sprite style guide
+# Bullish Sharks sprite style guide
 
 Every sprite in `sprites/` follows these rules. Read this file before drawing or editing a sprite,
 and compare any new sprite against the reference set in `preview/flat_set.png`.

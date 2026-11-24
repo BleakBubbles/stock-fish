@@ -75,7 +75,7 @@ function EditLook({
             primary={colours.primary}
             secondary={colours.secondary}
             scale={3}
-            label={`${holding.symbol} fish`}
+            label={`${holding.symbol} shark`}
           />
         </div>
         <div className="px-row">
@@ -95,7 +95,7 @@ function EditLook({
       <div className="px-panel px-stack px-wide">
         <PixelHeading text="Family" level={3} />
         <PixelParagraph
-          text={`${familyLabel(sector)}${source ? ` (${SOURCE_LABEL[source]})` : ''}. Changing it reshapes every ${holding.symbol} fish.`}
+          text={`${familyLabel(sector)}${source ? ` (${SOURCE_LABEL[source]})` : ''}. Changing it changes the species of every ${holding.symbol} shark.`}
           tone="textMuted"
         />
         <FamilyPicker sector={sector} colours={colours} onChange={setUserSector} />

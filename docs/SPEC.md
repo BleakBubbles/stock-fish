@@ -1,13 +1,14 @@
-# Stock Fish — Spec
+# Bullish Sharks — Spec
 
 Exported from the living design doc: https://claude.ai/artifact/NM3FRSjZvLxCKt4m8ep8Je
 If the two disagree, the design doc wins; update this file when it changes.
 
 ## Overview
 
-Stock Fish turns each investment into a pixel-art fish whose face shows how that holding is doing
+Bullish Sharks (formerly Stock Fish) turns each investment into a pixel-art shark whose face shows how that holding is doing
 today. It is a fun alternative to stock price boards and ticker lists: users read their day at a
-glance, without parsing numbers.
+glance, without parsing numbers. The creatures were fish until November 2026; where this doc
+still says "fish", read "shark".
 
 - **Core loop:** open the app → see your fish's moods → tap a fish for the real numbers.
 - **What it is not:** a broker, a trading tool, or a competitive game. It never executes trades.
@@ -251,7 +252,7 @@ v1 tests one thing: do fish beat a price board for the daily check-in?
 
 ## Market data
 
-Stock Fish is a hobby project, so it never pays for market data. Delay is not the constraint;
+Bullish Sharks is a hobby project, so it never pays for market data. Delay is not the constraint;
 licensing is: serving prices to the public needs a display licence (roughly $150–$400/month).
 Instead, **each user brings their own free API key**, so each user is on their own personal-use
 account and the app is just a client.
@@ -302,4 +303,4 @@ Before a public launch:
 - Notifications: event-based (and the optional daily visit reminder), never price-based nudges.
 - Accessibility: numbers available to screen readers; mood never conveyed by colour alone.
 - Privacy: data stays in the browser; "not investment advice" disclaimer.
-- Final name and branding (working name: Stock Fish).
+- Branding beyond the name (Bullish Sharks, chosen November 2026): icon and logo.

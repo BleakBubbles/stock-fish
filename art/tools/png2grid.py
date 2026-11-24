@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert a 1x PNG (e.g. edited in Aseprite) back into a Stock Fish sprite grid.
+"""Convert a 1x PNG (e.g. edited in Aseprite) back into a Bullish Sharks sprite grid.
 
 Usage:
   png2grid.py edited.png --ramp orange [-o sprite.grid]

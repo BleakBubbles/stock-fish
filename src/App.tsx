@@ -48,7 +48,7 @@ export function App() {
         <header className="topbar">
           <h1 className="title">
             <Logo />
-            <PixelText text="Stock Fish" />
+            <PixelText text="Bullish Sharks" />
           </h1>
           <nav aria-label="Main" className="px-row">
             {TABS.map((t) => (
