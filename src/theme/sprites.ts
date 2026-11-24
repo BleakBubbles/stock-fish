@@ -65,7 +65,7 @@ export function spriteColours(primary: Hex, secondary: Hex): Record<Exclude<Role
   };
 }
 
-/** The title-bar logo (art/ui/logo.grid): a small fish in the sprite roles. */
+/** The title-bar logo (art/ui/logo.grid): the app icon's tooth, in `logoColours` letters. */
 export const LOGO: readonly string[] = parseGrid(logoText);
 
 const iconFiles = import.meta.glob('../../art/ui/icons/*.grid', {

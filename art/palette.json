@@ -79,7 +79,7 @@
     "panelHover": "5a6988",
     "panelHoverLight": "8b9bb4",
     "buttonHover": "ffffff",
-    "logo": "orange",
+    "logo": { "o": "181425", "G": "63c74d", "g": "3e8948", "d": "265c42" },
     "sunlight": "ffffff",
     "ripple": "c0cbdc",
     "changeGreen": "63c74d",

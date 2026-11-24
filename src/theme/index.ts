@@ -64,11 +64,16 @@ export const ui = {
   ticker: palette.ui.ticker,
 } as const;
 
-/** The ramp the title-bar logo fish is drawn in (the app icon's colours). */
-export const logoRamp: Ramp = (() => {
-  const ramp = ramps[palette.ui.logo];
-  if (!ramp) throw new Error(`palette.json ui.logo: no ramp ${palette.ui.logo}`);
-  return ramp;
+/**
+ * The megalodon tooth's colours (art/ui/logo.grid, app-icon.grid), by grid letter: outline (o),
+ * crown (G), serrations and bourlette (g), root (d).
+ */
+export const logoColours: Readonly<Record<string, Hex>> = (() => {
+  for (const [ch, hex] of Object.entries(palette.ui.logo)) {
+    if (!colours.includes(hex))
+      throw new Error(`palette.json ui.logo ${ch}: ${hex} isn't a palette colour`);
+  }
+  return palette.ui.logo;
 })();
 
 /** '#rrggbb' form for CSS and PixiJS. */

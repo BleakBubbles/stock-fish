@@ -1,10 +1,16 @@
-# The title-bar logo: the app icon's orange pufferfish, small. Fish roles (STYLE.md legend).
-.......oooo....
-.....ooBBBBoo..
-oo..oBBBBBBwwo.
-oFooBBBBBBBwpBo
-oFFFBBBBBBBBBBo
-oFooBBBBBBBBBpo
-oo..oBBBBBBBBo.
-.....ooBBBBoo..
-.......oooo....
+# The title-bar logo: the app icon's megalodon tooth, redrawn 14 pixels tall to sit beside
+# the name (as tall as the bar's buttons). Roles as in app-icon.grid.
+.......oo.......
+......oGGo......
+.....oGGGGo.....
+....ogGGGGgo....
+....oGGGGGGo....
+...ogGGGGGGgo...
+..oGGGGGGGGGGo..
+..ogGGggggGGgo..
+.oGGgddddddgGGo.
+ogddddddddddddgo
+oddddddddddddddo
+oddddddddddddddo
+odddoooooooodddo
+.ooo........ooo.

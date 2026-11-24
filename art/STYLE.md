@@ -85,6 +85,14 @@ below the mouth line and stay put with every mood; asleep they hide. The threshe
 the one exception to rule 6: its tip is a single pixel, because a whip that ends blunt stops
 reading as a thresher.
 
+## App icon and logo
+
+The app icon is a megalodon tooth, green like a price rise: `ui/app-icon.grid` (32 × 32) and,
+redrawn 14 pixels tall for the title bar, `ui/logo.grid`. Crown (`G`) with serrated edges and an
+arched bourlette (`g`), a wide two-lobed root (`d`), outline (`o`); colours from `palette.json`
+`ui.logo`. It is shaded more than the sharks on purpose: it's a badge, not a tank resident.
+`npm run icons` makes `public/icons` from the 32 × 32 grid.
+
 ## UI font
 
 `fonts/silkscreen.font` is Silkscreen (SIL OFL 1.1, see `fonts/OFL-Silkscreen.txt`) as a bitmap

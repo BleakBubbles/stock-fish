@@ -303,4 +303,3 @@ Before a public launch:
 - Notifications: event-based (and the optional daily visit reminder), never price-based nudges.
 - Accessibility: numbers available to screen readers; mood never conveyed by colour alone.
 - Privacy: data stays in the browser; "not investment advice" disclaimer.
-- Branding beyond the name (Bullish Sharks, chosen November 2026): icon and logo.

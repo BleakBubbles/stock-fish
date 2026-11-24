@@ -2,13 +2,14 @@
   "name": "stock-fish",
   "private": true,
   "version": "0.0.0",
-  "description": "Your portfolio as a tank of pixel-art fish.",
+  "description": "Your portfolio as a tank of pixel-art sharks.",
   "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
+    "icons": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/build-icons.ts",
     "sprites": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/build-sprites.ts",
     "predev": "npm run sprites",
     "dev": "vite",

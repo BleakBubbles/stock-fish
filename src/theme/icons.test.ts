@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { logoColours } from './index';
 import { ICONS, LOGO } from './sprites';
 
 describe('button icons', () => {
@@ -18,7 +19,11 @@ describe('button icons', () => {
 });
 
 describe('logo', () => {
-  it('fits the 9-pixel text line', () => {
-    expect(LOGO).toHaveLength(9);
+  it('is no taller than the title bar’s buttons, drawn only in the tooth’s colours', () => {
+    expect(LOGO.length).toBeLessThanOrEqual(15);
+    for (const row of LOGO) {
+      expect(row).toHaveLength(LOGO[0]!.length);
+      for (const ch of row) if (ch !== '.') expect(logoColours[ch], ch).toBeDefined();
+    }
   });
 });

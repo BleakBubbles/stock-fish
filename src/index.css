@@ -1130,10 +1130,10 @@ canvas {
     0 0 0 var(--sf-px) var(--sf-focus);
 }
 
-/* Title: the logo fish beside the name, top-aligned (centring 9 in 9 is exact anyway). */
+/* Title: the logo tooth beside the name, the name centred on it (14 and 9: no half pixel). */
 .title {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: calc(var(--sf-px) * 4);
 }
 
