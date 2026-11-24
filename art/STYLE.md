@@ -74,16 +74,15 @@ stay whole and the base never moves. 1-pixel changes are enough: they read in mo
 | `1-tech-hammerhead` | Information Technology, Communication Services | Hammerhead: a tall, thin hammer at the front, the eye at its top | Tall dorsal, long upper tail lobe |
 | `2-finance-great-white` | Financials, Real Estate | Great white: straight back, curved belly, tall blunt snout | Big triangular dorsal; toothy grin (fixed teeth, `w`) |
 | `3-consumer-nurse` | Consumer Discretionary, Consumer Staples | Nurse shark: slim and low, blunt head | Two swept-back dorsals near the tail; big upper tail lobe, small lower one |
-| `4-energy-thresher` | Energy, Utilities | Thresher: compact body | A huge whip of an upper tail lobe tapering to a point |
+| `4-energy-thresher` | Energy, Utilities | Thresher: short, compact body | A thin whip of an upper tail lobe as long as the body, curling back at the tip |
 | `5-industrial-sawshark` | Industrials, Materials | Sawshark: slim body, long toothed saw | Dorsal, pectoral, shark tail |
 | `6-health-angel` | Health Care | Angel shark: very flat, eye on top | Broad wing-like pectorals, two small dorsals near the tail |
 | `7-fund-whale-shark` | Funds (ETFs, mutual funds) | Whale shark: boxy, flat-topped, spotted (`F`) | Wide mouth right across the front |
 | `8-crypto-mako` | Crypto | Mako: slim, streamlined, full pointed snout | Small dorsal, tall crescent tail whose lobes meet; fixed teeth (`w`) |
 
 The fish of the first versions were replaced by sharks (November 2026). Teeth are drawn in `w`
-below the mouth line and stay put with every mood; asleep they hide. The thresher's whip tail is
-the one exception to rule 6: its tip is a single pixel, because a whip that ends blunt stops
-reading as a thresher.
+below the mouth line and stay put with every mood; asleep they hide. The thresher's whip is the
+one exception to rule 6: it is 2 px thick, because a thicker whip stops reading as a thresher.
 
 ## App icon and logo
 
