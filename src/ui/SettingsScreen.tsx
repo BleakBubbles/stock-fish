@@ -34,6 +34,7 @@ export function SettingsScreen() {
       <CurrencySettings settings={settings} />
       <ChangeColourSettings settings={settings} />
       <RegroupSettings settings={settings} />
+      <WakeUpSettings settings={settings} />
       <BackupSettings />
       <InstallSettings />
       <div className="px-panel px-stack px-wide">
@@ -207,6 +208,28 @@ function ChangeColourSettings({ settings }: { settings: Settings }) {
         ]}
         value={settings.upColour ?? 'green'}
         onChange={(v) => void repo.saveSettings({ upColour: v === 'red' ? 'red' : undefined })}
+      />
+    </div>
+  );
+}
+
+/** The morning wake-up: sharks doze until the tank is tapped, once a day. */
+function WakeUpSettings({ settings }: { settings: Settings }) {
+  return (
+    <div className="px-panel px-stack px-wide">
+      <PixelHeading text="Morning wake-up" level={3} />
+      <PixelParagraph
+        text="The first time you open the tank each day, your sharks are dozing. Tap the tank to wake them and see their moods. Prices are never hidden: a shark's details show them either way."
+        tone="textMuted"
+      />
+      <PixelChoice
+        label="Morning wake-up"
+        options={[
+          { value: 'on', label: 'Sharks doze until I wake them' },
+          { value: 'off', label: 'Sharks are always awake' },
+        ]}
+        value={settings.wakeUp === false ? 'off' : 'on'}
+        onChange={(v) => void repo.saveSettings({ wakeUp: v === 'off' ? false : undefined })}
       />
     </div>
   );

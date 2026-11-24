@@ -6,6 +6,7 @@ import { TONE_COLOUR, type Tone } from './tones';
 /** The icons in art/ui/icons. */
 export type IconName =
   | 'group'
+  | 'sleep'
   | 'back'
   | 'check'
   | 'close'

@@ -57,6 +57,10 @@ interface Props {
   regions: readonly Region[];
   /** Market closed: the tank light is off. */
   night: boolean;
+  /** The morning doze: every shark asleep until the tank is tapped. */
+  dozing: boolean;
+  /** The dozing tank was tapped: wake the sharks. */
+  onWake: () => void;
   /** Portfolio weather shown in the water (calm draws nothing). */
   weather: Weather;
   selectedId?: string;
@@ -108,6 +112,8 @@ export function Tank({
   labels,
   regions,
   night,
+  dozing,
+  onWake,
   weather,
   selectedId,
   onSelect,
@@ -135,6 +141,8 @@ export function Tank({
     regroupSpeed,
     regions,
     night,
+    dozing,
+    onWake,
     weather,
     selectedId,
     onSelect,
@@ -154,6 +162,8 @@ export function Tank({
       regroupSpeed,
       regions,
       night,
+      dozing,
+      onWake,
       weather,
       selectedId,
       onSelect,
@@ -193,6 +203,7 @@ export function Tank({
       scene.setRegions(latest.current.regions);
       scene.setFish(latest.current.fish);
       scene.setNight(latest.current.night);
+      scene.setDozing(latest.current.dozing);
       scene.setWeather(latest.current.weather);
       scene.setSelected(latest.current.selectedId);
       scene.setGroupOutline(latest.current.groupOutline);
@@ -305,6 +316,11 @@ export function Tank({
 
       const onDown = (e: PointerEvent) => {
         if (e.button !== 0) return;
+        // While the sharks doze, the first tap only wakes them.
+        if (latest.current.dozing) {
+          latest.current.onWake();
+          return;
+        }
         const { x, y } = toArt(e);
         press = { id: scene.fishAt(Math.floor(x), Math.floor(y)), x, y, pointer: e.pointerId };
         dragging = false;
@@ -426,6 +442,7 @@ export function Tank({
     shownView.current = view;
   }, [fish, view]);
   useEffect(() => sceneRef.current?.setNight(night), [night]);
+  useEffect(() => sceneRef.current?.setDozing(dozing), [dozing]);
   useEffect(() => sceneRef.current?.setWeather(weather), [weather]);
   useEffect(() => {
     labelsRef.current = labels;

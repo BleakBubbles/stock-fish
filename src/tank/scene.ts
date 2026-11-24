@@ -4,6 +4,7 @@
  * which is then upscaled by a whole number (CLAUDE.md, firm rule 4).
  */
 import { Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
+import { WAKE, WAKE_LENGTH, wakeFace } from '../care/wake';
 import type { RegroupSpeed } from '../data/model';
 import type { Mood, Weather } from '../mood';
 import { css, ui } from '../theme';
@@ -237,6 +238,10 @@ export class TankScene {
   private drag?: { id: string; dx: number; dy: number };
   /** Every shown market closed: the tank light is off (each fish sleeps on its own market's hours). */
   private dark = false;
+  /** The morning doze: every shark asleep until the tank is tapped (src/care/wake.ts). */
+  private dozing = false;
+  /** A wake-up in progress: seconds since the tap, and when each shark wakes. */
+  private waking?: { clock: number; delays: Map<string, number> };
   private zeds: Zed[] = [];
   private readonly zedLayer = new Graphics();
   private groupOutline?: Rect;
@@ -531,7 +536,7 @@ export class TankScene {
       textKey: '',
       swim: parked
         ? resume(parked, this.boundsOf(spec.id), this.rand)
-        : spawn(this.rand, this.boundsOf(spec.id, spec.asleep), spec.temper),
+        : spawn(this.rand, this.boundsOf(spec.id, spec.asleep || this.dozing), spec.temper),
       container,
       layers,
     };
@@ -593,7 +598,7 @@ export class TankScene {
     const region = this.regionOf.get(id);
     const b = region ? boundsFor(region.rect, this.geo.water) : this.bounds;
     // Sleeping fish rest low in their patch.
-    return asleep && id !== this.selected
+    return (asleep || this.dozing) && id !== this.selected
       ? { ...b, minY: Math.max(b.minY, b.maxY - REST_BAND) }
       : b;
   }
@@ -655,11 +660,49 @@ export class TankScene {
     this.refreshHighlights();
   }
 
-  /** The face a fish shows now: asleep while its market is closed, unless it's the one tapped awake. */
+  /**
+   * The face a fish shows now: asleep in the morning doze or while its market
+   * is closed (a shark on a closed market wakes drowsy for a moment), unless
+   * it's the one tapped or held.
+   */
   private faceOf(id: string, node: FishNode): Face {
-    return node.spec.asleep && id !== this.selected && id !== this.drag?.id
-      ? 'sleeping'
-      : node.spec.mood;
+    if (id === this.selected || id === this.drag?.id) return node.spec.mood;
+    if (this.dozing) return 'sleeping';
+    const delay = this.waking?.delays.get(id);
+    const waking =
+      this.waking && delay !== undefined
+        ? wakeFace(this.waking.clock, delay, !!node.spec.asleep)
+        : undefined;
+    if (waking) return waking === 'sleeping' ? 'sleeping' : node.spec.mood;
+    return node.spec.asleep ? 'sleeping' : node.spec.mood;
+  }
+
+  /** The morning doze: every shark rests low, asleep, until wakeAll. */
+  setDozing(on: boolean): void {
+    if (on === this.dozing) return;
+    if (!on) return this.wakeAll();
+    this.dozing = true;
+    this.waking = undefined;
+    this.settleAll();
+  }
+
+  /** The tap that wakes the tank: each shark wakes in turn, a moment apart, and swims up. */
+  wakeAll(): void {
+    if (!this.dozing) return;
+    this.dozing = false;
+    const delays = new Map<string, number>();
+    for (const id of this.fish.keys()) delays.set(id, this.rand() * WAKE.stagger);
+    this.waking = { clock: 0, delays };
+    this.settleAll();
+  }
+
+  /** Every fish heads for its (resting or waking) place. */
+  private settleAll(): void {
+    for (const [id, node] of this.fish) {
+      if (id === this.drag?.id) continue;
+      node.swim = regroup(node.swim, this.boundsOf(id), this.rand);
+      this.showFrame(node, id);
+    }
   }
 
   /** Set the textures for the fish's current face and tail pose (if they changed). */
@@ -719,6 +762,10 @@ export class TankScene {
 
   /** Advance every fish by `dt` seconds. */
   update(dt: number): void {
+    if (this.waking) {
+      this.waking.clock += dt;
+      if (this.waking.clock > WAKE_LENGTH) this.waking = undefined;
+    }
     for (const [id, node] of this.fish) {
       const sleeping = this.faceOf(id, node) === 'sleeping';
       node.tail = stepTail(

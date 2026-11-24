@@ -98,10 +98,12 @@ Not in v1. Recorded so the architecture leaves room for them.
 
 Keeping track of your investments is a good habit; acting on every move isn't. The tank rewards
 the first (checking in) and never the second (trading). It's lighthearted and only a source of
-information, never advice. Agreed November 2026; not built yet.
+information, never advice. Agreed November 2026; the morning wake-up is built, the rest isn't yet.
 
 - **Morning wake-up:** the first time the app opens each day, the fish are dozing. One tap on the
-  tank wakes them all: they stretch and yawn, then their moods show. A setting skips the wake-up.
+  tank (or the "Wake them" button in a note in the water's top-right corner) wakes them all, one
+  after another, and their moods show. Sprites stay simple: asleep or awake, no yawning frames.
+  While they doze, the lid leaves out the weather and the water is calm. A setting skips the wake-up.
   Prices are never locked: fish details and the screen-reader list show the numbers either way.
   On a closed market, waking shows the fish drowsy (yesterday's close), then they doze off again;
   a sleeping face keeps meaning "no fresh prices".

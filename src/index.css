@@ -904,6 +904,23 @@ canvas {
   pointer-events: none;
 }
 
+/* The morning doze note: right-aligned in the water's top corner, over the fish and labels. */
+.tank-doze {
+  position: absolute;
+  left: 0;
+  z-index: 4;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.tank-doze-panel {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--sf-px) * 4);
+  pointer-events: auto;
+}
+
 .tank-labels {
   position: absolute;
   inset: 0;

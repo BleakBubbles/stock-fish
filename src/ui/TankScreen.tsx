@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { dozing, localDay } from '../care/wake';
 import { US, closedMarketsText, marketOpenNow, marketStates, staleSince } from '../data/market';
 import {
   DEFAULT_TANK_LABELS,
@@ -38,7 +39,7 @@ import {
 } from '../tank/arrange';
 import { buildFish, weatherFor } from '../tank/model';
 import { measureText, normalizeText, uiFont } from '../theme/pixelFont';
-import { applyLayout, reorder } from '../tank/territory';
+import { type Rect, applyLayout, reorder } from '../tank/territory';
 import { FishDetails } from './FishDetails';
 import {
   SPOT_MARGIN,
@@ -120,6 +121,20 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
   const settings = useSettings();
   const entries = useMarketEntries();
   const now = useNow(60_000);
+  // The morning doze (src/care/wake.ts): once a day the sharks sleep until the tank is tapped.
+  const today = localDay(new Date(now));
+  const [wokeOn, setWokeOn] = useState<string>();
+  const asleep = !!holdings?.length && wokeOn !== today && dozing(settings, new Date(now));
+  const wake = () => {
+    const day = localDay(new Date());
+    setWokeOn(day);
+    void repo.saveSettings({ lastWoken: day });
+  };
+  // An empty tank has no one to wake: today counts as woken, so a first shark added today is awake.
+  const emptyTank = holdings !== undefined && holdings.length === 0;
+  useEffect(() => {
+    if (emptyTank && dozing(settings, new Date(now))) void repo.saveSettings({ lastWoken: today });
+  }, [emptyTank, settings, now, today]);
   const [selectedId, setSelectedFish] = useState<string>();
   /** A group label tapped in an overview (its region key). Fish and group selections exclude each other. */
   const [selectedGroup, setSelectedGroupKey] = useState<string>();
@@ -619,7 +634,9 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
         labels={labels}
         regions={regions}
         night={!open}
-        weather={PREVIEW_WEATHER ?? (priced ? weather.weather : 'calm')}
+        dozing={asleep}
+        onWake={wake}
+        weather={asleep ? 'calm' : (PREVIEW_WEATHER ?? (priced ? weather.weather : 'calm'))}
         selectedId={selected?.id}
         groupOutline={groupRegion?.group?.rect}
         fishCount={visible.length}
@@ -666,7 +683,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
               : { visibility: 'hidden' }
           }
         >
-          {priced && (
+          {!asleep && priced && (
             <>
               <span className="tank-bar-weather">
                 <PixelIcon name={weather.weather} />
@@ -682,6 +699,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
           {closedText && <PixelText text={closedText} tone="textMuted" />}
           <MarketMessage market={market} hasFish={fish.length > 0} onSettings={onSettings} />
         </div>
+        {asleep && placement && <DozeNotice placement={placement} water={water} onWake={wake} />}
         {!home && placement && (
           <RegionLabels
             regions={regions}
@@ -776,6 +794,38 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
  * Group names over an overview, aligned to the tank's art pixels (rounded to
  * UI pixels). Tapping one selects the group, like tapping a fish.
  */
+/** The morning doze, in the water's top-right corner: a note and a button that wakes the sharks. */
+function DozeNotice({
+  placement,
+  water,
+  onWake,
+}: {
+  placement: TankPlacement;
+  water: Rect;
+  onWake: () => void;
+}) {
+  const { ui } = usePixelScale();
+  const toUi = (art: number) => Math.round((art * placement.scale) / ui);
+  // Right-aligned in a strip ending 3 pixels inside the water's right edge.
+  return (
+    <div
+      className="tank-doze"
+      style={{
+        width: `calc(var(--sf-px) * ${placement.left + toUi(water.x + water.w) - 3})`,
+        top: `calc(var(--sf-px) * ${placement.top + toUi(water.y) + 3})`,
+      }}
+    >
+      <div className="tank-doze-panel px-panel">
+        <span className="tank-bar-weather">
+          <PixelIcon name="sleep" />
+          <PixelText text="Your sharks are dozing." />
+        </span>
+        <PixelButton label="Wake them" onClick={onWake} />
+      </div>
+    </div>
+  );
+}
+
 function RegionLabels({
   regions,
   placement,

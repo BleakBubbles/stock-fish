@@ -184,6 +184,10 @@ export interface Settings {
    * grouping or sort (keys from spotPath in src/ui/panelSpot.ts).
    */
   panelSpots?: Record<string, PanelSpot>;
+  /** The morning wake-up (src/care/wake.ts): on unless false. */
+  wakeUp?: boolean;
+  /** The local day ("YYYY-MM-DD") the sharks were last woken. */
+  lastWoken?: string;
 }
 
 /** A panel position: distances in UI pixels from one of the tank's corners. */
