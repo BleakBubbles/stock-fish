@@ -36,6 +36,17 @@ export type DropTarget =
   /** An element marked with data-pen-id (a pen tab). */
   | { kind: 'pen'; penId: string };
 
+/**
+ * Food to drop in for the sharks `ids`: over art column `x`, or for one shark
+ * just above it. A new `key` drops more.
+ */
+export interface TankFood {
+  key: number;
+  /** The sharks it's for: those not yet fed today. */
+  ids: readonly string[];
+  x?: number;
+}
+
 interface Props {
   fish: readonly SceneFish[];
   /** False while hidden: animation stops (and resumes where it left off). */
@@ -61,6 +72,8 @@ interface Props {
   dozing: boolean;
   /** The dozing tank was tapped: wake the sharks. */
   onWake: () => void;
+  /** Food to sprinkle over this art column; a new `key` sprinkles again. */
+  food?: TankFood;
   /** Portfolio weather shown in the water (calm draws nothing). */
   weather: Weather;
   selectedId?: string;
@@ -114,6 +127,7 @@ export function Tank({
   night,
   dozing,
   onWake,
+  food,
   weather,
   selectedId,
   onSelect,
@@ -443,6 +457,11 @@ export function Tank({
   }, [fish, view]);
   useEffect(() => sceneRef.current?.setNight(night), [night]);
   useEffect(() => sceneRef.current?.setDozing(dozing), [dozing]);
+  useEffect(() => {
+    if (food) {
+      sceneRef.current?.feed(food.ids, food.x);
+    }
+  }, [food]);
   useEffect(() => sceneRef.current?.setWeather(weather), [weather]);
   useEffect(() => {
     labelsRef.current = labels;

@@ -23,6 +23,17 @@ import {
 } from './arrange';
 import { SWAY_PERIOD, decorLayout } from './decor';
 import {
+  BITE,
+  type Pellet,
+  approach,
+  foodFor,
+  landed,
+  mouthOf,
+  nearest,
+  sprinkle,
+  stepPellets,
+} from './food';
+import {
   type Drop,
   type Ripple,
   type Shaft,
@@ -139,6 +150,15 @@ const ZED_MAX = 3;
 const ZED_LIFE = 2.4;
 /** Art pixels a Z rises per second. */
 const ZED_RISE = 4;
+/** A heart rising from a shark that ate (art pixels), and how long it shows. */
+const HEART_PIXELS = ['.#.#.', '#####', '.###.', '..#..'];
+const HEART_LIFE = 1.6;
+/** Pellets in a sprinkle: two per shark shown, within these limits. */
+const FOOD_MIN = 8;
+const FOOD_MAX = 30;
+/** Pellets for one shark fed on its own. */
+const FOOD_ONE = 4;
+
 /** A 4 × 4 "Z", drawn in pixels. */
 const ZED_PIXELS = ['####', '..#.', '.#..', '####'];
 
@@ -244,6 +264,13 @@ export class TankScene {
   private waking?: { clock: number; delays: Map<string, number> };
   private zeds: Zed[] = [];
   private readonly zedLayer = new Graphics();
+  /** Food in the water (src/tank/food.ts), and the hearts of sharks that ate. */
+  private food: Pellet[] = [];
+  private readonly foodLayer = new Graphics();
+  private hearts: Zed[] = [];
+  private readonly heartLayer = new Graphics();
+  /** Sharks that have eaten from this sprinkle (one heart each). */
+  private readonly ate = new Set<string>();
   private groupOutline?: Rect;
   /**
    * Where fish were when their pen was hidden, so they come back to the same
@@ -290,11 +317,13 @@ export class TankScene {
       this.shaftLayer,
       this.gloom,
       this.rippleLayer,
+      this.foodLayer,
       this.patchOutline,
       this.night,
       this.fishLayer,
       this.frameSprite,
       this.zedLayer,
+      this.heartLayer,
     );
   }
 
@@ -668,6 +697,8 @@ export class TankScene {
   private faceOf(id: string, node: FishNode): Face {
     if (id === this.selected || id === this.drag?.id) return node.spec.mood;
     if (this.dozing) return 'sleeping';
+    // Food wakes those it's for, even on a closed market, until it's gone.
+    if (foodFor(this.food, id).length) return node.spec.mood;
     const delay = this.waking?.delays.get(id);
     const waking =
       this.waking && delay !== undefined
@@ -694,6 +725,21 @@ export class TankScene {
     for (const id of this.fish.keys()) delays.set(id, this.rand() * WAKE.stagger);
     this.waking = { clock: 0, delays };
     this.settleAll();
+  }
+
+  /**
+   * Sprinkle food for the sharks `ids` (those not yet fed today) over art
+   * column `x`, or, for one shark, just above it. Only they swim up and eat,
+   * each giving off a heart at its first bite, then go back to their places.
+   */
+  feed(ids: readonly string[], x?: number): void {
+    const [first] = ids;
+    const one = ids.length === 1 && first !== undefined ? this.fish.get(first) : undefined;
+    const at = x ?? (one ? mouthOf(one.swim).x : this.geo.water.x + this.geo.water.w / 2);
+    const count = one ? FOOD_ONE : Math.min(FOOD_MAX, Math.max(FOOD_MIN, ids.length * 2));
+    if (!ids.length) return;
+    this.food = [...this.food, ...sprinkle(at, count, this.geo.water, this.rand, ids)];
+    for (const id of ids) this.ate.delete(id);
   }
 
   /** Every fish heads for its (resting or waking) place. */
@@ -766,6 +812,8 @@ export class TankScene {
       this.waking.clock += dt;
       if (this.waking.clock > WAKE_LENGTH) this.waking = undefined;
     }
+    const hadFood = this.food.length > 0;
+    this.food = stepPellets(this.food, dt, this.geo.sandTop);
     for (const [id, node] of this.fish) {
       const sleeping = this.faceOf(id, node) === 'sleeping';
       node.tail = stepTail(
@@ -780,6 +828,10 @@ export class TankScene {
       // Asleep, everything happens slowly: drifting down, and drifting about.
       const pace = (sleeping ? SLEEP_SPEED : 1) * this.swimPace;
       const hurry = REGROUP_SPEEDUP[this.regroupSpeed];
+      if (this.chase(id, node, dt * pace)) {
+        this.place(node);
+        continue;
+      }
       node.swim = step(node.swim, dt * pace, this.rand, this.boundsOf(id), hurry);
       if (sleeping && !node.swim.leaving && this.rand() < dt * ZED_RATE) this.breathe(node);
       if (hasLeft(node.swim, this.bounds, FISH_W)) {
@@ -788,7 +840,11 @@ export class TankScene {
       }
       this.place(node);
     }
+    // The food's gone: everyone back to their places (or to sleep).
+    if (hadFood && !this.food.length) this.settleAll();
     this.layoutLabels();
+    this.drawFood();
+    this.updateHearts(dt);
     this.updateZeds(dt);
     this.updateSway(dt);
     this.updateWeather(dt);
@@ -854,6 +910,69 @@ export class TankScene {
     if (sleeping) return 'asleep';
     if (node.swim.pause > 0) return 'rest';
     return node.swim.hurry || node.swim.leaving ? 'hurry' : 'swim';
+  }
+
+  /**
+   * While there's food, a shark swims to the nearest pellet and eats it when
+   * its mouth gets there. False when there's nothing to chase.
+   */
+  private chase(id: string, node: FishNode, dt: number): boolean {
+    if (this.dozing || node.swim.leaving) return false;
+    const food = foodFor(landed(this.food), id);
+    const target = nearest(food, mouthOf(node.swim));
+    if (!target) return false;
+    const b = this.bounds;
+    const { targetX, targetY, facing } = approach(node.swim, target, FISH_W);
+    const moved = step(
+      {
+        ...node.swim,
+        targetX: Math.min(b.maxX, Math.max(b.minX, targetX)),
+        targetY: Math.min(b.maxY, Math.max(b.minY, targetY)),
+        pause: 0,
+        hurry: true,
+      },
+      dt,
+      this.rand,
+      b,
+    );
+    // Turned toward the food, wherever it is: the mouth, not the tail, goes to it.
+    node.swim = { ...moved, facing };
+    const mouth = mouthOf(node.swim);
+    if (Math.hypot(mouth.x - target.x, mouth.y - target.y) <= BITE) {
+      this.food = this.food.filter((p) => p !== target);
+      if (!this.ate.has(id)) {
+        this.ate.add(id);
+        this.hearts.push({ x: Math.round(mouth.x) - 2, y: Math.round(node.swim.y), age: 0 });
+      }
+    }
+    return true;
+  }
+
+  /** Pellets in the water: single art pixels in the food colour. */
+  private drawFood(): void {
+    const g = this.foodLayer.clear();
+    const food = landed(this.food);
+    for (const p of food) g.rect(Math.round(p.x), Math.round(p.y), 1, 1);
+    if (food.length) g.fill(css(ui.food));
+  }
+
+  /** Hearts rise from sharks that ate, and fade. */
+  private updateHearts(dt: number): void {
+    this.hearts = this.hearts.flatMap((h) =>
+      h.age + dt < HEART_LIFE ? [{ ...h, age: h.age + dt }] : [],
+    );
+    const g = this.heartLayer.clear();
+    for (const h of this.hearts) {
+      // Inside the water: a heart never rises past the surface.
+      const hy = Math.max(
+        this.geo.water.y,
+        h.y - Math.round(h.age * ZED_RISE) - HEART_PIXELS.length,
+      );
+      HEART_PIXELS.forEach((row, y) => {
+        for (let x = 0; x < row.length; x++) if (row[x] === '#') g.rect(h.x + x, hy + y, 1, 1);
+      });
+    }
+    if (this.hearts.length) g.fill(css(ui.heart));
   }
 
   /** A Z rises from a sleeping fish's head (the nose end, wherever it faces). */

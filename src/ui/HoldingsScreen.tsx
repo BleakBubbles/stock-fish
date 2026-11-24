@@ -96,7 +96,7 @@ export function HoldingsScreen({ onAdd, onEdit, onColours }: Props) {
                         scale={1}
                       />
                       <div className="holding-text">
-                        <PixelText text={h.symbol} />
+                        <PixelText text={h.name ? `${h.symbol} "${h.name}"` : h.symbol} />
                         <PixelText
                           text={
                             h.costBasis === undefined

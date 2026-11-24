@@ -23,6 +23,9 @@ async function seed() {
     primary: 'f77622',
     secondary: '124e89',
   });
+  const [, vti] = await db.holdings.orderBy('symbol').toArray();
+  await repo.updateHolding(vti!.id, { name: 'Finn', notes: 'The boring one.' });
+  await repo.feed([vti!.id], '2026-11-24');
   await repo.saveSettings({ apiKeys: { twelvedata: 'SECRET' } });
   await repo.setUserSector('ZZZZ', 'Energy');
   await repo.saveProfile({ symbol: 'AAPL', name: 'Apple', fetchedAt: 1 });
@@ -44,6 +47,11 @@ describe('backup', () => {
       await db.holdings.orderBy('symbol').toArray(),
     );
     expect(await other.pens.toArray()).toEqual(await db.pens.toArray());
+    expect(await other.holdings.where('symbol').equals('VTI').first()).toMatchObject({
+      name: 'Finn',
+      notes: 'The boring one.',
+      bond: { days: 1, lastVisit: '2026-11-24' },
+    });
     expect(result.backup.families).toEqual({ ZZZZ: 'Energy' });
     expect((await other.profiles.get('ZZZZ'))?.userSector).toBe('Energy');
     // Cached provider data stays out of backups.

@@ -82,6 +82,9 @@
     "logo": { "o": "181425", "G": "63c74d", "g": "3e8948", "d": "265c42" },
     "sunlight": "ffffff",
     "ripple": "c0cbdc",
+    "food": "e4a672",
+    "heart": "e43b44",
+    "heartGold": "feae34",
     "changeGreen": "63c74d",
     "changeRed": "f6757a",
     "ticker": "181425"

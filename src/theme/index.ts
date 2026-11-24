@@ -55,6 +55,11 @@ export const ui = {
   /** Tank weather: light shafts on good days, raindrop ripples on bad ones (the water darkens with night). */
   sunlight: palette.ui.sunlight,
   ripple: palette.ui.ripple,
+  /** Food pellets sprinkled in the tank, and the hearts a fed shark gives off. */
+  food: palette.ui.food,
+  heart: palette.ui.heart,
+  /** A heart in a shark's bond once it turns gold (after 100 days fed). */
+  heartGold: palette.ui.heartGold,
   /**
    * Today's change, as on a price board: green and red numbers on the dark
    * ticker strip (at least 6.6:1). Which one means up is a setting.

@@ -1,3 +1,4 @@
+import { MAX_HEARTS, goldHearts, hearts } from '../care/bond';
 import { togetherWords } from '../mood';
 import { MIN_RETURNS } from '../mood/volatility';
 import type { Mood } from '../mood/types';
@@ -6,6 +7,7 @@ import { measureText, uiFont } from '../theme/pixelFont';
 import { normalizeCurrency } from '../data/currency';
 import { formatChangeRatio, formatDay, formatMoney } from './format';
 import { PixelButton } from './pixel/PixelButton';
+import { PixelIcon } from './pixel/PixelIcon';
 import { PixelText } from './pixel/PixelText';
 import { RangeBar } from './RangeBar';
 import { ChangeHeadline } from './ChangeTicker';
@@ -24,7 +26,7 @@ const MOOD_LABEL: Record<Mood, string> = {
 /** UI pixels of padding, border and gaps around the panel's text (see .fish-details). */
 const PANEL_CHROME = 2 * (4 + 1 + 3);
 const LABEL_GAP = 4;
-const LABELS = ['Price', 'Holding', 'Mood', 'Moves'];
+const LABELS = ['Price', 'Holding', 'Mood', 'Moves', 'Bond', 'Notes'];
 /** Never wider than this many UI pixels, even on big screens. */
 const MAX_WIDTH = 200;
 /** The typical-day range bar is at most this wide. */
@@ -40,7 +42,40 @@ interface Props {
   closest?: { symbol: string; correlation: number };
   onChangeColours: () => void;
   onMove: () => void;
+  /** Feed this shark on its own (absent while the sharks doze). */
+  onFeed?: () => void;
+  /** It has eaten today: Feed is greyed out until tomorrow. */
+  fed?: boolean;
   onClose: () => void;
+}
+
+/**
+ * Bond (src/care/bond.ts): hearts for the days fed, turning gold after 100,
+ * apart from the mood (which is only ever about the market). Just the hearts, no count.
+ */
+function BondRow({ days, labelWidth }: { days: number; labelWidth: number }) {
+  const earned = hearts(days);
+  const gold = goldHearts(days);
+  return (
+    <div className="px-dl-row">
+      <span className="px-dt" style={{ width: `calc(var(--sf-px) * ${labelWidth})` }}>
+        <PixelText text="Bond" tone="textMuted" />
+      </span>
+      <span
+        className="px-dd bond-hearts"
+        role="img"
+        aria-label={`${earned} of ${MAX_HEARTS} hearts${gold ? `, ${gold} gold` : ''}`}
+      >
+        {Array.from({ length: MAX_HEARTS }, (_, i) => (
+          <PixelIcon
+            key={i}
+            name={i < earned ? 'heart' : 'heart-empty'}
+            tone={i < gold ? 'heartGold' : i < earned ? 'heart' : 'textMuted'}
+          />
+        ))}
+      </span>
+    </div>
+  );
 }
 
 /** The numbers behind one fish: what a price board would show. */
@@ -51,6 +86,8 @@ export function FishDetails({
   closest,
   onChangeColours,
   onMove,
+  onFeed,
+  fed,
   onClose,
 }: Props) {
   const scale = usePixelScale();
@@ -100,6 +137,7 @@ export function FishDetails({
         width={textWidth}
         onClose={onClose}
       />
+      {fish.nickname && <PixelText text={`"${fish.nickname}"`} wrap={textWidth} />}
       {penName && <PixelText text={`In ${penName}`} tone="textMuted" wrap={textWidth} />}
       {quote && result ? (
         <div className="px-stack" aria-live="polite">
@@ -150,7 +188,12 @@ export function FishDetails({
       {quote && fish.error && (
         <PixelText text={`Last update failed: ${fish.error}`} tone="warning" wrap={textWidth} />
       )}
+      <div className="px-dl">
+        <BondRow days={fish.bond?.days ?? 0} labelWidth={labelWidth} />
+        {fish.notes && row('Notes', fish.notes)}
+      </div>
       <div className="px-row">
+        {onFeed && <PixelButton label="Feed" icon="food" disabled={fed} onClick={onFeed} />}
         <PixelButton label="Change colours" icon="colours" onClick={onChangeColours} />
         <PixelButton label="Move…" icon="forward" onClick={onMove} />
       </div>

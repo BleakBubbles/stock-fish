@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { visitedOn } from '../care/bond';
 import { dozing, localDay } from '../care/wake';
 import { US, closedMarketsText, marketOpenNow, marketStates, staleSince } from '../data/market';
 import {
@@ -27,7 +28,7 @@ import {
   useMarketEntries,
 } from '../data/useMarket';
 import { WEATHERS, type Weather, type WeatherResult, kinship, temperFor } from '../mood';
-import { type DropTarget, Tank, type TankPlacement } from '../tank/Tank';
+import { type DropTarget, Tank, type TankFood, type TankPlacement } from '../tank/Tank';
 import {
   type ArrangeFish,
   type Region,
@@ -58,7 +59,7 @@ import { PenBar } from './PenBar';
 import { MoveDialog, PenDialog } from './PenDialogs';
 import { PixelButton } from './pixel/PixelButton';
 import { PixelText } from './pixel/PixelText';
-import { PixelIcon } from './pixel/PixelIcon';
+import { type IconName, PixelIcon } from './pixel/PixelIcon';
 import { TONE_COLOUR } from './pixel/tones';
 import { ChangeTicker } from './ChangeTicker';
 import { direction, directionTone } from './change';
@@ -135,6 +136,8 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
   useEffect(() => {
     if (emptyTank && dozing(settings, new Date(now))) void repo.saveSettings({ lastWoken: today });
   }, [emptyTank, settings, now, today]);
+  /** Food sprinkled in the tank (a new key sprinkles again). */
+  const [food, setFood] = useState<TankFood>();
   const [selectedId, setSelectedFish] = useState<string>();
   /** A group label tapped in an overview (its region key). Fish and group selections exclude each other. */
   const [selectedGroup, setSelectedGroupKey] = useState<string>();
@@ -146,6 +149,20 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
     setSelectedGroupKey(key);
     setSelectedFish(undefined);
   };
+  // A tap anywhere outside the tank (the bars, the margins) closes the details
+  // panel. Taps on the tank, the panel, labels and dialogs are theirs to handle.
+  const anySelected = selectedId !== undefined || selectedGroup !== undefined;
+  useEffect(() => {
+    if (!anySelected) return;
+    const onDown = (e: PointerEvent) => {
+      const el = e.target instanceof Element ? e.target : undefined;
+      if (el?.closest(TANK_PARTS)) return;
+      setSelectedFish(undefined);
+      setSelectedGroupKey(undefined);
+    };
+    document.addEventListener('pointerdown', onDown);
+    return () => document.removeEventListener('pointerdown', onDown);
+  }, [anySelected]);
   const [dialog, setDialog] = useState<Dialog>();
   const [dropPen, setDropPen] = useState<string>();
   const [placement, setPlacement] = useState<TankPlacement>();
@@ -284,6 +301,15 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
     () => (artWidth && artHeight ? tankGeometry(artWidth, artHeight).water : WATER),
     [artWidth, artHeight],
   );
+  // Feeding (src/care/bond.ts): each shark eats once a day, and each day it eats is a bond
+  // day. Awake sharks not yet fed today are hungry; feeding them all feeds just those.
+  const hungryIds = asleep ? [] : visible.filter((f) => !visitedOn(f.bond, today)).map((f) => f.id);
+  const hungry = hungryIds.length > 0;
+  const feed = (ids: readonly string[], x?: number) => {
+    if (!ids.length) return;
+    setFood({ ids, x, key: Date.now() });
+    void repo.feed(ids, localDay(new Date()));
+  };
   // Which of the shown holdings move together (history changes once a day).
   const kin = useMemo(() => {
     const histories = new Map(
@@ -636,6 +662,7 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
         night={!open}
         dozing={asleep}
         onWake={wake}
+        food={food}
         weather={asleep ? 'calm' : (PREVIEW_WEATHER ?? (priced ? weather.weather : 'calm'))}
         selectedId={selected?.id}
         groupOutline={groupRegion?.group?.rect}
@@ -644,6 +671,11 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
         hood={hoodHeight}
         onSelect={setSelectedId}
         onTapWater={(tapX, tapY) => {
+          // Hungry sharks: a tap in the water feeds them (the day's visit).
+          if (hungry) {
+            feed(hungryIds, tapX);
+            return;
+          }
           // In an overview, open water belongs to a group: tap it for that
           // group's summary (again to close). Elsewhere it clears the selection.
           // Taps in the thin margins above and below the water (easy to hit
@@ -699,7 +731,16 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
           {closedText && <PixelText text={closedText} tone="textMuted" />}
           <MarketMessage market={market} hasFish={fish.length > 0} onSettings={onSettings} />
         </div>
-        {asleep && placement && <DozeNotice placement={placement} water={water} onWake={wake} />}
+        {placement && (asleep || hungry) && (
+          <CornerNote
+            placement={placement}
+            water={water}
+            icon={asleep ? 'sleep' : 'food'}
+            text={asleep ? 'Your sharks are dozing.' : 'Your sharks are hungry.'}
+            button={asleep ? 'Wake them' : 'Feed them'}
+            onClick={asleep ? wake : () => feed(hungryIds)}
+          />
+        )}
         {!home && placement && (
           <RegionLabels
             regions={regions}
@@ -746,6 +787,8 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
                 closest={kin.closest.get(selected.symbol)}
                 onChangeColours={() => onChangeColours(selected.id)}
                 onMove={() => setDialog({ kind: 'move', holdingId: selected.id })}
+                onFeed={asleep ? undefined : () => feed([selected.id])}
+                fed={visitedOn(selected.bond, today)}
                 onClose={() => setSelectedId(undefined)}
               />
             )}
@@ -794,15 +837,28 @@ export function TankScreen({ active, market, onAdd, onChangeColours, onSettings 
  * Group names over an overview, aligned to the tank's art pixels (rounded to
  * UI pixels). Tapping one selects the group, like tapping a fish.
  */
-/** The morning doze, in the water's top-right corner: a note and a button that wakes the sharks. */
-function DozeNotice({
+/** What counts as the tank for closing the details panel: taps elsewhere close it. */
+const TANK_PARTS =
+  '.tank-host, .details-anchor, .tank-doze, .tank-labels, .fish-list, [role="dialog"]';
+
+/**
+ * A note in the water's top-right corner with a button: the morning doze
+ * (wake them) and, once they're up, the day's feeding.
+ */
+function CornerNote({
   placement,
   water,
-  onWake,
+  icon,
+  text,
+  button,
+  onClick,
 }: {
   placement: TankPlacement;
   water: Rect;
-  onWake: () => void;
+  icon: IconName;
+  text: string;
+  button: string;
+  onClick: () => void;
 }) {
   const { ui } = usePixelScale();
   const toUi = (art: number) => Math.round((art * placement.scale) / ui);
@@ -817,10 +873,10 @@ function DozeNotice({
     >
       <div className="tank-doze-panel px-panel">
         <span className="tank-bar-weather">
-          <PixelIcon name="sleep" />
-          <PixelText text="Your sharks are dozing." />
+          <PixelIcon name={icon} />
+          <PixelText text={text} />
         </span>
-        <PixelButton label="Wake them" onClick={onWake} />
+        <PixelButton label={button} onClick={onClick} />
       </div>
     </div>
   );

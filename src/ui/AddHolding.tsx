@@ -136,7 +136,7 @@ function DetailsStep({ onNext, onCancel }: { onNext: (d: Draft) => void; onCance
             primary
             disabled={busy}
           />
-          <PixelButton label="Cancel" onClick={onCancel} />
+          <PixelButton label="Cancel" icon="close" onClick={onCancel} />
         </div>
       </div>
     </form>

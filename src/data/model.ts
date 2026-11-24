@@ -113,7 +113,23 @@ export interface Holding {
   /** Fin colour override; unset means the default for the symbol. */
   secondary?: Hex;
   createdAt: number;
+  /** The shark's nickname, shown with its ticker (never instead of it). Up to MAX_NAME characters. */
+  name?: string;
+  /** Free-form notes: why you bought it, a reminder, its personality. Up to MAX_NOTES characters. */
+  notes?: string;
+  /** Days visited (fed), for the bond hearts (src/care/bond.ts). */
+  bond?: Bond;
 }
+
+/** A shark's bond: how many days it was visited, and the last one ("YYYY-MM-DD"). */
+export interface Bond {
+  days: number;
+  lastVisit?: string;
+}
+
+/** The longest nickname and notes a shark can have. */
+export const MAX_NAME = 12;
+export const MAX_NOTES = 500;
 
 /**
  * What the app knows about a symbol (a species). The sector picks the fish

@@ -362,7 +362,7 @@ function BackupSettings() {
           />
           <div className="px-row">
             <PixelButton label="Replace my tank" onClick={() => void restore()} />
-            <PixelButton label="Cancel" onClick={() => setPending(undefined)} />
+            <PixelButton label="Cancel" icon="close" onClick={() => setPending(undefined)} />
           </div>
         </div>
       )}

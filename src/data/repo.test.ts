@@ -80,6 +80,43 @@ describe('holdings', () => {
   });
 });
 
+describe('names, notes and bond', () => {
+  it('keeps a short name and notes, refusing longer ones', async () => {
+    const pen = await repo.ensureDefaultPen();
+    const h = await repo.addHolding({ symbol: 'AAPL', quantity: 1, penId: pen.id });
+    await repo.updateHolding(h.id, { name: 'Finn', notes: 'Bought for the dividends.' });
+    expect(await db.holdings.get(h.id)).toMatchObject({ name: 'Finn' });
+    await expect(repo.updateHolding(h.id, { name: 'A'.repeat(13) })).rejects.toThrow();
+    await expect(repo.updateHolding(h.id, { name: '  ' })).rejects.toThrow();
+    await expect(repo.updateHolding(h.id, { notes: 'x'.repeat(501) })).rejects.toThrow();
+  });
+
+  it('feeding adds one bond day per shark per day', async () => {
+    const pen = await repo.ensureDefaultPen();
+    const a = await repo.addHolding({ symbol: 'AAPL', quantity: 1, penId: pen.id });
+    const b = await repo.addHolding({ symbol: 'MSFT', quantity: 1, penId: pen.id });
+    await repo.feed([a.id, b.id], '2026-11-24');
+    await repo.feed([a.id], '2026-11-24');
+    await repo.feed([a.id], '2026-11-26');
+    expect((await db.holdings.get(a.id))?.bond).toEqual({ days: 2, lastVisit: '2026-11-26' });
+    expect((await db.holdings.get(b.id))?.bond).toEqual({ days: 1, lastVisit: '2026-11-24' });
+  });
+
+  it('a split copies the bond but not the name or notes; a merge keeps the stronger bond', async () => {
+    const a = await repo.findOrCreatePen('A');
+    const b = await repo.findOrCreatePen('B');
+    const h = await repo.addHolding({ symbol: 'VTI', quantity: 4, penId: a.id });
+    await repo.updateHolding(h.id, { name: 'Finn', notes: 'Core', bond: { days: 7 } });
+    const sibling = await repo.moveHolding(h.id, b.id, 1);
+    expect(await db.holdings.get(sibling)).toMatchObject({ bond: { days: 7 } });
+    expect((await db.holdings.get(sibling))?.name).toBeUndefined();
+    expect((await db.holdings.get(sibling))?.notes).toBeUndefined();
+    await repo.updateHolding(sibling, { bond: { days: 2 } });
+    await repo.moveHolding(h.id, b.id);
+    expect((await db.holdings.get(sibling))?.bond).toEqual({ days: 7 });
+  });
+});
+
 describe('settings', () => {
   it('defaults and merges', async () => {
     expect((await repo.getSettings()).provider).toBe('twelvedata');

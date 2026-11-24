@@ -1,8 +1,11 @@
+import { isValidBond, mergeBonds, visit, visitedOn } from '../care/bond';
 import type { StockFishDb } from './db';
 import {
   DEFAULT_PEN_NAME,
   DEFAULT_SETTINGS,
   type Holding,
+  MAX_NAME,
+  MAX_NOTES,
   MAX_PEN_NAME,
   type Pen,
   type ProviderId,
@@ -25,10 +28,19 @@ export interface NewHolding {
   secondary?: string;
 }
 
-function checkHolding(h: Pick<Holding, 'symbol' | 'quantity' | 'costBasis'>): void {
+function checkHolding(
+  h: Pick<Holding, 'symbol' | 'quantity' | 'costBasis' | 'name' | 'notes' | 'bond'>,
+): void {
   if (!isValidSymbol(h.symbol)) throw new Error(`Invalid symbol: ${h.symbol}`);
   if (!isValidQuantity(h.quantity)) throw new Error(`Invalid quantity: ${h.quantity}`);
   if (!isValidCostBasis(h.costBasis)) throw new Error(`Invalid cost basis: ${h.costBasis}`);
+  if (h.name !== undefined && (!h.name.trim() || h.name.length > MAX_NAME)) {
+    throw new Error(`Names can be up to ${MAX_NAME} characters.`);
+  }
+  if (h.notes !== undefined && h.notes.length > MAX_NOTES) {
+    throw new Error(`Notes can be up to ${MAX_NOTES} characters.`);
+  }
+  if (h.bond !== undefined && !isValidBond(h.bond)) throw new Error('Invalid bond.');
 }
 
 /**
@@ -106,6 +118,17 @@ export function createRepo(db: StockFishDb) {
     return 'added';
   }
 
+  /** A visit: each given shark is fed on `day`, a bond day for each not yet fed that day. */
+  async function feed(ids: readonly string[], day: string): Promise<void> {
+    await db.transaction('rw', db.holdings, async () => {
+      for (const h of await db.holdings.bulkGet([...ids])) {
+        if (h && !visitedOn(h.bond, day)) {
+          await db.holdings.update(h.id, { bond: visit(h.bond, day) });
+        }
+      }
+    });
+  }
+
   async function deleteHolding(id: string): Promise<void> {
     await db.holdings.delete(id);
   }
@@ -179,13 +202,16 @@ export function createRepo(db: StockFishDb) {
           ...target,
           quantity: tidyQuantity(target.quantity + amount),
           costBasis: mergedCostBasis(target, source, amount),
+          bond: mergeBonds(target.bond, source.bond),
         });
         return target.id;
       }
-      // A whole move keeps the fish (and its id); a part move adds a sibling.
-      const moved: Holding = whole
-        ? { ...source, penId }
-        : { ...source, id: newId(), penId, quantity: amount, createdAt: Date.now() };
+      // A whole move keeps the fish (and its id); a part move adds a sibling
+      // with the same colours and bond, but no name or notes of its own yet.
+      const sibling: Holding = { ...source, id: newId(), penId, quantity: amount };
+      delete sibling.name;
+      delete sibling.notes;
+      const moved: Holding = whole ? { ...source, penId } : { ...sibling, createdAt: Date.now() };
       await db.holdings.put(moved);
       return moved.id;
     });
@@ -254,6 +280,7 @@ export function createRepo(db: StockFishDb) {
     updateHolding,
     upsertHolding,
     deleteHolding,
+    feed,
     getSettings,
     saveSettings,
     getProfile,

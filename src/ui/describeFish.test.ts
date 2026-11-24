@@ -49,6 +49,12 @@ describe('describeFish', () => {
     expect(text).toMatch(/^AAPL, Apple Inc\., no price yet today, \+2\.04% on .*17.*, .*2,000/);
   });
 
+  it('says its nickname after the ticker, never instead of it', () => {
+    expect(describeFish({ ...base, nickname: 'Finn' })).toMatch(
+      /^AAPL, Apple Inc\., called Finn, /,
+    );
+  });
+
   it('says when its market is closed', () => {
     expect(describeFish(base, 'TFSA', 'London')).toBe(
       'AAPL, Apple Inc., waiting for prices, asleep, London market closed, in TFSA',

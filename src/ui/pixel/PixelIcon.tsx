@@ -7,6 +7,9 @@ import { TONE_COLOUR, type Tone } from './tones';
 export type IconName =
   | 'group'
   | 'sleep'
+  | 'food'
+  | 'heart'
+  | 'heart-empty'
   | 'back'
   | 'check'
   | 'close'

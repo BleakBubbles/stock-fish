@@ -16,6 +16,7 @@ const MOOD_WORD: Record<Mood, string> = {
  */
 export function describeFish(f: FishView, penName?: string, closedMarket?: string): string {
   const parts = [f.name ? `${f.symbol}, ${f.name}` : f.symbol];
+  if (f.nickname) parts.push(`called ${f.nickname}`);
   if (f.quote && f.moodResult && f.stale) {
     parts.push(
       'no price yet today',

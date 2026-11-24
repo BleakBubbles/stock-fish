@@ -3,7 +3,7 @@
  * market data. Pure, so it's easy to test; the React hook lives in Tank.tsx.
  */
 import { type RateTable, homeFactor } from '../data/currency';
-import type { Holding, MarketEntry, SymbolProfile } from '../data/model';
+import type { Bond, Holding, MarketEntry, SymbolProfile } from '../data/model';
 import type { Quote } from '../data/providers/types';
 import { resolveSector } from '../data/sectors';
 import { type MoodResult, type WeatherResult, assessMood, portfolioWeather } from '../mood';
@@ -24,7 +24,12 @@ export interface FishView {
   /** The holding's id: one fish per holding. */
   id: string;
   symbol: string;
+  /** The company or fund's name, from the provider. */
   name?: string;
+  /** The shark's own nickname, set by the user (Holding.name). */
+  nickname?: string;
+  notes?: string;
+  bond?: Bond;
   quantity: number;
   penId: string;
   body: Body;
@@ -75,6 +80,9 @@ export function buildFish(
       id: h.id,
       symbol: h.symbol,
       name: profile?.name ?? entry?.quote?.name,
+      nickname: h.name,
+      notes: h.notes,
+      bond: h.bond,
       quantity: h.quantity,
       penId: h.penId,
       body: bodyForSector(resolveSector(h.symbol, profile).sector),

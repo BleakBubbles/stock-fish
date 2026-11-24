@@ -904,6 +904,12 @@ canvas {
   pointer-events: none;
 }
 
+/* Bond in a shark's details: five hearts in a row. */
+.bond-hearts {
+  display: flex;
+  gap: calc(var(--sf-px) * 2);
+}
+
 /* The morning doze note: right-aligned in the water's top corner, over the fish and labels. */
 .tank-doze {
   position: absolute;

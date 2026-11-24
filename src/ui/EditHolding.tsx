@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from 'react';
 import type { Holding, Pen, SymbolProfile } from '../data/model';
-import { isValidCostBasis, isValidQuantity } from '../data/model';
+import { MAX_NAME, MAX_NOTES, isValidCostBasis, isValidQuantity } from '../data/model';
 import { SOURCE_LABEL, resolveSector } from '../data/sectors';
 import { repo, usePens, useProfiles } from '../data/store';
 import { type FishColours, defaultColours, fishColours } from '../theme';
@@ -80,7 +80,7 @@ function EditLook({
         </div>
         <div className="px-row">
           <PixelButton label="Save" icon="check" primary onClick={() => void save()} />
-          <PixelButton label="Cancel" onClick={onDone} />
+          <PixelButton label="Cancel" icon="close" onClick={onDone} />
         </div>
       </div>
 
@@ -125,6 +125,8 @@ function EditDetails({
   const [costBasis, setCostBasis] = useState(
     holding.costBasis === undefined ? '' : String(holding.costBasis),
   );
+  const [name, setName] = useState(holding.name ?? '');
+  const [notes, setNotes] = useState(holding.notes ?? '');
   const [penId, setPenId] = useState(holding.penId);
   const [newPenName, setNewPenName] = useState('');
   const [error, setError] = useState<string>();
@@ -138,7 +140,13 @@ function EditDetails({
     if (!isValidCostBasis(c)) return setError('Cost per share must be a number, 0 or more.');
     if (penId === NEW_PEN && !newPenName.trim()) return setError('Name the new pen.');
     const pen = penId === NEW_PEN ? await repo.findOrCreatePen(newPenName) : { id: penId };
-    await repo.updateHolding(holding.id, { quantity: q, costBasis: c, penId: pen.id });
+    await repo.updateHolding(holding.id, {
+      quantity: q,
+      costBasis: c,
+      penId: pen.id,
+      name: name.trim() || undefined,
+      notes: notes.trim() || undefined,
+    });
     onDone();
   }
 
@@ -151,6 +159,14 @@ function EditDetails({
     <form className="px-stack px-page-stack" onSubmit={(e) => void save(e)} noValidate>
       <PixelHeading text={`Edit ${holding.symbol}`} />
       <div className="px-panel px-stack px-wide">
+        <PixelField label="Name" hint="optional: the ticker stays its label">
+          <PixelInput
+            label="Name (optional)"
+            value={name}
+            maxLength={MAX_NAME}
+            onChange={setName}
+          />
+        </PixelField>
         <PixelField label="Quantity">
           <PixelInput
             label="Quantity"
@@ -174,10 +190,18 @@ function EditDetails({
           onChange={setPenId}
           onNewNameChange={setNewPenName}
         />
+        <PixelField label="Notes" hint="optional">
+          <PixelInput
+            label="Notes (optional)"
+            value={notes}
+            maxLength={MAX_NOTES}
+            onChange={setNotes}
+          />
+        </PixelField>
         {error && <PixelParagraph text={error} tone="warning" role="alert" />}
         <div className="px-row">
           <PixelButton type="submit" label="Save" icon="check" primary />
-          <PixelButton label="Cancel" onClick={onDone} />
+          <PixelButton label="Cancel" icon="close" onClick={onDone} />
         </div>
       </div>
 

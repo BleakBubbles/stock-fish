@@ -98,7 +98,8 @@ Not in v1. Recorded so the architecture leaves room for them.
 
 Keeping track of your investments is a good habit; acting on every move isn't. The tank rewards
 the first (checking in) and never the second (trading). It's lighthearted and only a source of
-information, never advice. Agreed November 2026; the morning wake-up is built, the rest isn't yet.
+information, never advice. Agreed November 2026; the wake-up, feeding, bond, notes and names are
+built, the rest isn't yet.
 
 - **Morning wake-up:** the first time the app opens each day, the fish are dozing. One tap on the
   tank (or the "Wake them" button in a note in the water's top-right corner) wakes them all, one
@@ -107,18 +108,26 @@ information, never advice. Agreed November 2026; the morning wake-up is built, t
   Prices are never locked: fish details and the screen-reader list show the numbers either way.
   On a closed market, waking shows the fish drowsy (yesterday's close), then they doze off again;
   a sleeping face keeps meaning "no fresh prices".
-- **Feeding:** after waking, tap the water to sprinkle food; the fish swim up and eat. This is the
-  day's visit.
-- **Bond:** each fish's bond grows with the days you visit, shown as hearts in its details, apart
-  from the mood face (which is only ever about the market). It counts days visited, not a strict
-  streak: a missed day costs nothing. A streak counter may show for fun, but breaking it is never
-  punished.
+- **Feeding:** after waking, the corner note says the fish are hungry; tap the water (or "Feed
+  them") to sprinkle food, and the fish swim up, eat and give off a heart. Each fish eats once a
+  day: feeding them all feeds the hungry ones shown, and a fish can also be fed on its own from its
+  details ("Feed", greyed out once it has eaten today), a few pellets just over it. Only the fish
+  the food is for come up to eat. Food also wakes fish on a closed market for a moment.
+- **Bond:** each fish's bond is the days it has been fed, shown as hearts in its details, apart
+  from the mood face (which is only ever about the market). It counts days fed, not a strict
+  streak: a missed day costs nothing. Hearts come at 3, 10, 30, 60 and 100 days fed, then turn
+  gold one by one at 150, 200, 250, 300 and 365, just for fun. Bond never goes down. Bond
+  belongs to each fish (each holding): a new one starts at zero, a part moved to another pen keeps
+  a copy, and two that merge keep the stronger. A streak counter may show for fun, but breaking it
+  is never punished.
 - **Play:** tap and hold a fish and it wiggles, with a little heart; later, toys to chase.
 - **Unlocks from bond** add fun, never access to information: a morning bell for the tank (waking
   it with a chime and an animation, the "auto-petter" of Stardew Valley), an auto-feeder, toys,
   decorations, patterns on the fish, later accessories. Nothing depends on returns.
-- **Notes and names:** each fish can have a name and free-form notes (why you bought it, a
-  reminder, its personality), shown in its details.
+- **Notes and names:** each fish can have a nickname (up to 12 characters) and free-form notes
+  (why you bought it, a reminder, its personality), set in Edit and saved in backups. The ticker
+  stays its identity: the tank's labels show tickers only, and the name appears beside the ticker
+  where you look at one fish (its details, its row in Holdings, and what a screen reader says).
 - **Adding shares:** a small celebration (the fish does a loop). It marks something you did, not a
   reward for buying.
 - **Selling:** separate from deleting (a mistake, the fish just goes). A sold holding is

@@ -1,5 +1,14 @@
 import type { StockFishDb } from './db';
-import { type Holding, type Pen, isValidCostBasis, isValidQuantity, isValidSymbol } from './model';
+import { isValidBond } from '../care/bond';
+import {
+  type Holding,
+  MAX_NAME,
+  MAX_NOTES,
+  type Pen,
+  isValidCostBasis,
+  isValidQuantity,
+  isValidSymbol,
+} from './model';
 
 /**
  * JSON backup of the tank: pens, holdings and the families the user picked.
@@ -93,7 +102,10 @@ export function validateBackup(
       !isNumber(h.createdAt) ||
       !optional(h.costBasis, isNumber) ||
       !optional(h.primary, isHex) ||
-      !optional(h.secondary, isHex)
+      !optional(h.secondary, isHex) ||
+      !optional(h.name, isString) ||
+      !optional(h.notes, isString) ||
+      !optional(h.bond, isValidBond)
     ) {
       errors.push(`${label} is malformed.`);
       return;
@@ -101,6 +113,10 @@ export function validateBackup(
     if (!isValidSymbol(h.symbol)) errors.push(`${label}: invalid symbol ${h.symbol}.`);
     else if (!isValidQuantity(h.quantity)) errors.push(`${label}: invalid quantity.`);
     else if (!isValidCostBasis(h.costBasis)) errors.push(`${label}: invalid cost basis.`);
+    else if (h.name !== undefined && (!h.name.trim() || h.name.length > MAX_NAME))
+      errors.push(`${label} (${h.symbol}): its name is longer than ${MAX_NAME} characters.`);
+    else if (h.notes !== undefined && h.notes.length > MAX_NOTES)
+      errors.push(`${label} (${h.symbol}): its notes are longer than ${MAX_NOTES} characters.`);
     else if (!penIds.has(h.penId)) errors.push(`${label} (${h.symbol}) belongs to a missing pen.`);
     else {
       const clean: Holding = {
@@ -113,6 +129,9 @@ export function validateBackup(
       if (h.costBasis !== undefined) clean.costBasis = h.costBasis;
       if (h.primary !== undefined) clean.primary = h.primary;
       if (h.secondary !== undefined) clean.secondary = h.secondary;
+      if (h.name !== undefined) clean.name = h.name;
+      if (h.notes !== undefined) clean.notes = h.notes;
+      if (h.bond !== undefined) clean.bond = { ...h.bond };
       holdings.push(clean);
     }
   });

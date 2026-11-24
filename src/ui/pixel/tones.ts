@@ -9,7 +9,9 @@ export type Tone =
   | 'success'
   | 'heading'
   | 'changeGreen'
-  | 'changeRed';
+  | 'changeRed'
+  | 'heart'
+  | 'heartGold';
 
 export const TONE_COLOUR: Record<Tone, string> = {
   text: ui.text,
@@ -20,4 +22,6 @@ export const TONE_COLOUR: Record<Tone, string> = {
   heading: ui.heading,
   changeGreen: ui.changeGreen,
   changeRed: ui.changeRed,
+  heart: ui.heart,
+  heartGold: ui.heartGold,
 };
