@@ -1,38 +1,38 @@
 import type { Body } from './sprites';
 
 /**
- * Sector → fish body (CLAUDE.md, mapping rules). Accepts GICS names and the
+ * Sector → shark body (CLAUDE.md, mapping rules). Accepts GICS names and the
  * Morningstar-style names Twelve Data returns ("Technology", "Consumer
  * Cyclical", "Healthcare", ...), plus Fund (ETFs and mutual funds: the
- * sunfish) and Crypto (the anglerfish). Unknown sectors get body 3.
+ * whale shark) and Crypto (the mako). Unknown sectors get body 3.
  */
 const SECTOR_BODIES: Record<string, Body> = {
-  // 1: tech triangle
+  // 1: tech hammerhead
   'information technology': 1,
   technology: 1,
   'communication services': 1,
-  // 2: finance boxfish
+  // 2: finance great white
   financials: 2,
   'financial services': 2,
   'real estate': 2,
-  // 3: consumer pufferfish
+  // 3: consumer nurse shark
   'consumer discretionary': 3,
   'consumer cyclical': 3,
   'consumer staples': 3,
   'consumer defensive': 3,
-  // 4: energy diamond
+  // 4: energy thresher
   energy: 4,
   utilities: 4,
-  // 5: industrial sawfish
+  // 5: industrial sawshark
   industrials: 5,
   materials: 5,
   'basic materials': 5,
-  // 6: health capsule
+  // 6: health angel shark
   'health care': 6,
   healthcare: 6,
-  // 7: fund sunfish
+  // 7: fund whale shark
   fund: 7,
-  // 8: crypto anglerfish
+  // 8: crypto mako
   crypto: 8,
 };
 

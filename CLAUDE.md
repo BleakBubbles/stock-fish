@@ -69,9 +69,11 @@ come from `art/palette.json`.
 
 Mapping rules:
 
-- **Sector → body:** IT and Communication Services → 1; Financials and Real Estate → 2; Consumer
-  Discretionary and Staples → 3; Energy and Utilities → 4; Industrials and Materials → 5;
-  Health Care → 6; funds (ETFs and mutual funds) → 7, the sunfish; crypto → 8, the anglerfish
+- **Sector → body** (the bodies are sharks, `art/STYLE.md`): IT and Communication Services → 1,
+  the hammerhead; Financials and Real Estate → 2, the great white; Consumer Discretionary and
+  Staples → 3, the nurse shark; Energy and Utilities → 4, the thresher; Industrials and Materials
+  → 5, the sawshark; Health Care → 6, the angel shark; funds (ETFs and mutual funds) → 7, the
+  whale shark; crypto → 8, the mako
   (any crypto pair such as `BTC/USD`). Unknown sectors and currency pairs → body 3.
 - **Sector source,** best first: the user's family choice, the provider's company profile, then
   the built-in table `src/data/sectors.json` (S&P 500 GICS sectors plus common funds; regenerate
@@ -115,6 +117,6 @@ questions.
 
 ## Placeholders until decided
 
-- Selling a holding: the fish swims away.
+- Selling a holding: the fish is released (agreed design in the spec, "Care and the daily visit"; not built yet: for now it swims away).
 - Default arrangement mode: mood.
 - Market data refresh: every 15 minutes during market hours.

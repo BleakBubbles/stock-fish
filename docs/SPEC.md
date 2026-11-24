@@ -93,6 +93,40 @@ Not in v1. Recorded so the architecture leaves room for them.
 | 2 | Events, tap-to-explain, temperament, dividend pearls | Earnings/dividend/split calendars |
 | 3 | Correlation schooling, habitats, ETF schools | Price history, ETF holdings |
 
+## Care and the daily visit
+
+Keeping track of your investments is a good habit; acting on every move isn't. The tank rewards
+the first (checking in) and never the second (trading). It's lighthearted and only a source of
+information, never advice. Agreed November 2026; not built yet.
+
+- **Morning wake-up:** the first time the app opens each day, the fish are dozing. One tap on the
+  tank wakes them all: they stretch and yawn, then their moods show. A setting skips the wake-up.
+  Prices are never locked: fish details and the screen-reader list show the numbers either way.
+  On a closed market, waking shows the fish drowsy (yesterday's close), then they doze off again;
+  a sleeping face keeps meaning "no fresh prices".
+- **Feeding:** after waking, tap the water to sprinkle food; the fish swim up and eat. This is the
+  day's visit.
+- **Bond:** each fish's bond grows with the days you visit, shown as hearts in its details, apart
+  from the mood face (which is only ever about the market). It counts days visited, not a strict
+  streak: a missed day costs nothing. A streak counter may show for fun, but breaking it is never
+  punished.
+- **Play:** tap and hold a fish and it wiggles, with a little heart; later, toys to chase.
+- **Unlocks from bond** add fun, never access to information: a morning bell for the tank (waking
+  it with a chime and an animation, the "auto-petter" of Stardew Valley), an auto-feeder, toys,
+  decorations, patterns on the fish, later accessories. Nothing depends on returns.
+- **Notes and names:** each fish can have a name and free-form notes (why you bought it, a
+  reminder, its personality), shown in its details.
+- **Adding shares:** a small celebration (the fish does a loop). It marks something you did, not a
+  reward for buying.
+- **Selling:** separate from deleting (a mistake, the fish just goes). A sold holding is
+  *released*: the fish swims up to the surface and away, with no cheer for a gain or gloom for a
+  loss. It joins a list of former residents ("AAPL, lived here 2 years 3 months"); a fish that
+  stayed a long time leaves a keepsake on the sand (a shell, a pebble). A partial sale only shrinks
+  its patch.
+- **Reminder (optional):** a gentle daily notification at a time you choose ("your fish are
+  waking up"): about the visit, never about prices.
+- **Never:** guilt, fish that get sick or die, rewards tied to returns, prompts to buy or sell.
+
 ## Organizing fish
 
 An investment is a **species**; each fish is an **individual** of that species living in a
@@ -155,7 +189,8 @@ change; Instant puts them there at once. Everyday swimming is unaffected.
 
 1. **Glanceable first.** Mood readable in a second; numbers one tap away.
 2. **Honest, not hype.** Calm is the default; strong emotions only for genuinely unusual moves.
-3. **Reward care, not luck** (for future currency): nothing depends on market performance.
+3. **Reward care, not luck:** visits, feeding and play are rewarded (see "Care and the daily
+   visit"); nothing depends on market performance, and absence is never punished.
 4. **Never show the money socially** (for future social features): share what you hold, never how much.
 5. **Borrow familiar patterns:** aquariums, Animal Crossing visits, Tamagotchi care loops.
 6. **Cooperative, not competitive.** No leaderboards.
@@ -184,7 +219,7 @@ Flat pixel art, ENDESGA 32 palette, no shading. Full rules in `art/STYLE.md`.
 
 | Encodes | Visual | Chosen by |
 | --- | --- | --- |
-| Sector | Body shape | Sector lookup (6 bodies for 11 GICS sectors, plus a sunfish for funds and an anglerfish for crypto) |
+| Sector | Body shape | Sector lookup (8 shark species: 6 for the 11 GICS sectors, a whale shark for funds and a mako for crypto) |
 | Ticker | Primary (body) + secondary (fin) colours | The user, pre-filled from a brand preset or a hash of the ticker |
 | Mood | Eye + mouth | Volatility-scaled daily move |
 | Weight | Territory | Share of portfolio |
@@ -260,13 +295,11 @@ account and the app is just a client.
 
 Placeholders are fine during the build:
 
-- What happens when a holding is sold (placeholder: the fish swims away).
 - CSV import format (placeholder: `symbol,quantity,pen`).
-- Neglect: no consequences.
 
 Before a public launch:
 
-- Notifications: event-based only, never price-based nudges.
+- Notifications: event-based (and the optional daily visit reminder), never price-based nudges.
 - Accessibility: numbers available to screen readers; mood never conveyed by colour alone.
 - Privacy: data stays in the browser; "not investment advice" disclaimer.
 - Final name and branding (working name: Stock Fish).
